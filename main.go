@@ -53,7 +53,12 @@ func sendAndProcessRequest(url string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send GET request: %w", err)
 	}
-	defer resp.Body.Close() // Ensure the response body is closed
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("failed to close body reader: %v", err)
+		}
+	}(resp.Body) // Ensure the response body is closed
 
 	// Check if the request was successful (status code 200 OK)
 	if resp.StatusCode != http.StatusOK {
