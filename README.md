@@ -18,3 +18,7 @@ Free ADSB APIs:
 ### Airline code to name mappings
 
 - https://github.com/tbouron/MMM-FlightTracker
+
+### Raw ADS-B data parsing in Go
+
+- https://github.com/cjkreklow/go-adsb
