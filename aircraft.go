@@ -8,14 +8,14 @@ type dataType uint
 // Type types
 const (
 	T_INT dataType = 1
-	T_STR          = 2
+	T_STR dataType = 2
 )
 
-type Aircrafts struct {
-	now         float64    // time this file was generated in ms
-	resultCount int        // total aircraft returned
-	ptime       float64    // server processing time required in ms
-	aircrafts   []Aircraft // list of Aircraft records
+type AircraftRecord struct {
+	Now         float64    `json:"now"`         // time this file was generated in ms
+	ResultCount int        `json:"resultCount"` // total aircraft returned
+	Ptime       float64    `json:"ptime"`       // server processing time required in ms
+	Aircraft    []Aircraft `json:"aircraft"`    // list of Aircraft records
 }
 
 type IntOrString struct {
@@ -42,7 +42,7 @@ type Aircraft struct {
 	NacP            float64  `json:"nac_p"`            // navigation accuracy for position
 	NacV            float64  `json:"nac_v"`            // navigation accuracy for velocity
 	NavAltitudeMcp  int      `json:"nav_altitude_mcp"` // selected from mode or flight control panel (MCP)/(FCP) or other
-	NavHeading      int      `json:"nav_heading"`      // selected heading (True/Magnetic), magnetic is de-facto standard
+	NavHeading      float64  `json:"nav_heading"`      // selected heading (True/Magnetic), magnetic is de-facto standard
 	NavQNH          float64  `json:"nav_qnh"`          // altimeter setting (QFE  or QNH/QNE) in [hPa]
 	Nic             int      `json:"nic"`              // Navigation Integrity Category
 	NicBaro         int      `json:"nic_baro"`         // NIC for barometric altitude

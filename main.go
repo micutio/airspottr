@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -85,13 +87,13 @@ func sendAndProcessRequest(url string) error {
 	}
 
 	// Example processing: you could parse JSON/XML here, check for specific content, etc.
-	// if contentType := resp.Header.Get("Content-Type"); strings.Contains(contentType, "application/json") {
-	//     var data map[string]interface{}
-	//     if err := json.Unmarshal(body, &data); err != nil {
-	//         return fmt.Errorf("failed to unmarshal JSON: %w", err)
-	//     }
-	//     fmt.Printf("Parsed JSON data: %+v\n", data)
-	// }
+	if contentType := resp.Header.Get("Content-Type"); strings.Contains(contentType, "application/json") {
+		var data AircraftRecord
+		if err := json.Unmarshal(body, &data); err != nil {
+			return fmt.Errorf("failed to unmarshal JSON: %w", err)
+		}
+		fmt.Printf("Parsed JSON data: %+v\n", data)
+	}
 	// --- End of Processing Logic ---
 
 	return nil
