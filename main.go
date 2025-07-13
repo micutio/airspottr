@@ -12,6 +12,9 @@ import (
 )
 
 func main() {
+	// Setup data maps
+	icaoAircraftMap := GetIcaoAircraftMap()
+
 	// Define the URL for the HTTP GET request
 	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/25"
 	//           "https://api.adsb.lol/v2/lat/1.359297/lon/103.989348/dist/25"
@@ -23,7 +26,7 @@ func main() {
 	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
 	done := make(chan bool)
 
-	fmt.Printf("Starting HTTP GET request routine. Sending request to %s every 30 seconds...\n", targetURL)
+	fmt.Printf("Starting HTTP GET request to %s every 30 seconds...\n", targetURL)
 	fmt.Println("Press Ctrl+C to stop the program.")
 
 	// Start a goroutine to perform the requests
@@ -32,8 +35,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				// This case is executed every time the ticker "ticks"
-				fmt.Printf("\n[%s] Sending HTTP GET request to %s...\n", time.Now().Format("2006-01-02 15:04:05"), targetURL)
-				err := sendAndProcessRequest(targetURL)
+				err := sendAndProcessRequest(targetURL, &icaoAircraftMap)
 				if err != nil {
 					log.Printf("Error during request: %v", err)
 				}
@@ -51,7 +53,7 @@ func main() {
 }
 
 // sendAndProcessRequest sends an HTTP GET request and processes the response
-func sendAndProcessRequest(url string) error {
+func sendAndProcessRequest(url string, icaoAircraftTypes *map[string]IcaoAircraft) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to send GET request: %w", err)
@@ -75,12 +77,17 @@ func sendAndProcessRequest(url string) error {
 	}
 
 	// — Start of Processing Logic —
-	fmt.Printf("Successfully received response from %s. Status: %s\n", url, resp.Status)
-	fmt.Printf("Response body length: %d bytes\n", len(body))
+	fmt.Printf("\n[%s] status: %s response body length: %d bytes\n",
+		time.Now().Format("2006-01-02 15:04:05"),
+		resp.Status,
+		len(body),
+	)
 
 	// Example processing: print a snippet of the response body
 	if len(body) == 0 {
 		fmt.Println("Response body is empty.")
+		// This is considered valid, no need to chuck an error.
+		return nil
 	}
 
 	// Example processing: you could parse JSON/XML here, check for specific content, etc.
@@ -95,12 +102,16 @@ func sendAndProcessRequest(url string) error {
 			fmt.Println("No aircraft found.")
 		} else {
 			sort.Sort(ByFlight(data.Aircraft))
-			fmt.Println("detected aircraft:")
 			for i := range foundAircraftCount {
 				aircraft := data.Aircraft[i]
-				fmt.Printf("Flight: %s, type: %s, alt: %f, hdg: %f\n",
-					aircraft.Flight,
-					aircraft.IcaoType,
+				flight := aircraft.Flight
+				if len(flight) == 0 {
+					flight = "unknown " // add space for consistent formatting with ICAO codes
+				}
+				aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
+				fmt.Printf("Flight %s on %s at %.0f feet, heading %.2f degrees\n",
+					flight,
+					aType,
 					aircraft.AltBaro,
 					aircraft.NavHeading)
 			}
