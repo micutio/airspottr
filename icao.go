@@ -24,19 +24,24 @@ type IcaoAircraft struct {
 // Each map represents a row, with keys corresponding to the CSV headers.
 func parseCSVToMap(filePath string) (map[string]IcaoAircraft, error) {
 	// Open the CSV file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+	file, fileErr := os.Open(filePath)
+	if fileErr != nil {
+		return nil, fmt.Errorf("failed to open file: %w", fileErr)
 	}
-	defer file.Close() // Ensure the file is closed when the function exits
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Printf("failed to close file: %v", err)
+		}
+	}(file) // Ensure the file is closed when the function exits
 
 	// Create a new CSV reader
 	reader := csv.NewReader(file)
 
 	// Read the header row
-	headers, err := reader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read headers: %w", err)
+	headers, headerErr := reader.Read()
+	if headerErr != nil {
+		return nil, fmt.Errorf("failed to read headers: %w", headerErr)
 	}
 	if len(headers) != len(IcaoAircraftHeaders) {
 		return nil, fmt.Errorf("unexpected header length")

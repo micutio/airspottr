@@ -16,7 +16,7 @@ func main() {
 	icaoAircraftMap := GetIcaoAircraftMap()
 
 	// Define the URL for the HTTP GET request
-	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/25"
+	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/250"
 	//           "https://api.adsb.lol/v2/lat/1.359297/lon/103.989348/dist/25"
 
 	// Create a ticker that fires every 30 seconds
@@ -53,10 +53,11 @@ func main() {
 }
 
 // sendAndProcessRequest sends an HTTP GET request and processes the response
+// TODO: separate send and request
 func sendAndProcessRequest(url string, icaoAircraftTypes *map[string]IcaoAircraft) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("failed to send GET request: %w", err)
+	resp, respErr := http.Get(url)
+	if respErr != nil {
+		return fmt.Errorf("failed to send GET request: %w", respErr)
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -71,9 +72,9 @@ func sendAndProcessRequest(url string, icaoAircraftTypes *map[string]IcaoAircraf
 	}
 
 	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
+	body, bodyErr := io.ReadAll(resp.Body)
+	if bodyErr != nil {
+		return fmt.Errorf("failed to read response body: %w", bodyErr)
 	}
 
 	// — Start of Processing Logic —
