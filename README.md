@@ -19,6 +19,10 @@ Free ADSB APIs:
 
 - https://github.com/tbouron/MMM-FlightTracker
 
+### Various ICAO code mappings
+
+- https://github.com/rikgale/ICAOList
+
 ### Raw ADS-B data parsing in Go
 
 - https://github.com/cjkreklow/go-adsb

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -74,15 +75,11 @@ func sendAndProcessRequest(url string) error {
 	}
 
 	// — Start of Processing Logic —
-	// You can add your custom processing logic here.
-	// For demonstration, we'll just print the first 500 characters of the body.
 	fmt.Printf("Successfully received response from %s. Status: %s\n", url, resp.Status)
 	fmt.Printf("Response body length: %d bytes\n", len(body))
 
 	// Example processing: print a snippet of the response body
-	if len(body) > 0 {
-		fmt.Printf("Response Body:\n%s\n", string(body))
-	} else {
+	if len(body) == 0 {
 		fmt.Println("Response body is empty.")
 	}
 
@@ -92,7 +89,22 @@ func sendAndProcessRequest(url string) error {
 		if err := json.Unmarshal(body, &data); err != nil {
 			return fmt.Errorf("failed to unmarshal JSON: %w", err)
 		}
-		fmt.Printf("Parsed JSON data: %+v\n", data)
+
+		foundAircraftCount := len(data.Aircraft)
+		if foundAircraftCount == 0 {
+			fmt.Println("No aircraft found.")
+		} else {
+			sort.Sort(ByFlight(data.Aircraft))
+			fmt.Println("detected aircraft:")
+			for i := range foundAircraftCount {
+				aircraft := data.Aircraft[i]
+				fmt.Printf("Flight: %s, type: %s, alt: %f, hdg: %f\n",
+					aircraft.Flight,
+					aircraft.IcaoType,
+					aircraft.AltBaro,
+					aircraft.NavHeading)
+			}
+		}
 	}
 	// --- End of Processing Logic ---
 

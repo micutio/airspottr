@@ -84,3 +84,9 @@ type Aircraft struct {
 	CalcTrack       any      `json:"calc_track"`       // ? TODO
 	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
 }
+
+type ByFlight []Aircraft
+
+func (a ByFlight) Len() int           { return len(a) }
+func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
+func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
