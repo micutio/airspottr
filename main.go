@@ -14,6 +14,7 @@ import (
 func main() {
 	// Setup data maps
 	icaoAircraftMap := GetIcaoAircraftMap()
+	militaryOperatorMap := GetMilCodeMap()
 
 	// Define the URL for the HTTP GET request
 	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/250"
@@ -40,7 +41,7 @@ func main() {
 					log.Printf("Error during request: %v", requestErr)
 					break
 				}
-				processingErr := processJsonBody(body, &icaoAircraftMap)
+				processingErr := processJsonBody(body, &icaoAircraftMap, &militaryOperatorMap)
 				if processingErr != nil {
 					log.Printf("Error during processing: %v", processingErr)
 				}
@@ -101,7 +102,7 @@ func sendRequest(url string) ([]byte, error) {
 }
 
 // processJsonBody processes data contained in the response body
-func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft) error {
+func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, milOperatorMap *map[string]string) error {
 	// Actual processing takes place here
 	var data AircraftRecord
 	if err := json.Unmarshal(body, &data); err != nil {
@@ -119,16 +120,30 @@ func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft) er
 			if len(flight) == 0 {
 				flight = "unknown " // add space for consistent formatting with ICAO codes
 			}
-			altBaro := aircraft.AltBaro
-			if altBaro == "" {
-				altBaro = "unknown"
+			var altBaro string
+			if num, ok := aircraft.AltBaro.(float64); ok {
+				altBaro = fmt.Sprintf("%.0f", num)
 			}
+			if str, ok := aircraft.AltBaro.(string); ok {
+				altBaro = str
+			}
+
 			aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
-			fmt.Printf("Flight %s on %s at %.0f feet, heading %.2f degrees\n",
+
+			fmt.Printf("Flight %s on %s at %s feet, heading %.2f degrees",
 				flight,
 				aType,
-				aircraft.AltBaro,
-				aircraft.NavHeading)
+				altBaro,
+				aircraft.NavHeading,
+			)
+
+			operatorCode := flight[0:3]
+			operator, isMilitary := (*milOperatorMap)[operatorCode]
+			if isMilitary {
+				fmt.Printf("military operator: %s\n", operator)
+			} else {
+				fmt.Printf("\n")
+			}
 		}
 	}
 	return nil
