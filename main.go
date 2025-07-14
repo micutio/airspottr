@@ -64,8 +64,8 @@ func sendRequest(url string) ([]byte, error) {
 	if respErr != nil {
 		return nil, fmt.Errorf("failed to send GET request: %w", respErr)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+	defer func(bodyReader io.ReadCloser) {
+		err := bodyReader.Close()
 		if err != nil {
 			fmt.Printf("failed to close body reader: %v", err)
 		}
