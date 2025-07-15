@@ -75,9 +75,9 @@ type Aircraft struct {
 	TrackRate       float64  `json:"track_rate"`       // rate of change of track in [degrees/second]
 	WindDirection   float64  `json:"wd"`               // wind direction
 	WindSpeed       float64  `json:"ws"`               // wind speed
-	GpsOkBefore     string   `json:"gpsOkBefore"`      // experimental, last timestamp of working GPS
-	GpsOkLat        string   `json:"gpsOkLat"`
-	GpsOkLon        string   `json:"gpsOkLon"`
+	GpsOkBefore     float64  `json:"gpsOkBefore"`      // experimental, last timestamp of working GPS
+	GpsOkLat        float64  `json:"gpsOkLat"`
+	GpsOkLon        float64  `json:"gpsOkLon"`
 	LastPosition    any      `json:"lastPosition"`     // TODO: Type
 	RrLat           float64  `json:"rr_lat"`           // rough estimated latitude if no ADS-B or MLAT available
 	RrLon           float64  `json:"rr_lon"`           // rough estimated longitude if no ADS-B or MLAT available
