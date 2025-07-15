@@ -92,7 +92,7 @@ func sendRequest(url string) ([]byte, error) {
 	}
 
 	fmt.Printf(
-		"\n[%s] status: %s response body length: %d bytes\n",
+		"[%s] status: %s response body length: %d bytes\n",
 		time.Now().Format("2006-01-02 15:04:05"),
 		resp.Status,
 		len(body),
@@ -130,19 +130,16 @@ func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, mi
 
 			aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
 
-			fmt.Printf("Flight %s on %s at %s feet, heading %.2f degrees",
-				flight,
-				aType,
-				altBaro,
-				aircraft.NavHeading,
-			)
-
 			operatorCode := flight[0:3]
 			operator, isMilitary := (*milOperatorMap)[operatorCode]
 			if isMilitary {
+				fmt.Printf("Flight %s on %s at %s feet, heading %.2f degrees",
+					flight,
+					aType,
+					altBaro,
+					aircraft.NavHeading,
+				)
 				fmt.Printf("military operator: %s\n", operator)
-			} else {
-				fmt.Printf("\n")
 			}
 		}
 	}
