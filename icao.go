@@ -85,11 +85,11 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 
 func GetMilCodeMap() map[string]string {
 
-	const icaoListPath string = "./data/ICAOList.csv"
-	fmt.Printf("Parsing CSV file: %s\n\n", icaoListPath)
+	const milCodeFilePath string = "./data/MILICAOOperatorLookup.csv"
+	fmt.Printf("Parsing CSV file: %s\n\n", milCodeFilePath)
 
 	// Parse the CSV file
-	icaoAircraftMap, err := parseMilCodeToMap(icaoListPath)
+	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)
 	if err != nil {
 		fmt.Printf("Error parsing CSV: %v\n", err)
 		return nil
