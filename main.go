@@ -13,8 +13,8 @@ import (
 
 func main() {
 	// Setup data maps
-	icaoAircraftMap := GetIcaoAircraftMap()
-	militaryOperatorMap := GetMilCodeMap()
+	icaoAircraftMap := GetIcaoToAircraftMap()
+	militaryOperatorMap := GetMilCodeToOperatorMap()
 
 	// Define the URL for the HTTP GET request
 	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/250"
@@ -112,36 +112,38 @@ func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, mi
 	foundAircraftCount := len(data.Aircraft)
 	if foundAircraftCount == 0 {
 		fmt.Println("No aircraft found.")
-	} else {
-		sort.Sort(ByFlight(data.Aircraft))
-		for i := range foundAircraftCount {
-			aircraft := data.Aircraft[i]
-			flight := aircraft.Flight
-			if len(flight) == 0 {
-				flight = "unknown " // add space for consistent formatting with ICAO codes
-			}
-			var altBaro string
-			if num, ok := aircraft.AltBaro.(float64); ok {
-				altBaro = fmt.Sprintf("%.0f", num)
-			}
-			if str, ok := aircraft.AltBaro.(string); ok {
-				altBaro = str
-			}
+		return nil
+	}
 
-			aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
-
-			operatorCode := flight[0:3]
-			operator, isMilitary := (*milOperatorMap)[operatorCode]
-			if isMilitary {
-				fmt.Printf("Flight %s on %s at %s feet, heading %.2f degrees",
-					flight,
-					aType,
-					altBaro,
-					aircraft.NavHeading,
-				)
-				fmt.Printf("military operator: %s\n", operator)
-			}
+	sort.Sort(ByFlight(data.Aircraft))
+	for i := range foundAircraftCount {
+		aircraft := data.Aircraft[i]
+		flight := aircraft.Flight
+		if len(flight) == 0 {
+			flight = "unknown " // add space for consistent formatting with ICAO codes
 		}
+		var altBaro string
+		if num, ok := aircraft.AltBaro.(float64); ok {
+			altBaro = fmt.Sprintf("%.0f", num)
+		}
+		if str, ok := aircraft.AltBaro.(string); ok {
+			altBaro = str
+		}
+
+		aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
+
+		//operatorCode := flight[0:3]
+		//operator, isMilitary := (*milOperatorMap)[operatorCode]
+		//if isMilitary {
+		fmt.Printf("Flight %s of (%s) %s at %s feet, heading %.2f degrees\n",
+			flight,
+			aircraft.Callsign,
+			aType,
+			altBaro,
+			aircraft.NavHeading,
+		)
+		//fmt.Printf("military operator: %s\n", operator)
+		//}
 	}
 	return nil
 }

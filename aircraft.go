@@ -3,25 +3,11 @@ package main
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-type dataType uint
-
-// Type types
-const (
-	T_INT dataType = 1
-	T_STR dataType = 2
-)
-
 type AircraftRecord struct {
 	Now         float64    `json:"now"`         // time this file was generated in ms
 	ResultCount int        `json:"resultCount"` // total aircraft returned
 	Ptime       float64    `json:"ptime"`       // server processing time required in ms
 	Aircraft    []Aircraft `json:"aircraft"`    // list of Aircraft records
-}
-
-type IntOrString struct {
-	Type   dataType
-	intVal int
-	StrVal string
 }
 
 type Aircraft struct {
@@ -46,7 +32,7 @@ type Aircraft struct {
 	NavQNH          float64  `json:"nav_qnh"`          // altimeter setting (QFE  or QNH/QNE) in [hPa]
 	Nic             int      `json:"nic"`              // Navigation Integrity Category
 	NicBaro         int      `json:"nic_baro"`         // NIC for barometric altitude
-	R               string   `json:"r"`                // ? TODO
+	Callsign        string   `json:"r"`                // Callsign of the aircraft
 	RadiusOfCtn     float64  `json:"rc"`               // Radius of containment, measure of position integrity in [meters]
 	Rssi            float64  `json:"rssi"`             // recent average signal power, always negative, in [dbFS]
 	Sda             int      `json:"sda"`              // system design assurance
@@ -85,6 +71,8 @@ type Aircraft struct {
 	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
 }
 
+// ByFlight implements the comparator interface and allows sorting a list of aircraft records
+// by flight.
 type ByFlight []Aircraft
 
 func (a ByFlight) Len() int           { return len(a) }

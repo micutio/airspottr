@@ -20,7 +20,7 @@ type IcaoAircraft struct {
 	ModelCode string
 }
 
-func GetIcaoAircraftMap() map[string]IcaoAircraft {
+func GetIcaoToAircraftMap() map[string]IcaoAircraft {
 
 	const icaoListPath string = "./data/ICAOList.csv"
 	fmt.Printf("Parsing CSV file: %s\n\n", icaoListPath)
@@ -83,7 +83,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 	return records, nil
 }
 
-func GetMilCodeMap() map[string]string {
+func GetMilCodeToOperatorMap() map[string]string {
 
 	const milCodeFilePath string = "./data/MILICAOOperatorLookup.csv"
 	fmt.Printf("Parsing CSV file: %s\n\n", milCodeFilePath)
@@ -136,11 +136,12 @@ func parseMilCodeToMap(filePath string) (map[string]string, error) {
 			return nil, fmt.Errorf("failed to read record: %w", err)
 		}
 
-		if len(record) < 2 {
+		key := record[1]
+
+		if len(key) == 0 {
 			continue
 		}
 
-		key := record[1]
 		militaryOperator := record[0]
 		records[key] = militaryOperator
 	}
