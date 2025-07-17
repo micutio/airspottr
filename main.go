@@ -137,7 +137,7 @@ func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, mi
 		//if isMilitary {
 		fmt.Printf("Flight %s of (%s) %s at %s feet, heading %.2f degrees\n",
 			flight,
-			aircraft.Callsign,
+			aircraft.Registration,
 			aType,
 			altBaro,
 			aircraft.NavHeading,

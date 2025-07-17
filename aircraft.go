@@ -32,7 +32,7 @@ type Aircraft struct {
 	NavQNH          float64  `json:"nav_qnh"`          // altimeter setting (QFE  or QNH/QNE) in [hPa]
 	Nic             int      `json:"nic"`              // Navigation Integrity Category
 	NicBaro         int      `json:"nic_baro"`         // NIC for barometric altitude
-	Callsign        string   `json:"r"`                // Callsign of the aircraft
+	Registration    string   `json:"r"`                // Registration of the aircraft
 	RadiusOfCtn     float64  `json:"rc"`               // Radius of containment, measure of position integrity in [meters]
 	Rssi            float64  `json:"rssi"`             // recent average signal power, always negative, in [dbFS]
 	Sda             int      `json:"sda"`              // system design assurance
