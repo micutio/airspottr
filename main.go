@@ -104,7 +104,7 @@ func sendRequest(url string) ([]byte, error) {
 // processJsonBody processes data contained in the response body
 func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, milOperatorMap *map[string]string) error {
 	// Actual processing takes place here
-	var data AircraftRecord
+	var data CivAircraftRecord
 	if err := json.Unmarshal(body, &data); err != nil {
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}

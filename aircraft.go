@@ -3,11 +3,20 @@ package main
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-type AircraftRecord struct {
-	Now         float64    `json:"now"`         // time this file was generated in ms
-	ResultCount int        `json:"resultCount"` // total aircraft returned
-	Ptime       float64    `json:"ptime"`       // server processing time required in ms
+type CivAircraftRecord struct {
+	Now         float64    `json:"now"`         // time this file was generated in [ms]
+	ResultCount int        `json:"resultCount"` // total count of aircraft returned
+	Ptime       float64    `json:"ptime"`       // server processing time required in [ms]
 	Aircraft    []Aircraft `json:"aircraft"`    // list of Aircraft records
+}
+
+type MilAircraftRecord struct {
+	Msg      string     `json:"msg"`   // error message, usually "no error"
+	Now      int        `json:"now"`   // time this file was generated in ms
+	Total    int        `json:"total"` // total count of aircraft returned
+	CTime    int        `json:"ctime"`
+	PTime    int        `json:"ptime"` // server processing time required in [ms]
+	Aircraft []Aircraft `json:"ac"`    // list of Aircraft records
 }
 
 type Aircraft struct {
