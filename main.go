@@ -1,24 +1,23 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 )
 
-func main() {
-	// Setup data maps
-	icaoAircraftMap := GetIcaoToAircraftMap()
-	militaryOperatorMap := GetMilCodeToOperatorMap()
+const (
+	Lat     float64 = 1.359297
+	Lon     float64 = 103.989348
+	TimeFmt string  = "2006-01-02 15:04:05"
+)
 
-	// Define the URL for the HTTP GET request
-	targetURL := "https://opendata.adsb.fi/api/v2/lat/1.359297/lon/103.989348/dist/250"
-	//           "https://api.adsb.lol/v2/lat/1.359297/lon/103.989348/dist/25"
+func main() {
+	// Setup dashboard
+	dashboard := NewDashboard()
 
 	// Create a ticker that fires every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
@@ -27,7 +26,7 @@ func main() {
 	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
 	done := make(chan bool)
 
-	fmt.Printf("Starting HTTP GET request to %s every 30 seconds...\n", targetURL)
+	fmt.Println("Aircraft Tracking Dashboard")
 	fmt.Println("Press Ctrl+C to stop the program.")
 
 	// Start a goroutine to perform the requests
@@ -35,16 +34,7 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				// This case is executed every time the ticker "ticks"
-				body, requestErr := sendRequest(targetURL)
-				if requestErr != nil {
-					log.Printf("Error during request: %v", requestErr)
-					break
-				}
-				processingErr := processJsonBody(body, &icaoAircraftMap, &militaryOperatorMap)
-				if processingErr != nil {
-					log.Printf("Error during processing: %v", processingErr)
-				}
+				requestAndProcessCivAircraft(&dashboard)
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				fmt.Println("Stopping HTTP GET request routine.")
@@ -53,9 +43,46 @@ func main() {
 		}
 	}()
 
+	// Just for testing, remove this call later.
+	requestAndProcessMilAircraft(&dashboard)
+
 	// Keep the main goroutine alive indefinitely, or until an interrupt signal is received
 	// In a real application, you might have other logic here or use a wait group.
 	select {} // Block indefinitely
+}
+
+func requestAndProcessCivAircraft(dashboard *Dashboard) {
+	// Define the URL for the HTTP GET request
+	targetURL := fmt.Sprintf(
+		"https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250",
+		Lat,
+		Lon,
+	)
+	// This case is executed every time the ticker "ticks"
+	body, requestErr := sendRequest(targetURL)
+	if requestErr != nil {
+		log.Printf("Error during request: %v", requestErr)
+		return
+	}
+	processingErr := (*dashboard).ProcessCivAircraftJson(body)
+	if processingErr != nil {
+		log.Printf("Error during processing: %v", processingErr)
+	}
+}
+
+func requestAndProcessMilAircraft(dashboard *Dashboard) {
+	// Define the URL for the HTTP GET request
+	targetURL := "https://opendata.adsb.fi/api/v2/mil"
+	// This case is executed every time the ticker "ticks"
+	body, requestErr := sendRequest(targetURL)
+	if requestErr != nil {
+		log.Printf("Error during request: %v", requestErr)
+		return
+	}
+	processingErr := (*dashboard).ProcessMilAircraftJson(body)
+	if processingErr != nil {
+		log.Printf("Error during processing: %v", processingErr)
+	}
 }
 
 // sendRequest sends an HTTP GET request and returns a valid byte slice of the response body
@@ -99,51 +126,4 @@ func sendRequest(url string) ([]byte, error) {
 	)
 
 	return body, nil
-}
-
-// processJsonBody processes data contained in the response body
-func processJsonBody(body []byte, icaoAircraftTypes *map[string]IcaoAircraft, milOperatorMap *map[string]string) error {
-	// Actual processing takes place here
-	var data CivAircraftRecord
-	if err := json.Unmarshal(body, &data); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON: %w", err)
-	}
-
-	foundAircraftCount := len(data.Aircraft)
-	if foundAircraftCount == 0 {
-		fmt.Println("No aircraft found.")
-		return nil
-	}
-
-	sort.Sort(ByFlight(data.Aircraft))
-	for i := range foundAircraftCount {
-		aircraft := data.Aircraft[i]
-		flight := aircraft.Flight
-		if len(flight) == 0 {
-			flight = "unknown " // add space for consistent formatting with ICAO codes
-		}
-		var altBaro string
-		if num, ok := aircraft.AltBaro.(float64); ok {
-			altBaro = fmt.Sprintf("%.0f", num)
-		}
-		if str, ok := aircraft.AltBaro.(string); ok {
-			altBaro = str
-		}
-
-		aType := (*icaoAircraftTypes)[aircraft.IcaoType].ModelCode
-
-		//operatorCode := flight[0:3]
-		//operator, isMilitary := (*milOperatorMap)[operatorCode]
-		//if isMilitary {
-		fmt.Printf("Flight %s of (%s) %s at %s feet, heading %.2f degrees\n",
-			flight,
-			aircraft.Registration,
-			aType,
-			altBaro,
-			aircraft.NavHeading,
-		)
-		//fmt.Printf("military operator: %s\n", operator)
-		//}
-	}
-	return nil
 }

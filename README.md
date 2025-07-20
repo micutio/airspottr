@@ -2,6 +2,25 @@
 
 Testing flight tracking APIs and http/get requests in Go.
 
+Queries various ADS-B APIs every 30 seconds
+
+## Current output
+
+- list of detected military aircraft world-wide (once upon program start)
+- fastest aircraft
+- highest aircraft
+
+## TODO
+
+- track occurrence by aircraft type
+- hourly output of top 5 aircraft by:
+  - closest military
+  - most common types spotted
+  - least common type spotted
+  - fastest aircraft spotted
+  - highest aircraft spotted
+- better visual output via some TUI library
+
 ## Links for further investigation
 
 ### Flight Tracking APIs

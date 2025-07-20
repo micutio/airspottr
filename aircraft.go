@@ -30,8 +30,8 @@ type Aircraft struct {
 	GroundSpeed     float64  `json:"gs"`               // ground speed in [knots]
 	Gva             float64  `json:"gva"`              // geometric vertical accuracy
 	Hex             string   `json:"hex"`              // ? TODO
-	Lat             float32  `json:"lat"`              // Latitude in [decimal degrees]
-	Lon             float32  `json:"lon"`              // Longitude in [decimal degrees]
+	Lat             float64  `json:"lat"`              // Latitude in [decimal degrees]
+	Lon             float64  `json:"lon"`              // Longitude in [decimal degrees]
 	Messages        int      `json:"messages"`         // total number of Mode-S msg received from aircraft
 	Mlat            []string `json:"mlat"`             // position calculation arrival time diffs, TODO: clarify
 	NacP            float64  `json:"nac_p"`            // navigation accuracy for position
@@ -78,6 +78,8 @@ type Aircraft struct {
 	RrLon           float64  `json:"rr_lon"`           // rough estimated longitude if no ADS-B or MLAT available
 	CalcTrack       any      `json:"calc_track"`       // ? TODO
 	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
+	// cached data
+	CachedDist float64
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
@@ -87,3 +89,11 @@ type ByFlight []Aircraft
 func (a ByFlight) Len() int           { return len(a) }
 func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
 func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+// ByDistanceTo implements the comparator interface and allows sorting a list of aircraft records
+// by distance to a given lon,lat coordinate
+type ByDistance []Aircraft
+
+func (a ByDistance) Len() int           { return len(a) }
+func (a ByDistance) Less(i, j int) bool { return a[i].CachedDist < a[j].CachedDist }
+func (a ByDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
