@@ -90,7 +90,7 @@ func (a ByFlight) Len() int           { return len(a) }
 func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
 func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-// ByDistanceTo implements the comparator interface and allows sorting a list of aircraft records
+// ByDistance implements the comparator interface and allows sorting a list of aircraft records
 // by distance to a given lon,lat coordinate
 type ByDistance []Aircraft
 

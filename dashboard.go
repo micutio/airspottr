@@ -45,11 +45,10 @@ func (db *Dashboard) ProcessCivAircraftJson(jsonBytes []byte) error {
 func (db *Dashboard) processCivAircraftRecords(aircraft *[]Aircraft) {
 	sort.Sort(ByFlight(*aircraft))
 	for i := range len(*aircraft) {
-		aircraft := (*aircraft)[i]
-		db.checkHighest(&aircraft)
-		db.checkFastest(&aircraft)
+		ac := (*aircraft)[i]
+		db.checkHighest(&ac)
+		db.checkFastest(&ac)
 	}
-
 }
 
 func (db *Dashboard) ProcessMilAircraftJson(jsonBytes []byte) error {
@@ -72,20 +71,20 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
 		acPos := NewCoordinates(ac.Lat, ac.Lon)
-		(*aircraft)[i].CachedDist = Distance(thisPos, acPos).Miles()
+		(*aircraft)[i].CachedDist = Distance(thisPos, acPos).Kilometers()
 	}
 	sort.Sort(ByDistance(*aircraft))
 
 	fmt.Printf("[%s] Military aircraft in increasing distance from here:\n", time.Now().Format(TimeFmt))
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
-		if ac.Lat == 0 && ac.Lon == 0 {
+		if (ac.Lat == 0 && ac.Lon == 0) || ac.CachedDist > 1000.0 {
 			continue
 		}
 
 		var altBaro string
 		if num, ok := ac.AltBaro.(float64); ok {
-			altBaro = fmt.Sprintf("%.0f", num)
+			altBaro = fmt.Sprintf("%5.0f", num)
 		}
 		if str, ok := ac.AltBaro.(string); ok {
 			altBaro = str
@@ -93,16 +92,15 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 		aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
 		fmt.Printf(
-			"(%.1f NM) (%s) %s ALT %s, SPD %.0f knots (Mach %.2f), POS (lat %.6f, lon %.6f) , HDG %.2f deg\n",
+			"(%5.1f Km) ALT %s SPD %3.0f POS (%7.3f, %7.3f) HDG %6.2f ID %q (%s)\n",
 			ac.CachedDist,
-			ac.Registration,
-			aType,
 			altBaro,
 			ac.GroundSpeed,
-			ac.Mach,
 			ac.Lat,
 			ac.Lon,
 			ac.TrueHeading,
+			aType,
+			ac.Registration,
 		)
 	}
 }
@@ -119,7 +117,7 @@ func (db *Dashboard) checkHighest(ac *Aircraft) {
 			}
 			var altBaro string
 			if num, ok := ac.AltBaro.(float64); ok {
-				altBaro = fmt.Sprintf("%.0f", num)
+				altBaro = fmt.Sprintf("%5.0f", num)
 			}
 			if str, ok := ac.AltBaro.(string); ok {
 				altBaro = str
@@ -127,14 +125,14 @@ func (db *Dashboard) checkHighest(ac *Aircraft) {
 
 			aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
-			fmt.Printf("[%s] new highest -> flight %s (%s) %s at %s feet, %.0f knots, heading %.2f degrees\n",
+			fmt.Printf("[%s] highest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
 				time.Now().Format("2006-01-02 15:04:05"),
 				flight,
-				ac.Registration,
-				aType,
 				altBaro,
 				ac.GroundSpeed,
 				ac.NavHeading,
+				aType,
+				ac.Registration,
 			)
 		}
 	}
@@ -159,15 +157,14 @@ func (db *Dashboard) checkFastest(ac *Aircraft) {
 
 		aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
-		fmt.Printf("[%s] new fastest -> flight %s (%s) %s at %s feet, %.0f knots (mach %.2f), heading %.2f degrees\n",
+		fmt.Printf("[%s] fastest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
 			time.Now().Format(TimeFmt),
 			flight,
-			ac.Registration,
-			aType,
 			altBaro,
 			ac.GroundSpeed,
-			ac.Mach,
 			ac.NavHeading,
+			aType,
+			ac.Registration,
 		)
 	}
 }

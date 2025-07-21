@@ -19,9 +19,16 @@ func main() {
 	// Setup dashboard
 	dashboard := NewDashboard()
 
-	// Create a ticker that fires every 30 seconds
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
+	// Create a aircraftUpdateTicker that fires every 30 seconds
+	aircraftUpdateTicker := time.NewTicker(30 * time.Second)
+	defer aircraftUpdateTicker.Stop()
+
+	milAircraftUpdateTicker := time.NewTicker(1 * time.Hour)
+	defer milAircraftUpdateTicker.Stop()
+	// After 15 seconds create another ticker for military aircraft updates
+	time.AfterFunc(15*time.Second, func() {
+		milAircraftUpdateTicker.Reset(15 * time.Minute)
+	})
 
 	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
 	done := make(chan bool)
@@ -33,8 +40,10 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
+			case <-aircraftUpdateTicker.C:
 				requestAndProcessCivAircraft(&dashboard)
+			case <-milAircraftUpdateTicker.C:
+				requestAndProcessMilAircraft(&dashboard)
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				fmt.Println("Stopping HTTP GET request routine.")
@@ -118,12 +127,13 @@ func sendRequest(url string) ([]byte, error) {
 		return nil, fmt.Errorf("received non-JSON content-type: %s", contentType)
 	}
 
-	fmt.Printf(
-		"[%s] status: %s response body length: %d bytes\n",
-		time.Now().Format("2006-01-02 15:04:05"),
-		resp.Status,
-		len(body),
-	)
+	// Debug output
+	//fmt.Printf(
+	//	"[%s] status: %s response body length: %d bytes\n",
+	//	time.Now().Format("2006-01-02 15:04:05"),
+	//	resp.Status,
+	//	len(body),
+	//)
 
 	return body, nil
 }

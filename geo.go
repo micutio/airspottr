@@ -7,8 +7,9 @@ import "math"
 // Constants
 
 const (
-	earthRadiusMiles      = 3958 // Radius of Earth in miles
-	earthRadiusKilometers = 6371 // Radius of Earth in kilometers
+	earthRadiusKilometers    = 6371 // Radius of Earth in kilometers
+	earthRadiusMiles         = 3958 // Radius of Earth in miles
+	earthRadiusNauticalMiles = 3443 // Radius of Earth in miles
 )
 
 // Conversion function
@@ -55,6 +56,10 @@ func (d DistanceStruct) Kilometers() float64 {
 
 func (d DistanceStruct) Miles() float64 {
 	return d.C * earthRadiusMiles
+}
+
+func (d DistanceStruct) NauticalMiles() float64 {
+	return d.C * earthRadiusNauticalMiles
 }
 
 // Distance calculates distance using the haversine formula
