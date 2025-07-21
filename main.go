@@ -31,9 +31,6 @@ func main() {
 
 	raritySummaryTicker := time.NewTicker(1 * time.Hour)
 	defer raritySummaryTicker.Stop()
-	time.AfterFunc(15*time.Minute, func() {
-		raritySummaryTicker.Reset(15 * time.Minute)
-	})
 
 	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
 	done := make(chan bool)
@@ -47,7 +44,6 @@ func main() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				requestAndProcessCivAircraft(&dashboard)
-				dashboard.ListTypesByRarity()
 			case <-milAircraftUpdateTicker.C:
 				requestAndProcessMilAircraft(&dashboard)
 			case <-raritySummaryTicker.C:
@@ -134,14 +130,6 @@ func sendRequest(url string) ([]byte, error) {
 	if !strings.Contains(contentType, "application/json") {
 		return nil, fmt.Errorf("received non-JSON content-type: %s", contentType)
 	}
-
-	// Debug output
-	//fmt.Printf(
-	//	"[%s] status: %s response body length: %d bytes\n",
-	//	time.Now().Format("2006-01-02 15:04:05"),
-	//	resp.Status,
-	//	len(body),
-	//)
 
 	return body, nil
 }

@@ -79,6 +79,11 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 	}
 	sort.Sort(ByDistance(*aircraft))
 
+	// Only print something if there are any miliary aircraft within range.
+	if len(*aircraft) == 0 || (*aircraft)[0].CachedDist > 1000 {
+		return
+	}
+
 	fmt.Printf("[%s] Military aircraft in increasing distance from here:\n", time.Now().Format(TimeFmt))
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
