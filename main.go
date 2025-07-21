@@ -25,9 +25,14 @@ func main() {
 
 	milAircraftUpdateTicker := time.NewTicker(1 * time.Hour)
 	defer milAircraftUpdateTicker.Stop()
-	// After 15 seconds create another ticker for military aircraft updates
 	time.AfterFunc(15*time.Second, func() {
 		milAircraftUpdateTicker.Reset(15 * time.Minute)
+	})
+
+	raritySummaryTicker := time.NewTicker(1 * time.Hour)
+	defer raritySummaryTicker.Stop()
+	time.AfterFunc(15*time.Minute, func() {
+		raritySummaryTicker.Reset(15 * time.Minute)
 	})
 
 	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
@@ -42,8 +47,11 @@ func main() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				requestAndProcessCivAircraft(&dashboard)
+				dashboard.ListTypesByRarity()
 			case <-milAircraftUpdateTicker.C:
 				requestAndProcessMilAircraft(&dashboard)
+			case <-raritySummaryTicker.C:
+				dashboard.ListTypesByRarity()
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				fmt.Println("Stopping HTTP GET request routine.")
