@@ -3,23 +3,23 @@ package main
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-type CivAircraftRecord struct {
+type civAircraftRecord struct {
 	Now         float64    `json:"now"`         // time this file was generated in [ms]
 	ResultCount int        `json:"resultCount"` // total count of aircraft returned
 	Ptime       float64    `json:"ptime"`       // server processing time required in [ms]
-	Aircraft    []Aircraft `json:"aircraft"`    // list of Aircraft records
+	Aircraft    []aircraft `json:"aircraft"`    // list of Aircraft records
 }
 
-type MilAircraftRecord struct {
+type milAircraftRecord struct {
 	Msg      string     `json:"msg"`   // error message, usually "no error"
 	Now      int        `json:"now"`   // time this file was generated in ms
 	Total    int        `json:"total"` // total count of aircraft returned
 	CTime    int        `json:"ctime"`
 	PTime    int        `json:"ptime"` // server processing time required in [ms]
-	Aircraft []Aircraft `json:"ac"`    // list of Aircraft records
+	Aircraft []aircraft `json:"ac"`    // list of Aircraft records
 }
 
-type Aircraft struct {
+type aircraft struct {
 	Alert           int      `json:"alert"`            // flight status alert bit
 	AltBaro         any      `json:"alt_baro"`         // altitude in [feet] or string "ground"
 	AltGeom         int      `json:"alt_geom"`         // altitude in [feet]
@@ -29,11 +29,11 @@ type Aircraft struct {
 	Flight          string   `json:"flight"`           // Flight number
 	GroundSpeed     float64  `json:"gs"`               // ground speed in [knots]
 	Gva             float64  `json:"gva"`              // geometric vertical accuracy
-	Hex             string   `json:"hex"`              // ? TODO
+	Hex             string   `json:"hex"`              // hex code ID for aircraft, assumed to be unique
 	Lat             float64  `json:"lat"`              // Latitude in [decimal degrees]
 	Lon             float64  `json:"lon"`              // Longitude in [decimal degrees]
 	Messages        int      `json:"messages"`         // total number of Mode-S msg received from aircraft
-	Mlat            []string `json:"mlat"`             // position calculation arrival time diffs, TODO: clarify
+	Mlat            []string `json:"mlat"`             // position calculation arrival time diffs
 	NacP            float64  `json:"nac_p"`            // navigation accuracy for position
 	NacV            float64  `json:"nac_v"`            // navigation accuracy for velocity
 	NavAltitudeMcp  int      `json:"nav_altitude_mcp"` // selected from mode or flight control panel (MCP)/(FCP) or other
@@ -45,8 +45,8 @@ type Aircraft struct {
 	RadiusOfCtn     float64  `json:"rc"`               // Radius of containment, measure of position integrity in [meters]
 	Rssi            float64  `json:"rssi"`             // recent average signal power, always negative, in [dbFS]
 	Sda             int      `json:"sda"`              // system design assurance
-	Seen            float64  `json:"seen"`             // last message received from this aircraft in [seconds] from 'now'
-	SeenPos         float64  `json:"seen_pos"`         // last update of position from this aircraft in [seconds] from 'now'
+	Seen            float64  `json:"seen"`             // last message received from aircraft in [seconds] from 'now'
+	SeenPos         float64  `json:"seen_pos"`         // last update of position from aircraft in [seconds] from 'now'
 	Sil             int      `json:"sil"`              // Source integrity level
 	SilType         string   `json:"sil_type"`         // Source integrity level type
 	Spi             int      `json:"spi"`              // flight status special position identification bit
@@ -56,8 +56,8 @@ type Aircraft struct {
 	Track           float64  `json:"track"`            // true track over ground in degrees (0-359)
 	Type            string   `json:"type"`             // type of underlying messages
 	Version         int      `json:"version"`          // ADS-B Version number 0,1,2 (3-7 are reserved)
-	GeomRate        float64  `json:"geom_rate"`        // Rate of change of geometric (GNSS/INS) altitude in [feet/minute]
-	DbFlags         int      `json:"dbFlags"`          // bitfield for certain database flags (check doc for programming lang)
+	GeomRate        float64  `json:"geom_rate"`        // Rate of change of geometric (GNSS/INS) altitude in [ft/min]
+	DbFlags         int      `json:"dbFlags"`          // bitfield for certain database flags (programming language)
 	NavModes        []string `json:"nav_modes"`        // (autopilot, vnav, althold, approach, lnav, tcas)
 	TrueHeading     float64  `json:"true_heading"`     // Heading clockwise from true north in [degrees]
 	Ias             float64  `json:"ias"`              // indicated airspeed in [knots]
@@ -71,8 +71,8 @@ type Aircraft struct {
 	WindDirection   float64  `json:"wd"`               // wind direction
 	WindSpeed       float64  `json:"ws"`               // wind speed
 	GpsOkBefore     float64  `json:"gpsOkBefore"`      // experimental, last timestamp of working GPS
-	GpsOkLat        float64  `json:"gpsOkLat"`
-	GpsOkLon        float64  `json:"gpsOkLon"`
+	GpsOkLat        float64  `json:"gpsOkLat"`         // experimental, last timestamp of working Latitude
+	GpsOkLon        float64  `json:"gpsOkLon"`         // experimental, last timestamp of working Longitude
 	LastPosition    any      `json:"lastPosition"`     // TODO: Type
 	RrLat           float64  `json:"rr_lat"`           // rough estimated latitude if no ADS-B or MLAT available
 	RrLon           float64  `json:"rr_lon"`           // rough estimated longitude if no ADS-B or MLAT available
@@ -84,15 +84,15 @@ type Aircraft struct {
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
 // by flight.
-type ByFlight []Aircraft
+type ByFlight []aircraft
 
 func (a ByFlight) Len() int           { return len(a) }
 func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
 func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-// ByDistance implements the comparator interface and allows sorting a list of aircraft records
+// ByDistance implements the comparator interface and allows sorting a list of aircraft records.
 // by distance to a given lon,lat coordinate
-type ByDistance []Aircraft
+type ByDistance []aircraft
 
 func (a ByDistance) Len() int           { return len(a) }
 func (a ByDistance) Less(i, j int) bool { return a[i].CachedDist < a[j].CachedDist }

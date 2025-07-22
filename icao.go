@@ -4,29 +4,33 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
 )
 
-var IcaoAircraftHeaders = [...]string{
-	"Aircraft TypeDesignator",
+const milCodeHeaderLen int = 2
+
+var icaoAircraftHeaders = [...]string{
+	"aircraft TypeDesignator",
 	"Class",
 	"Number+Engine Type",
 	"\"MANUFACTURER, Model\"",
 }
 
-type IcaoAircraft struct {
+type icaoAircraft struct {
 	Class     string
 	Engine    string
 	ModelCode string
 }
 
-func GetIcaoToAircraftMap() map[string]IcaoAircraft {
+func GetIcaoToAircraftMap() map[string]icaoAircraft {
 	const icaoListPath string = "./data/ICAOList.csv"
 
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
 	if err != nil {
 		fmt.Printf("Error parsing CSV: %v\n", err)
+
 		return nil
 	}
 
@@ -34,7 +38,7 @@ func GetIcaoToAircraftMap() map[string]IcaoAircraft {
 }
 
 // parseIcaoCsvToMap reads a CSV file and parses it into a map ICAO -> aircraft spec.
-func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
+func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -43,7 +47,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			fmt.Printf("failed to close file: %v", err)
+			log.Printf("failed to close file: %v", err)
 		}
 	}(file) // Ensure the file is closed when the function exits
 
@@ -55,11 +59,12 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 	if headerErr != nil {
 		return nil, fmt.Errorf("failed to read headers: %w", headerErr)
 	}
-	if len(headers) != len(IcaoAircraftHeaders) {
+
+	if len(headers) != len(icaoAircraftHeaders) {
 		return nil, fmt.Errorf("unexpected header length")
 	}
 
-	records := make(map[string]IcaoAircraft)
+	records := make(map[string]icaoAircraft)
 
 	// Loop through the remaining records
 	for {
@@ -67,6 +72,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 		if err == io.EOF {
 			break // End of file
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to read record: %w", err)
 		}
@@ -75,7 +81,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 		class := record[1]
 		engine := record[2]
 		manufacturer := record[3]
-		records[key] = IcaoAircraft{class, engine, manufacturer}
+		records[key] = icaoAircraft{class, engine, manufacturer}
 	}
 
 	return records, nil
@@ -88,13 +94,14 @@ func GetMilCodeToOperatorMap() map[string]string {
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)
 	if err != nil {
 		fmt.Printf("Error parsing CSV: %v\n", err)
+
 		return nil
 	}
 
 	return icaoAircraftMap
 }
 
-// parseMilCodeToMap reads a CSV file and parses it into a map code -> military operator
+// parseMilCodeToMap reads a CSV file and parses it into a map code -> military operator.
 func parseMilCodeToMap(filePath string) (map[string]string, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
@@ -116,7 +123,8 @@ func parseMilCodeToMap(filePath string) (map[string]string, error) {
 	if headerErr != nil {
 		return nil, fmt.Errorf("failed to read headers: %w", headerErr)
 	}
-	if len(headers) != 2 {
+
+	if len(headers) != milCodeHeaderLen {
 		return nil, fmt.Errorf("unexpected header length")
 	}
 
@@ -128,6 +136,7 @@ func parseMilCodeToMap(filePath string) (map[string]string, error) {
 		if err == io.EOF {
 			break // End of file
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to read record: %w", err)
 		}

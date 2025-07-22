@@ -3,22 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 )
 
-type Dashboard struct {
+type dashboard struct {
 	// Fields for tracking some statistics
-	fastest *Aircraft
-	highest *Aircraft
+	fastest *aircraft
+	highest *aircraft
 	// Data
 	seenAircraft      map[string]string // set of all seen aircraft, mapped to their type
 	milCodeToOperator map[string]string
-	icaoToAircraft    map[string]IcaoAircraft
+	icaoToAircraft    map[string]icaoAircraft
 }
 
-func NewDashboard() Dashboard {
-	return Dashboard{
+func newDashboard() dashboard {
+	return dashboard{
 		fastest:           nil,
 		highest:           nil,
 		seenAircraft:      make(map[string]string),
@@ -27,10 +28,10 @@ func NewDashboard() Dashboard {
 	}
 }
 
-// ProcessCivAircraftJson takes a json record in form of a byte array, transforms it into a list
+// processCivAircraftJSON takes a json record in form of a byte array, transforms it into a list
 // of aircraft and performs some processing thereafter.
-func (db *Dashboard) ProcessCivAircraftJson(jsonBytes []byte) error {
-	var data CivAircraftRecord
+func (db *dashboard) processCivAircraftJSON(jsonBytes []byte) error {
+	var data civAircraftRecord
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
@@ -41,11 +42,13 @@ func (db *Dashboard) ProcessCivAircraftJson(jsonBytes []byte) error {
 	}
 
 	db.processCivAircraftRecords(&data.Aircraft)
+
 	return nil
 }
 
-func (db *Dashboard) processCivAircraftRecords(aircraft *[]Aircraft) {
+func (db *dashboard) processCivAircraftRecords(aircraft *[]aircraft) {
 	sort.Sort(ByFlight(*aircraft))
+
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
 		aType := db.icaoToAircraft[ac.IcaoType].ModelCode
@@ -55,8 +58,8 @@ func (db *Dashboard) processCivAircraftRecords(aircraft *[]Aircraft) {
 	}
 }
 
-func (db *Dashboard) ProcessMilAircraftJson(jsonBytes []byte) error {
-	var data MilAircraftRecord
+func (db *dashboard) processMilAircraftJson(jsonBytes []byte) error {
+	var data milAircraftRecord
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		return fmt.Errorf("failed to unmarshal military aircraft JSON: %w", err)
 	}
@@ -67,16 +70,19 @@ func (db *Dashboard) ProcessMilAircraftJson(jsonBytes []byte) error {
 	}
 
 	db.processMilAircraftRecords(&(data.Aircraft))
+
 	return nil
 }
 
-func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
-	thisPos := NewCoordinates(Lat, Lon)
+func (db *dashboard) processMilAircraftRecords(aircraft *[]aircraft) {
+	thisPos := newCoordinates(lat, lon)
+
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
-		acPos := NewCoordinates(ac.Lat, ac.Lon)
+		acPos := newCoordinates(ac.Lat, ac.Lon)
 		(*aircraft)[i].CachedDist = Distance(thisPos, acPos).Kilometers()
 	}
+
 	sort.Sort(ByDistance(*aircraft))
 
 	// Only print something if there are any miliary aircraft within range.
@@ -84,7 +90,8 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 		return
 	}
 
-	fmt.Printf("[%s] Military aircraft in increasing distance from here:\n", time.Now().Format(TimeFmt))
+	log.Printf("[%s] Military aircraft in increasing distance from here:\n", time.Now().Format(timeFmt))
+
 	for i := range len(*aircraft) {
 		ac := (*aircraft)[i]
 		if (ac.Lat == 0 && ac.Lon == 0) || ac.CachedDist > 1000.0 {
@@ -95,12 +102,14 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 		if num, ok := ac.AltBaro.(float64); ok {
 			altBaro = fmt.Sprintf("%5.0f", num)
 		}
+
 		if str, ok := ac.AltBaro.(string); ok {
 			altBaro = str
 		}
+
 		aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
-		fmt.Printf(
+		log.Printf(
 			"(%5.1f Km) ALT %s SPD %3.0f POS (%7.3f, %7.3f) HDG %6.2f ID %q (%s)\n",
 			ac.CachedDist,
 			altBaro,
@@ -114,7 +123,7 @@ func (db *Dashboard) processMilAircraftRecords(aircraft *[]Aircraft) {
 	}
 }
 
-func (db *Dashboard) checkHighest(ac *Aircraft) {
+func (db *dashboard) checkHighest(ac *aircraft) {
 	if val, ok := ac.AltBaro.(float64); ok {
 		if db.highest != nil && db.highest.AltBaro.(float64) > val {
 			return
@@ -127,18 +136,20 @@ func (db *Dashboard) checkHighest(ac *Aircraft) {
 		if len(flight) == 0 {
 			flight = "unknown " // add space for consistent formatting with ICAO codes
 		}
+
 		var altBaro string
-		if num, ok := ac.AltBaro.(float64); ok {
+		if num, numOK := ac.AltBaro.(float64); numOK {
 			altBaro = fmt.Sprintf("%5.0f", num)
 		}
-		if str, ok := ac.AltBaro.(string); ok {
+
+		if str, strOk := ac.AltBaro.(string); strOk {
 			altBaro = str
 		}
 
 		aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
-		fmt.Printf("[%s] highest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
-			time.Now().Format("2006-01-02 15:04:05"),
+		log.Printf("[%s] highest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
+			time.Now().Format(timeFmt),
 			flight,
 			altBaro,
 			ac.GroundSpeed,
@@ -149,10 +160,11 @@ func (db *Dashboard) checkHighest(ac *Aircraft) {
 	}
 }
 
-func (db *Dashboard) checkFastest(ac *Aircraft) {
+func (db *dashboard) checkFastest(ac *aircraft) {
 	if db.fastest != nil && db.fastest.GroundSpeed > ac.GroundSpeed {
 		return
 	}
+
 	db.fastest = ac
 
 	flight := ac.Flight
@@ -160,18 +172,20 @@ func (db *Dashboard) checkFastest(ac *Aircraft) {
 	if len(flight) == 0 {
 		flight = "unknown " // add space for consistent formatting with ICAO codes
 	}
+
 	var altBaro string
-	if num, ok := ac.AltBaro.(float64); ok {
+	if num, numOk := ac.AltBaro.(float64); numOk {
 		altBaro = fmt.Sprintf("%.0f", num)
 	}
-	if str, ok := ac.AltBaro.(string); ok {
+
+	if str, strOk := ac.AltBaro.(string); strOk {
 		altBaro = str
 	}
 
 	aType := db.icaoToAircraft[ac.IcaoType].ModelCode
 
-	fmt.Printf("[%s] fastest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
-		time.Now().Format(TimeFmt),
+	log.Printf("[%s] fastest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
+		time.Now().Format(timeFmt),
 		flight,
 		altBaro,
 		ac.GroundSpeed,
@@ -192,23 +206,22 @@ func (a ByCount) Len() int           { return len(a) }
 func (a ByCount) Less(i, j int) bool { return a[i].count < a[j].count }
 func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func (db *Dashboard) ListTypesByRarity() {
-	// TODO: - create new map string -> count
-	//       - go through all seenAircraft entries, add types and counts to map
-	//       - transform map into list, order by count
+func (db *dashboard) listTypesByRarity() {
 	typeCountMap := make(map[string]int)
 	for _, value := range db.seenAircraft {
 		typeCountMap[value] += 1
 	}
 
-	typeCountList := []typeCountTuple{}
+	typeCountList := make([]typeCountTuple, len(typeCountMap))
 	for key, value := range typeCountMap {
 		typeCountList = append(typeCountList, typeCountTuple{typ: key, count: value})
 	}
 
 	sort.Sort(ByCount(typeCountList))
-	fmt.Printf("[%s] Aircraft types from least to most common\n", time.Now().Format(TimeFmt))
+
+	log.Printf("[%s] aircraft types from least to most common\n", time.Now().Format(timeFmt))
+
 	for i := range len(typeCountList) {
-		fmt.Printf("%6d - %q\n", typeCountList[i].count, typeCountList[i].typ)
+		log.Printf("%6d - %q\n", typeCountList[i].count, typeCountList[i].typ)
 	}
 }

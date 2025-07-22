@@ -10,95 +10,115 @@ import (
 )
 
 const (
-	Lat     float64 = 1.359297
-	Lon     float64 = 103.989348
-	TimeFmt string  = "2006-01-02 15:04:05"
+	// lat is Latitude of SIN Airport.
+	lat float64 = 1.359297
+	// lon is Longitude of SIN Airport.
+	lon float64 = 103.989348
+	// timeFmt is a formatting string for timestamp outputs.
+	timeFmt string = "2006-01-02 15:04:05"
+	// aircraftUpdateInterval determines the update rate for general aircraft.
+	aircraftUpdateInterval = 30 * time.Second
+	// milAircraftUpdateInterval determines the update rate for military aircraft.
+	milAircraftUpdateInterval = 15 * time.Minute
+	// milAircraftUpdateDelay determines interleaving between general and mil aircraft api calls.
+	milAircraftUpdateDelay = 15 * time.Minute
+	// summaryInterval determines how often the summary is show.
+	summaryInterval = 1 * time.Hour
 )
 
 func main() {
-	// Setup dashboard
-	dashboard := NewDashboard()
+	flightDash := newDashboard()
 
 	// Create a aircraftUpdateTicker that fires every 30 seconds
-	aircraftUpdateTicker := time.NewTicker(30 * time.Second)
+	aircraftUpdateTicker := time.NewTicker(aircraftUpdateInterval)
 	defer aircraftUpdateTicker.Stop()
 
-	milAircraftUpdateTicker := time.NewTicker(1 * time.Hour)
+	milAircraftUpdateTicker := time.NewTicker(milAircraftUpdateInterval)
 	defer milAircraftUpdateTicker.Stop()
-	time.AfterFunc(15*time.Second, func() {
-		milAircraftUpdateTicker.Reset(15 * time.Minute)
+	// aircraft and military aircraft updates should not coincide to avoid exceeding the api limit.
+	// Hence, stagger them by 15 seconds.
+	time.AfterFunc(milAircraftUpdateDelay, func() {
+		milAircraftUpdateTicker.Reset(milAircraftUpdateInterval)
 	})
 
-	raritySummaryTicker := time.NewTicker(1 * time.Hour)
+	raritySummaryTicker := time.NewTicker(summaryInterval)
 	defer raritySummaryTicker.Stop()
 
-	// Use a channel to gracefully stop the program if needed (though not strictly necessary for an infinite loop)
+	// Use a channel to gracefully stop the program if needed.
+	// (Though not strictly necessary for an infinite loop)
 	done := make(chan bool)
 
-	fmt.Println("Aircraft Tracking Dashboard")
-	fmt.Println("Press Ctrl+C to stop the program.")
+	log.Println("aircraft Tracking dashboard")
+	log.Println("Press Ctrl+C to stop the program.")
 
 	// Start a goroutine to perform the requests
 	go func() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				requestAndProcessCivAircraft(&dashboard)
+				requestAndProcessCivAircraft(&flightDash)
 			case <-milAircraftUpdateTicker.C:
-				requestAndProcessMilAircraft(&dashboard)
+				requestAndProcessMilAircraft(&flightDash)
 			case <-raritySummaryTicker.C:
-				dashboard.ListTypesByRarity()
+				flightDash.listTypesByRarity()
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
-				fmt.Println("Stopping HTTP GET request routine.")
+				log.Println("Stopping HTTP GET request routine.")
+
 				return
 			}
 		}
 	}()
 
 	// Just for testing, remove this call later.
-	requestAndProcessMilAircraft(&dashboard)
+	requestAndProcessMilAircraft(&flightDash)
 
 	// Keep the main goroutine alive indefinitely, or until an interrupt signal is received
 	// In a real application, you might have other logic here or use a wait group.
 	select {} // Block indefinitely
 }
 
-func requestAndProcessCivAircraft(dashboard *Dashboard) {
+func requestAndProcessCivAircraft(dashboard *dashboard) {
 	// Define the URL for the HTTP GET request
 	targetURL := fmt.Sprintf(
 		"https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250",
-		Lat,
-		Lon,
+		lat,
+		lon,
 	)
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
 	if requestErr != nil {
 		log.Printf("Error during request: %v", requestErr)
+
 		return
 	}
-	processingErr := (*dashboard).ProcessCivAircraftJson(body)
+
+	processingErr := (*dashboard).processCivAircraftJSON(body)
+
 	if processingErr != nil {
 		log.Printf("Error during processing: %v", processingErr)
 	}
 }
 
-func requestAndProcessMilAircraft(dashboard *Dashboard) {
+func requestAndProcessMilAircraft(dashboard *dashboard) {
 	// Define the URL for the HTTP GET request
 	targetURL := "https://opendata.adsb.fi/api/v2/mil"
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
 	if requestErr != nil {
 		log.Printf("Error during request: %v", requestErr)
+
 		return
 	}
-	processingErr := (*dashboard).ProcessMilAircraftJson(body)
+
+	processingErr := (*dashboard).processMilAircraftJson(body)
+
 	if processingErr != nil {
 		log.Printf("Error during processing: %v", processingErr)
 	}
 }
 
-// sendRequest sends an HTTP GET request and returns a valid byte slice of the response body
+// sendRequest sends an HTTP GET request and returns a valid byte slice of the response body.
 func sendRequest(url string) ([]byte, error) {
 	resp, respErr := http.Get(url)
 	if respErr != nil {
@@ -107,7 +127,7 @@ func sendRequest(url string) ([]byte, error) {
 	defer func(bodyReader io.ReadCloser) {
 		err := bodyReader.Close()
 		if err != nil {
-			fmt.Printf("failed to close body reader: %v", err)
+			log.Printf("failed to close body reader: %v", err)
 		}
 	}(resp.Body) // Ensure the response body is closed
 
