@@ -1,8 +1,15 @@
 ﻿package main
 
 import (
+	"math"
 	"testing"
 )
+
+const Epsilon = 1e-7 // Precision for lat,lon comparisons, down to metre accuracy
+
+func areFloat64Equal(a, b float64) bool {
+	return math.Abs(a-b) < Epsilon
+}
 
 type testCoordinates struct {
 	p     coordinates
@@ -52,7 +59,7 @@ func TestHaversineDistance(t *testing.T) {
 	for _, input := range tests {
 		km := Distance(input.p, input.q).Kilometers()
 
-		if input.outKm != km {
+		if !areFloat64Equal(input.outKm, km) {
 			t.Errorf("fail: want %v %v -> %v got %v",
 				input.p,
 				input.q,
