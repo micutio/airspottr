@@ -93,7 +93,7 @@ func GetMilCodeToOperatorMap() map[string]string {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)
 	if err != nil {
-		fmt.Printf("Error parsing CSV: %v\n", err)
+		log.Printf("Error parsing CSV: %v\n", err)
 
 		return nil
 	}
@@ -111,7 +111,7 @@ func parseMilCodeToMap(filePath string) (map[string]string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			fmt.Printf("failed to close file: %v", err)
+			log.Printf("failed to close file: %v", err)
 		}
 	}(file) // Ensure the file is closed when the function exits
 

@@ -58,7 +58,7 @@ func (db *dashboard) processCivAircraftRecords(aircraft *[]aircraft) {
 	}
 }
 
-func (db *dashboard) processMilAircraftJson(jsonBytes []byte) error {
+func (db *dashboard) processMilAircraftJSON(jsonBytes []byte) error {
 	var data milAircraftRecord
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		return fmt.Errorf("failed to unmarshal military aircraft JSON: %w", err)

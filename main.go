@@ -111,7 +111,7 @@ func requestAndProcessMilAircraft(dashboard *dashboard) {
 		return
 	}
 
-	processingErr := (*dashboard).processMilAircraftJson(body)
+	processingErr := (*dashboard).processMilAircraftJSON(body)
 
 	if processingErr != nil {
 		log.Printf("Error during processing: %v", processingErr)
