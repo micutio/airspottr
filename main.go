@@ -93,7 +93,7 @@ func requestAndProcessCivAircraft(dashboard *dashboard) {
 		return
 	}
 
-	processingErr := (*dashboard).processCivAircraftJSON(body)
+	processingErr := dashboard.processCivAircraftJSON(body)
 
 	if processingErr != nil {
 		log.Printf("Error during processing: %v", processingErr)
@@ -111,7 +111,7 @@ func requestAndProcessMilAircraft(dashboard *dashboard) {
 		return
 	}
 
-	processingErr := (*dashboard).processMilAircraftJSON(body)
+	processingErr := dashboard.processMilAircraftJSON(body)
 
 	if processingErr != nil {
 		log.Printf("Error during processing: %v", processingErr)
