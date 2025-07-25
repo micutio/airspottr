@@ -209,10 +209,10 @@ func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (db *dashboard) listTypesByRarity() {
 	typeCountMap := make(map[string]int)
 	for _, value := range db.seenAircraft {
-		typeCountMap[value] += 1
+		typeCountMap[value]++
 	}
 
-	typeCountList := make([]typeCountTuple, len(typeCountMap))
+	var typeCountList []typeCountTuple
 	for key, value := range typeCountMap {
 		typeCountList = append(typeCountList, typeCountTuple{typ: key, count: value})
 	}
@@ -221,7 +221,7 @@ func (db *dashboard) listTypesByRarity() {
 
 	log.Printf("[%s] aircraft types from least to most common\n", time.Now().Format(timeFmt))
 
-	for i := range len(typeCountList) {
+	for i := range typeCountList {
 		log.Printf("%6d - %q\n", typeCountList[i].count, typeCountList[i].typ)
 	}
 }

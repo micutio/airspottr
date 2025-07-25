@@ -21,7 +21,7 @@ const (
 	// milAircraftUpdateInterval determines the update rate for military aircraft.
 	milAircraftUpdateInterval = 15 * time.Minute
 	// milAircraftUpdateDelay determines interleaving between general and mil aircraft api calls.
-	milAircraftUpdateDelay = 15 * time.Minute
+	milAircraftUpdateDelay = 15 * time.Second
 	// summaryInterval determines how often the summary is show.
 	summaryInterval = 1 * time.Hour
 )
