@@ -57,7 +57,7 @@ type aircraft struct {
 	Type            string   `json:"type"`             // type of underlying messages
 	Version         int      `json:"version"`          // ADS-B Version number 0,1,2 (3-7 are reserved)
 	GeomRate        float64  `json:"geom_rate"`        // Rate of change of geometric (GNSS/INS) altitude in [ft/min]
-	DbFlags         int      `json:"dbFlags"`          // bitfield for certain database flags (programming language)
+	DBFlags         int      `json:"dbFlags"`          // bitfield for certain database flags (programming language)
 	NavModes        []string `json:"nav_modes"`        // (autopilot, vnav, althold, approach, lnav, tcas)
 	TrueHeading     float64  `json:"true_heading"`     // Heading clockwise from true north in [degrees]
 	Ias             float64  `json:"ias"`              // indicated airspeed in [knots]
@@ -91,7 +91,7 @@ func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
 func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // ByDistance implements the comparator interface and allows sorting a list of aircraft records.
-// by distance to a given lon,lat coordinate
+// by distance to a given lon,lat coordinate.
 type ByDistance []aircraft
 
 func (a ByDistance) Len() int           { return len(a) }

@@ -23,7 +23,7 @@ type icaoAircraft struct {
 	ModelCode string
 }
 
-func GetIcaoToAircraftMap() map[string]icaoAircraft {
+func getIcaoToAircraftMap() map[string]icaoAircraft {
 	const icaoListPath string = "./data/ICAOList.csv"
 
 	// Parse the CSV file

@@ -23,7 +23,7 @@ func newDashboard() dashboard {
 		fastest:           nil,
 		highest:           nil,
 		seenAircraft:      make(map[string]string),
-		icaoToAircraft:    GetIcaoToAircraftMap(),
+		icaoToAircraft:    getIcaoToAircraftMap(),
 		milCodeToOperator: GetMilCodeToOperatorMap(),
 	}
 }

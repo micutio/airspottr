@@ -7,9 +7,9 @@ import "math"
 // Constants
 
 const (
-	earthRadiusKilometers    float64     = 6371 // Radius of Earth in kilometers
-	earthRadiusMiles         float64     = 3958 // Radius of Earth in miles
-	earthRadiusNauticalMiles float64     = 3443 // Radius of Earth in miles
+	earthRadiusKilometers    float64 = 6371 // Radius of Earth in kilometers
+	earthRadiusMiles         float64 = 3958 // Radius of Earth in miles
+	earthRadiusNauticalMiles float64 = 3443 // Radius of Earth in miles
 	piHalf                   float64 = math.Pi / 180
 )
 
@@ -65,16 +65,16 @@ func (d DistanceStruct) NauticalMiles() float64 {
 
 // Distance calculates distance using the haversine formula.
 func Distance(p, q coordinates) DistanceStruct {
-	from := p.toRadians()
-	to := q.toRadians()
+	fromPos := p.toRadians()
+	toPos := q.toRadians()
 
-	deltaLat := to.Latitude - from.Latitude
-	deltaLon := to.Longitude - from.Longitude
+	deltaLat := toPos.Latitude - fromPos.Latitude
+	deltaLon := toPos.Longitude - fromPos.Longitude
 
 	a := math.Pow(math.Sin(deltaLat/2), 2) +
-		math.Cos(from.Latitude)*
-		math.Cos(to.Latitude)*
-		math.Pow(math.Sin(deltaLon/2), 2)
+		math.Cos(fromPos.Latitude)*
+			math.Cos(toPos.Latitude)*
+			math.Pow(math.Sin(deltaLon/2), 2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
 	return newDistanceStruct(c)

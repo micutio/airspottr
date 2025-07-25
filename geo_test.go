@@ -17,7 +17,8 @@ type testCoordinates struct {
 	outKm float64
 }
 
-var tests = []testCoordinates{
+func getTestCoordinates() []testCoordinates{
+	return []testCoordinates{
 	{
 		newCoordinates(22.55, 43.12),  // Rio de Janeiro, Brazil
 		newCoordinates(13.45, 100.28), // Bangkok, Thailand
@@ -53,18 +54,19 @@ var tests = []testCoordinates{
 		newCoordinates(3.09, 101.42), // Kuala Lumpur, Malaysia
 		10078.111954385415,
 	},
+	}
 }
 
 func TestHaversineDistance(t *testing.T) {
-	for _, input := range tests {
-		km := Distance(input.p, input.q).Kilometers()
+	for _, input := range getTestCoordinates() {
+		kilometers := Distance(input.p, input.q).Kilometers()
 
-		if !areFloat64Equal(input.outKm, km) {
+		if !areFloat64Equal(input.outKm, kilometers) {
 			t.Errorf("fail: want %v %v -> %v got %v",
 				input.p,
 				input.q,
 				input.outKm,
-				km,
+				kilometers,
 			)
 		}
 	}
