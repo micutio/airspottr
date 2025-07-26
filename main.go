@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -16,8 +17,6 @@ const (
 	lat float64 = 1.359297
 	// lon is Longitude of SIN Airport.
 	lon float64 = 103.989348
-	// timeFmt is a formatting string for timestamp outputs.
-	timeFmt string = "2006-01-02 15:04:05"
 	// aircraftUpdateInterval determines the update rate for general aircraft.
 	aircraftUpdateInterval = 30 * time.Second
 	// milAircraftUpdateInterval determines the update rate for military aircraft.
@@ -36,7 +35,11 @@ var (
 
 func main() {
 	logger := slog.Default()
-	flightDash := newDashboard()
+	flightDash, dashboardErr := newDashboard()
+	if dashboardErr != nil {
+		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
+		os.Exit(1)
+	}
 
 	// Create a aircraftUpdateTicker that fires every 30 seconds
 	aircraftUpdateTicker := time.NewTicker(aircraftUpdateInterval)
@@ -65,11 +68,11 @@ func main() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				if err := requestAndProcessCivAircraft(&flightDash); err != nil {
+				if err := requestAndProcessCivAircraft(flightDash); err != nil {
 					logger.Error("main: ", slog.Any("error", err))
 				}
 			case <-milAircraftUpdateTicker.C:
-				if err := requestAndProcessMilAircraft(&flightDash); err != nil {
+				if err := requestAndProcessMilAircraft(flightDash); err != nil {
 					logger.Error("main: %w", slog.Any("error", err))
 				}
 			case <-summaryTicker.C:
@@ -84,7 +87,7 @@ func main() {
 	}()
 
 	// Run once in the beginning.
-	if err := requestAndProcessMilAircraft(&flightDash); err != nil {
+	if err := requestAndProcessMilAircraft(flightDash); err != nil {
 		logger.Error("main: ", slog.Any("error", err))
 	}
 
@@ -107,11 +110,7 @@ func requestAndProcessCivAircraft(dashboard *dashboard) error {
 		return fmt.Errorf("requestAndProcessCivAircraft: error during request: %w", requestErr)
 	}
 
-	processingErr := dashboard.processCivAircraftJSON(body)
-
-	if processingErr != nil {
-		return fmt.Errorf("requestAndProcessCivAircraft: error during processing: %w", processingErr)
-	}
+	dashboard.processCivAircraftJSON(body)
 
 	return nil
 }
@@ -125,11 +124,7 @@ func requestAndProcessMilAircraft(dashboard *dashboard) error {
 		return fmt.Errorf("error during request: %w", requestErr)
 	}
 
-	processingErr := dashboard.processMilAircraftJSON(body)
-
-	if processingErr != nil {
-		return fmt.Errorf("error during processing: %w", processingErr)
-	}
+	dashboard.processMilAircraftJSON(body)
 
 	return nil
 }

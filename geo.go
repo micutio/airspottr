@@ -1,8 +1,9 @@
-﻿// Inspired by https://github.com/LucaTheHacker/go-haversine
-
+// Inspired by https://github.com/LucaTheHacker/go-haversine
 package main
 
-import "math"
+import (
+	"math"
+)
 
 // Constants
 
@@ -64,6 +65,8 @@ func (d DistanceStruct) NauticalMiles() float64 {
 }
 
 // Distance calculates distance using the haversine formula.
+//
+//nolint:mnd // readability of mathmatic formula
 func Distance(p, q coordinates) DistanceStruct {
 	fromPos := p.toRadians()
 	toPos := q.toRadians()

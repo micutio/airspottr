@@ -3,23 +3,23 @@ package main
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-type civAircraftRecord struct {
-	Now         float64    `json:"now"`         // time this file was generated in [ms]
-	ResultCount int        `json:"resultCount"` // total count of aircraft returned
-	Ptime       float64    `json:"ptime"`       // server processing time required in [ms]
-	Aircraft    []aircraft `json:"aircraft"`    // list of Aircraft records
+type civAircraftResult struct {
+	Now         float64          `json:"now"`         // time this file was generated in [ms]
+	ResultCount int              `json:"resultCount"` // total count of aircraft returned
+	Ptime       float64          `json:"ptime"`       // server processing time required in [ms]
+	Aircraft    []aircraftRecord `json:"aircraft"`    // list of Aircraft records
 }
 
-type milAircraftRecord struct {
-	Msg      string     `json:"msg"`   // error message, usually "no error"
-	Now      int        `json:"now"`   // time this file was generated in ms
-	Total    int        `json:"total"` // total count of aircraft returned
-	CTime    int        `json:"ctime"`
-	PTime    int        `json:"ptime"` // server processing time required in [ms]
-	Aircraft []aircraft `json:"ac"`    // list of Aircraft records
+type milAircraftResult struct {
+	Msg      string           `json:"msg"`   // error message, usually "no error"
+	Now      int              `json:"now"`   // time this file was generated in ms
+	Total    int              `json:"total"` // total count of aircraft returned
+	CTime    int              `json:"ctime"`
+	PTime    int              `json:"ptime"` // server processing time required in [ms]
+	Aircraft []aircraftRecord `json:"ac"`    // list of Aircraft records
 }
 
-type aircraft struct {
+type aircraftRecord struct {
 	Alert           int      `json:"alert"`            // flight status alert bit
 	AltBaro         any      `json:"alt_baro"`         // altitude in [feet] or string "ground"
 	AltGeom         int      `json:"alt_geom"`         // altitude in [feet]
@@ -84,7 +84,7 @@ type aircraft struct {
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
 // by flight.
-type ByFlight []aircraft
+type ByFlight []aircraftRecord
 
 func (a ByFlight) Len() int           { return len(a) }
 func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
@@ -92,7 +92,7 @@ func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // ByDistance implements the comparator interface and allows sorting a list of aircraft records.
 // by distance to a given lon,lat coordinate.
-type ByDistance []aircraft
+type ByDistance []aircraftRecord
 
 func (a ByDistance) Len() int           { return len(a) }
 func (a ByDistance) Less(i, j int) bool { return a[i].CachedDist < a[j].CachedDist }
