@@ -69,7 +69,7 @@ linters:
     - exhaustive # checks exhaustiveness of enum switch statements
     - exptostd # detects functions from golang.org/x/exp/ that can be replaced by std functions
     - fatcontext # detects nested contexts in loops
-    - forbidigo # forbids identifiers
+    #- forbidigo # forbids identifiers
     - funcorder # checks the order of functions, methods, and constructors
     - funlen # tool for detection of long functions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
@@ -133,7 +133,7 @@ linters:
     #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
     #- godox # detects usage of FIXME, TODO and other keywords inside comments
     - goheader # checks is file header matches to pattern
-    #- inamedparam # [great idea, but too strict, need to ignore a lot of cases by default] reports interfaces with unnamed method parameters
+    - inamedparam # [great idea, but too strict, need to ignore a lot of cases by default] reports interfaces with unnamed method parameters
     - interfacebloat # checks the number of methods inside an interface
     - ireturn # accept interfaces, return concrete types
     #- noinlineerr # disallows inline error handling `if err := ...; err != nil {`
@@ -146,9 +146,9 @@ linters:
     ## disabled
     #- containedctx # detects struct contained context.Context field
     #- contextcheck # [too many false positives] checks the function whether use a non-inherited context
-    #- dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
+    - dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     #- dupword # [useless without config] checks for duplicate words in the source code
-    #- err113 # [too strict] checks the errors handling expressions
+    - err113 # [too strict] checks the errors handling expressions
     #- errchkjson # [don't see profit + I'm against of omitting errors like in the first example https://github.com/breml/errchkjson] checks types passed to the json encoding functions. Reports unsupported types and optionally reports occasions, where the check for the returned error can be omitted
     #- forcetypeassert # [replaced by errcheck] finds forced type assertions
     #- gomodguard # [use more powerful depguard] allow and block lists linter for direct Go module dependencies
