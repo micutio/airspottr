@@ -58,7 +58,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 		return nil, fmt.Errorf("parseIcaoCsvToMap: failed to read header: %w", headerErr)
 	}
 
-	var icaoAircraftHeaders = [...]string{
+	icaoAircraftHeaders := [...]string{
 		"aircraft TypeDesignator",
 		"Class",
 		"Number+Engine Type",
