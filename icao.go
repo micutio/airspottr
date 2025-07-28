@@ -29,7 +29,7 @@ func getIcaoToAircraftMap() (map[string]icaoAircraft, error) {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
 	if err != nil {
-		return nil, fmt.Errorf("getIcaoToAircraftMap: %w", errParseCSV)
+		return nil, fmt.Errorf("getIcaoToAircraftMap: %w: %w", errParseCSV, err)
 	}
 
 	return icaoAircraftMap, nil
@@ -64,7 +64,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	//	"Number+Engine Type",
 	//	"\"MANUFACTURER, Model\"",
 	// }
-	lenIcaoAircraftHeaders := 2
+	lenIcaoAircraftHeaders := 4
 	if len(headers) != lenIcaoAircraftHeaders {
 		return nil, fmt.Errorf("parseIcaoToCsvMap: %w", errHeaderLen)
 	}

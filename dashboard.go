@@ -28,7 +28,7 @@ type dashboard struct {
 func newDashboard() (*dashboard, error) {
 	icaoToAircraftMap, icaoErr := getIcaoToAircraftMap()
 	if icaoErr != nil {
-		return nil, errParseIcaoMap
+		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoMap, icaoErr)
 	}
 
 	milCodeToOperatorMap, milCodeErr := getMilCodeToOperatorMap()
@@ -172,6 +172,7 @@ func (db *dashboard) checkHighest(aircraft *aircraftRecord) {
 
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
+	// TODO: Unify printing of aircraft information in ONE method.
 	db.logger.Info(
 		fmt.Sprintf("highest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
 			flight,
@@ -225,6 +226,10 @@ type ByCount []aircraftTypeCountTuple
 func (a ByCount) Len() int           { return len(a) }
 func (a ByCount) Less(i, j int) bool { return a[i].count < a[j].count }
 func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+func (db *dashboard) printSummary() {
+	// TODO: Print highest, fastest and most/least common types
+}
 
 func (db *dashboard) listTypesByRarity() {
 	typeCountMap := make(map[string]int)
