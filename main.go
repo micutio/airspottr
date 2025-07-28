@@ -28,9 +28,9 @@ const (
 )
 
 var (
-	errNonOkResponse     error = errors.New("non-OK response")
-	errEmptyResponseBody error = errors.New("empty response body")
-	errNonJSONContent    error = errors.New("non-JSON content type")
+	errNonOkResponse     = errors.New("non-OK response")
+	errEmptyResponseBody = errors.New("empty response body")
+	errNonJSONContent    = errors.New("non-JSON content type")
 )
 
 func main() {
@@ -141,13 +141,12 @@ func sendRequest(url string) ([]byte, error) {
 	if respErr != nil {
 		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", url, respErr)
 	}
-	defer resp.Body.Close()
-	// defer func(bodyReader io.ReadCloser) {
-	// 	err := bodyReader.Close()
-	// 	if err != nil {
-	//		slog.Default().Error("sendRequest: ", slog.Any("close body reader", err))
-	//	}
-	// }(resp.Body) // Ensure the response body is closed
+	defer func() {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			respErr = fmt.Errorf("sendRequest: error while closing response body: %w", closeErr)
+		}
+	}()
 
 	// Check if the request was successful (status code 200 OK)
 	if resp.StatusCode != http.StatusOK {

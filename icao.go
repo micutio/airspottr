@@ -41,13 +41,12 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	if fileErr != nil {
 		return nil, fmt.Errorf("parseIcaoToCsvMap: failed to open file: %w", fileErr)
 	}
-	defer file.Close()
-	// defer func(file *os.File) {
-	//	err := file.Close()
-	//	if err != nil {
-	//		log.Printf("failed to close file: %v", err)
-	//	}
-	// }(file) // Ensure the file is closed when the function exits
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf("parseIcaoToCsvMap: error while closing file %s: %w", filePath, closeErr)
+		}
+	}()
 
 	// Create a new CSV reader
 	reader := csv.NewReader(file)
@@ -112,13 +111,12 @@ func parseMilCodeToMap(filePath string) (map[string]string, error) {
 	if fileErr != nil {
 		return nil, fmt.Errorf("parseMilCodeToMap: failed to open file: %w", fileErr)
 	}
-	defer file.Close()
-	// defer func(file *os.File) {
-	//	err := file.Close()
-	//	if err != nil {
-	//		log.Printf("failed to close file: %v", err)
-	//	}
-	// }(file) // Ensure the file is closed when the function exits
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf("parseMilCodeToCsvMap: error while closing file %s: %w", filePath, closeErr)
+		}
+	}()
 
 	// Create a new CSV reader
 	reader := csv.NewReader(file)
