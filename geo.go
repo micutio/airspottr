@@ -1,3 +1,4 @@
+// Package main provides the flight tracking application
 // Inspired by https://github.com/LucaTheHacker/go-haversine
 package main
 

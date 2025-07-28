@@ -1,3 +1,4 @@
+// Package main provides the flight tracking application
 package main
 
 import (
