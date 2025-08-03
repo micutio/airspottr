@@ -77,7 +77,7 @@ func main() {
 					logger.Error("main: %w", slog.Any("error", err))
 				}
 			case <-summaryTicker.C:
-				flightDash.listTypesByRarity()
+				flightDash.printSummary()
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				logger.Info("Stopping HTTP GET request routine.")

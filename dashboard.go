@@ -94,7 +94,6 @@ func (db *dashboard) processMilAircraftJSON(jsonBytes []byte) {
 
 func (db *dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
 	thisPos := newCoordinates(lat, lon)
-
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
 		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
@@ -116,29 +115,7 @@ func (db *dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
 			continue
 		}
 
-		var altBaro string
-		if num, ok := aircraft.AltBaro.(float64); ok {
-			altBaro = fmt.Sprintf("%5.0f", num)
-		}
-
-		if str, ok := aircraft.AltBaro.(string); ok {
-			altBaro = str
-		}
-
-		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
-
-		db.logger.Info(
-			fmt.Sprintf(
-				"(%5.1f Km) ALT %s SPD %3.0f POS (%7.3f, %7.3f) HDG %6.2f ID %q (%s)\n",
-				aircraft.CachedDist,
-				altBaro,
-				aircraft.GroundSpeed,
-				aircraft.Lat,
-				aircraft.Lon,
-				aircraft.TrueHeading,
-				aType,
-				aircraft.Registration),
-		)
+		db.logger.Info(db.aircraftToString(&aircraft))
 	}
 }
 
@@ -154,33 +131,6 @@ func (db *dashboard) checkHighest(aircraft *aircraftRecord) {
 	}
 
 	db.highest = aircraft
-
-	flight := aircraft.Flight
-
-	if len(flight) == 0 {
-		flight = "unknown " // add space for consistent formatting with ICAO codes
-	}
-
-	var altBaro string
-	if num, numOK := aircraft.AltBaro.(float64); numOK {
-		altBaro = fmt.Sprintf("%5.0f", num)
-	}
-
-	if str, strOk := aircraft.AltBaro.(string); strOk {
-		altBaro = str
-	}
-
-	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
-
-	// TODO: Unify printing of aircraft information in ONE method.
-	db.logger.Info(
-		fmt.Sprintf("highest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
-			flight,
-			altBaro,
-			aircraft.GroundSpeed,
-			aircraft.NavHeading,
-			aType,
-			aircraft.Registration))
 }
 
 func (db *dashboard) checkFastest(aircraft *aircraftRecord) {
@@ -189,31 +139,6 @@ func (db *dashboard) checkFastest(aircraft *aircraftRecord) {
 	}
 
 	db.fastest = aircraft
-
-	flight := aircraft.Flight
-
-	if len(flight) == 0 {
-		flight = "unknown " // add space for consistent formatting with ICAO codes
-	}
-
-	var altBaro string
-	if num, numOk := aircraft.AltBaro.(float64); numOk {
-		altBaro = fmt.Sprintf("%.0f", num)
-	}
-
-	if str, strOk := aircraft.AltBaro.(string); strOk {
-		altBaro = str
-	}
-
-	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
-
-	db.logger.Info(fmt.Sprintf("fastest -> FLT %s ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
-		flight,
-		altBaro,
-		aircraft.GroundSpeed,
-		aircraft.NavHeading,
-		aType,
-		aircraft.Registration))
 }
 
 type aircraftTypeCountTuple struct {
@@ -229,6 +154,13 @@ func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 func (db *dashboard) printSummary() {
 	// TODO: Print highest, fastest and most/least common types
+	fmt.Println("=== Summary ===")
+	db.listTypesByRarity()
+	db.logger.Info("Fastest Aircraft:")
+	db.logger.Info(db.aircraftToString(db.fastest))
+	db.logger.Info("Highest Aircraft:")
+	db.logger.Info(db.aircraftToString(db.highest))
+	fmt.Println("=== End Summary ===")
 }
 
 func (db *dashboard) listTypesByRarity() {
@@ -250,4 +182,47 @@ func (db *dashboard) listTypesByRarity() {
 	for i := range typeCountList {
 		db.logger.Info(fmt.Sprintf("%6d - %q\n", typeCountList[i].count, typeCountList[i].acType))
 	}
+}
+
+// aircraftToString generates a one-liner consisting of the most relevant information about the
+// given aircraft.
+func (db *dashboard) aircraftToString(aircraft *aircraftRecord) string {
+	thisPos := newCoordinates(lat, lon)
+	acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
+	aircraft.CachedDist = Distance(thisPos, acPos).Kilometers()
+
+	flight := aircraft.Flight
+
+	if len(flight) == 0 {
+		flight = "unknown " // add space for consistent formatting with ICAO codes
+	}
+
+	altitude := getAltitudeAsString(aircraft.AltBaro)
+	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+
+	return fmt.Sprintf("FLT %s (%.0f km) ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
+		flight,
+		aircraft.CachedDist,
+		altitude,
+		aircraft.GroundSpeed,
+		aircraft.NavHeading,
+		aType,
+		aircraft.Registration)
+}
+
+// getAltitudeAsString reads the altitude of an aircraft and returns it as a string.
+// The altitude is stored either as a string 'ground' or as a float denoting the measured
+// barometric altitude.
+// If the latter is the case, the float will be formatted without any decimal places
+// (unnecessary accuracy) and converted to string.
+func getAltitudeAsString(altBaro any) string {
+	if num, numOk := altBaro.(float64); numOk {
+		return fmt.Sprintf("%.0f", num)
+	}
+
+	if str, strOk := altBaro.(string); strOk {
+		return str
+	}
+
+	return "unknown"
 }
