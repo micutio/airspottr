@@ -9,6 +9,7 @@ import (
 	"sort"
 )
 
+// Errors used by the dashboard.
 var (
 	errParseIcaoMap    = errors.New("failed to parse ICAO to aircraft map")
 	errParseMilCodeMap = errors.New("failed to parse mil code to operator map")
