@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/micutio/flighttrack/internal"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,10 +15,6 @@ import (
 )
 
 const (
-	// lat is Latitude of SIN Airport.
-	lat float64 = 1.359297
-	// lon is Longitude of SIN Airport.
-	lon float64 = 103.989348
 	// aircraftUpdateInterval determines the update rate for general aircraft.
 	aircraftUpdateInterval = 30 * time.Second
 	// milAircraftUpdateInterval determines the update rate for military aircraft.
@@ -36,7 +33,7 @@ var (
 
 func main() {
 	logger := slog.Default()
-	flightDash, dashboardErr := newDashboard()
+	flightDash, dashboardErr := internal.NewDashboard()
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
@@ -77,7 +74,7 @@ func main() {
 					logger.Error("main: %w", slog.Any("error", err))
 				}
 			case <-summaryTicker.C:
-				flightDash.printSummary()
+				flightDash.PrintSummary()
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				logger.Info("Stopping HTTP GET request routine.")
@@ -97,12 +94,12 @@ func main() {
 	select {} // Block indefinitely
 }
 
-func requestAndProcessCivAircraft(dashboard *dashboard) error {
+func requestAndProcessCivAircraft(dashboard *internal.Dashboard) error {
 	// Define the URL for the HTTP GET request
 	targetURL := fmt.Sprintf(
 		"https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250",
-		lat,
-		lon,
+		internal.Lat,
+		internal.Lon,
 	)
 
 	// This case is executed every time the ticker "ticks"
@@ -111,12 +108,12 @@ func requestAndProcessCivAircraft(dashboard *dashboard) error {
 		return fmt.Errorf("requestAndProcessCivAircraft: error during request: %w", requestErr)
 	}
 
-	dashboard.processCivAircraftJSON(body)
+	dashboard.ProcessCivAircraftJSON(body)
 
 	return nil
 }
 
-func requestAndProcessMilAircraft(dashboard *dashboard) error {
+func requestAndProcessMilAircraft(dashboard *internal.Dashboard) error {
 	// Define the URL for the HTTP GET request
 	targetURL := "https://opendata.adsb.fi/api/v2/mil"
 	// This case is executed every time the ticker "ticks"
@@ -125,7 +122,7 @@ func requestAndProcessMilAircraft(dashboard *dashboard) error {
 		return fmt.Errorf("error during request: %w", requestErr)
 	}
 
-	dashboard.processMilAircraftJSON(body)
+	dashboard.ProcessMilAircraftJSON(body)
 
 	return nil
 }

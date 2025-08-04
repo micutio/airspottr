@@ -1,5 +1,4 @@
-// Package main provides the flight tracking application
-package main
+package internal
 
 import (
 	"encoding/csv"

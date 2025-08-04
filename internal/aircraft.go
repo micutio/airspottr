@@ -1,5 +1,4 @@
-// Package main provides the flight tracking application
-package main
+package internal
 
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields

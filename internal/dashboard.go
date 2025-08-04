@@ -1,5 +1,5 @@
-// Package main provides the flight tracking application
-package main
+// Package internal provides the Dashboard type and all associated program logic.
+package internal
 
 import (
 	"encoding/json"
@@ -9,13 +9,20 @@ import (
 	"sort"
 )
 
-// Errors used by the dashboard.
+const (
+	// Lat is Latitude of SIN Airport.
+	Lat float64 = 1.359297
+	// Lon is Longitude of SIN Airport.
+	Lon float64 = 103.989348
+)
+
+// Errors used by the Dashboard.
 var (
 	errParseIcaoMap    = errors.New("failed to parse ICAO to aircraft map")
 	errParseMilCodeMap = errors.New("failed to parse mil code to operator map")
 )
 
-type dashboard struct {
+type Dashboard struct {
 	// Fields for tracking some statistics
 	fastest *aircraftRecord
 	highest *aircraftRecord
@@ -26,7 +33,7 @@ type dashboard struct {
 	logger            slog.Logger
 }
 
-func newDashboard() (*dashboard, error) {
+func NewDashboard() (*Dashboard, error) {
 	icaoToAircraftMap, icaoErr := getIcaoToAircraftMap()
 	if icaoErr != nil {
 		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoMap, icaoErr)
@@ -37,7 +44,7 @@ func newDashboard() (*dashboard, error) {
 		return nil, errParseMilCodeMap
 	}
 
-	dash := dashboard{
+	dash := Dashboard{
 		fastest:           nil,
 		highest:           nil,
 		seenAircraft:      make(map[string]string),
@@ -49,9 +56,9 @@ func newDashboard() (*dashboard, error) {
 	return &dash, nil
 }
 
-// processCivAircraftJSON takes a json record in form of a byte array, transforms it into a list
+// ProcessCivAircraftJSON takes a json record in form of a byte array, transforms it into a list
 // of aircraft and performs some processing thereafter.
-func (db *dashboard) processCivAircraftJSON(jsonBytes []byte) {
+func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 	var data civAircraftResult
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		db.logger.Error("dashboard:", slog.Any("failed to unmarshal Json", err))
@@ -66,7 +73,7 @@ func (db *dashboard) processCivAircraftJSON(jsonBytes []byte) {
 	db.processCivAircraftRecords(&data.Aircraft)
 }
 
-func (db *dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
+func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 	sort.Sort(ByFlight(*allAircraft))
 
 	for i := range len(*allAircraft) {
@@ -78,7 +85,7 @@ func (db *dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 	}
 }
 
-func (db *dashboard) processMilAircraftJSON(jsonBytes []byte) {
+func (db *Dashboard) ProcessMilAircraftJSON(jsonBytes []byte) {
 	var data milAircraftResult
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		db.logger.Error("dashboard:", slog.Any("failed to unmarshal military aircraft JSON", err))
@@ -93,8 +100,8 @@ func (db *dashboard) processMilAircraftJSON(jsonBytes []byte) {
 	db.processMilAircraftRecords(&(data.Aircraft))
 }
 
-func (db *dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
-	thisPos := newCoordinates(lat, lon)
+func (db *Dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
+	thisPos := newCoordinates(Lat, Lon)
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
 		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
@@ -120,7 +127,7 @@ func (db *dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
 	}
 }
 
-func (db *dashboard) checkHighest(aircraft *aircraftRecord) {
+func (db *Dashboard) checkHighest(aircraft *aircraftRecord) {
 	thisAltitude, thisAltOk := aircraft.AltBaro.(float64)
 	if !thisAltOk {
 		return
@@ -134,7 +141,7 @@ func (db *dashboard) checkHighest(aircraft *aircraftRecord) {
 	db.highest = aircraft
 }
 
-func (db *dashboard) checkFastest(aircraft *aircraftRecord) {
+func (db *Dashboard) checkFastest(aircraft *aircraftRecord) {
 	if db.fastest != nil && db.fastest.GroundSpeed > aircraft.GroundSpeed {
 		return
 	}
@@ -153,8 +160,8 @@ func (a ByCount) Len() int           { return len(a) }
 func (a ByCount) Less(i, j int) bool { return a[i].count < a[j].count }
 func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func (db *dashboard) printSummary() {
-	// TODO: Print highest, fastest and most/least common types
+// PrintSummary prints the highest, fastest and the most and the least common types.
+func (db *Dashboard) PrintSummary() {
 	fmt.Println("=== Summary ===")
 	db.listTypesByRarity()
 	db.logger.Info("Fastest Aircraft:")
@@ -164,7 +171,7 @@ func (db *dashboard) printSummary() {
 	fmt.Println("=== End Summary ===")
 }
 
-func (db *dashboard) listTypesByRarity() {
+func (db *Dashboard) listTypesByRarity() {
 	typeCountMap := make(map[string]int)
 	for _, value := range db.seenAircraft {
 		typeCountMap[value]++
@@ -187,8 +194,8 @@ func (db *dashboard) listTypesByRarity() {
 
 // aircraftToString generates a one-liner consisting of the most relevant information about the
 // given aircraft.
-func (db *dashboard) aircraftToString(aircraft *aircraftRecord) string {
-	thisPos := newCoordinates(lat, lon)
+func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
+	thisPos := newCoordinates(Lat, Lon)
 	acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
 	aircraft.CachedDist = Distance(thisPos, acPos).Kilometers()
 
