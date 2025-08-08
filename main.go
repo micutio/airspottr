@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/micutio/flighttrack/internal"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/micutio/flighttrack/internal"
 )
 
 const (
@@ -23,6 +24,8 @@ const (
 	milAircraftUpdateDelay = 15 * time.Second
 	// summaryInterval determines how often the summary is show.
 	summaryInterval = 1 * time.Hour
+	// dashboardWarmup determines how long to 'warm up' before showing rarity reports.
+	dashboardWarmup = 15 * time.Minute
 )
 
 var (
@@ -38,6 +41,11 @@ func main() {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
 	}
+
+	// Set a timeout for the warmup period. After that point in time we will show rare aircraft immediately
+	time.AfterFunc(dashboardWarmup, func() {
+		flightDash.EndWarmupPeriod()
+	})
 
 	// Create a aircraftUpdateTicker that fires every 30 seconds
 	aircraftUpdateTicker := time.NewTicker(aircraftUpdateInterval)

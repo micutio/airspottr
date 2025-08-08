@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+
+	set "github.com/deckarep/golang-set/v2"
 )
 
 const (
@@ -14,6 +16,8 @@ const (
 	Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
 	Lon float64 = 103.989348
+	// rareAircraftCount is how many or less of a type we have to count to consider it to be rare.
+	rareAircraftCount = 10
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "unknown"
 	// flightUnknown is what we use for aircraft with missing flight number.
@@ -30,11 +34,11 @@ var (
 )
 
 type Dashboard struct {
-	// Fields for tracking some statistics
-	fastest *aircraftRecord
-	highest *aircraftRecord
-	// Data
-	seenAircraft      map[string]string // set of all seen aircraft, mapped to their type
+	fastest           *aircraftRecord
+	highest           *aircraftRecord
+	isWarmup          bool
+	seenAircraft      set.Set[string] // set of all seen aircraft, mapped to their type
+	seenTypeCount     map[string]int  // types mapped to how often seen
 	milCodeToOperator map[string]string
 	icaoToAircraft    map[string]icaoAircraft
 	logger            slog.Logger
@@ -54,13 +58,19 @@ func NewDashboard() (*Dashboard, error) {
 	dash := Dashboard{
 		fastest:           nil,
 		highest:           nil,
-		seenAircraft:      make(map[string]string),
+		isWarmup:          true,
+		seenAircraft:      set.NewSet[string](),
+		seenTypeCount:     make(map[string]int),
 		icaoToAircraft:    icaoToAircraftMap,
 		milCodeToOperator: milCodeToOperatorMap,
 		logger:            *slog.Default(),
 	}
 
 	return &dash, nil
+}
+
+func (db *Dashboard) EndWarmupPeriod() {
+	db.isWarmup = false
 }
 
 // ProcessCivAircraftJSON takes a json record in form of a byte array, transforms it into a list
@@ -85,15 +95,28 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
-		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
+		db.checkHighest(&aircraft)
+		db.checkFastest(&aircraft)
+
+		isNewAircraft := db.seenAircraft.Add(aircraft.Hex)
+		if !isNewAircraft {
+			return
+		}
+
+		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 		if aType == "" {
 			aType = typeUnknown
 		}
 
-		db.seenAircraft[aircraft.Hex] = aType
-		db.checkHighest(&aircraft)
-		db.checkFastest(&aircraft)
+		currentCount := db.seenTypeCount[aType]
+		newCount := currentCount + 1
+		db.seenTypeCount[aType] = newCount
+
+		// TODO: Define a good rarity metric.
+		if !db.isWarmup && newCount <= rareAircraftCount {
+			db.logger.Info("found rare", "aircraft", db.aircraftToString(&aircraft))
+		}
 	}
 }
 
@@ -184,14 +207,9 @@ func (db *Dashboard) PrintSummary() {
 }
 
 func (db *Dashboard) listTypesByRarity() {
-	typeCountMap := make(map[string]int)
-	for _, value := range db.seenAircraft {
-		typeCountMap[value]++
-	}
-
-	typeCounts := make([]aircraftTypeCountTuple, len(typeCountMap))
+	typeCounts := make([]aircraftTypeCountTuple, len(db.seenTypeCount))
 	i := 0
-	for key, value := range typeCountMap {
+	for key, value := range db.seenTypeCount {
 		typeCounts[i] = aircraftTypeCountTuple{acType: key, count: value}
 		i++
 	}
@@ -220,7 +238,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	altitude := getAltitudeAsString(aircraft.AltBaro)
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
-	return fmt.Sprintf("FLT %s (%.0f km) ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
+	return fmt.Sprintf("FLT %s DST %4.0f km ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
 		flight,
 		aircraft.CachedDist,
 		altitude,
@@ -237,7 +255,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 // (unnecessary accuracy) and converted to string.
 func getAltitudeAsString(altBaro any) string {
 	if num, numOk := altBaro.(float64); numOk {
-		return fmt.Sprintf("%.0f", num)
+		return fmt.Sprintf("%5.0f", num)
 	}
 
 	if str, strOk := altBaro.(string); strOk {
