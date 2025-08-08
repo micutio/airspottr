@@ -14,6 +14,13 @@ const (
 	Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
 	Lon float64 = 103.989348
+	// altitudeUnknown is what we use for aircraft without a given altitude.
+	altitudeUnknown = "unknown"
+	// flightUnknown is what we use for aircraft with missing flight number.
+	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
+	flightUnknown = "unknown "
+	// typeUnknown is what we use for aircraft with a type that's either empty or can't be found.
+	typeUnknown = "unknown"
 )
 
 // Errors used by the Dashboard.
@@ -79,6 +86,11 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
 		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+
+		if aType == "" {
+			aType = typeUnknown
+		}
+
 		db.seenAircraft[aircraft.Hex] = aType
 		db.checkHighest(&aircraft)
 		db.checkFastest(&aircraft)
@@ -177,18 +189,18 @@ func (db *Dashboard) listTypesByRarity() {
 		typeCountMap[value]++
 	}
 
-	typeCountList := make([]aircraftTypeCountTuple, len(typeCountMap))
+	typeCounts := make([]aircraftTypeCountTuple, len(typeCountMap))
 	i := 0
 	for key, value := range typeCountMap {
-		typeCountList[i] = aircraftTypeCountTuple{acType: key, count: value}
+		typeCounts[i] = aircraftTypeCountTuple{acType: key, count: value}
 		i++
 	}
 
-	sort.Sort(ByCount(typeCountList))
+	sort.Sort(ByCount(typeCounts))
 
 	db.logger.Info("aircraft types from least to most common")
-	for i := range typeCountList {
-		db.logger.Info(fmt.Sprintf("%6d - %q\n", typeCountList[i].count, typeCountList[i].acType))
+	for i := range typeCounts {
+		db.logger.Info(fmt.Sprintf("%6d - %q\n", typeCounts[i].count, typeCounts[i].acType))
 	}
 }
 
@@ -202,7 +214,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	flight := aircraft.Flight
 
 	if len(flight) == 0 {
-		flight = "unknown " // add space for consistent formatting with ICAO codes
+		flight = flightUnknown
 	}
 
 	altitude := getAltitudeAsString(aircraft.AltBaro)
@@ -232,5 +244,5 @@ func getAltitudeAsString(altBaro any) string {
 		return str
 	}
 
-	return "unknown"
+	return altitudeUnknown
 }
