@@ -16,10 +16,10 @@ const (
 	Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
 	Lon float64 = 103.989348
-	// rareAircraftCount is how many or less of a type we have to count to consider it to be rare.
-	rareAircraftCount = 10
+	// aircraftRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
+	aircraftRarityThreshold = 0.05
 	// altitudeUnknown is what we use for aircraft without a given altitude.
-	altitudeUnknown = "unknown"
+	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
 	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
 	flightUnknown = "unknown "
@@ -39,6 +39,7 @@ type Dashboard struct {
 	isWarmup          bool
 	seenAircraft      set.Set[string] // set of all seen aircraft, mapped to their type
 	seenTypeCount     map[string]int  // types mapped to how often seen
+	totalTypeCount    int
 	milCodeToOperator map[string]string
 	icaoToAircraft    map[string]icaoAircraft
 	logger            slog.Logger
@@ -61,6 +62,7 @@ func NewDashboard() (*Dashboard, error) {
 		isWarmup:          true,
 		seenAircraft:      set.NewSet[string](),
 		seenTypeCount:     make(map[string]int),
+		totalTypeCount:    0,
 		icaoToAircraft:    icaoToAircraftMap,
 		milCodeToOperator: milCodeToOperatorMap,
 		logger:            *slog.Default(),
@@ -112,9 +114,11 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		currentCount := db.seenTypeCount[aType]
 		newCount := currentCount + 1
 		db.seenTypeCount[aType] = newCount
+		db.totalTypeCount++
+		aircraftRarity := float32(newCount) / float32(db.totalTypeCount)
 
 		// TODO: Define a good rarity metric.
-		if !db.isWarmup && newCount <= rareAircraftCount {
+		if !db.isWarmup && aircraftRarity < aircraftRarityThreshold {
 			db.logger.Info("found rare", "aircraft", db.aircraftToString(&aircraft))
 		}
 	}
@@ -238,7 +242,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	altitude := getAltitudeAsString(aircraft.AltBaro)
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
-	return fmt.Sprintf("FLT %s DST %4.0f km ALT %s SPD %3.0f HDG %6.2f ID %q (%s)\n",
+	return fmt.Sprintf("FLT %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f ID %q (%s)\n",
 		flight,
 		aircraft.CachedDist,
 		altitude,
