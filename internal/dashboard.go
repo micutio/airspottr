@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/gen2brain/beeep"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 	// Lon is Longitude of SIN Airport.
 	Lon float64 = 103.989348
 	// aircraftRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	aircraftRarityThreshold = 0.05
+	aircraftRarityThreshold = 0.02
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
@@ -34,6 +35,7 @@ var (
 )
 
 type Dashboard struct {
+	icon              []byte // icon to display in desktop notifications
 	fastest           *aircraftRecord
 	highest           *aircraftRecord
 	isWarmup          bool
@@ -45,7 +47,7 @@ type Dashboard struct {
 	logger            slog.Logger
 }
 
-func NewDashboard() (*Dashboard, error) {
+func NewDashboard(icon []byte) (*Dashboard, error) {
 	icaoToAircraftMap, icaoErr := getIcaoToAircraftMap()
 	if icaoErr != nil {
 		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoMap, icaoErr)
@@ -57,6 +59,7 @@ func NewDashboard() (*Dashboard, error) {
 	}
 
 	dash := Dashboard{
+		icon:              icon,
 		fastest:           nil,
 		highest:           nil,
 		isWarmup:          true,
@@ -120,7 +123,23 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		// TODO: Define a good rarity metric.
 		if !db.isWarmup && aircraftRarity < aircraftRarityThreshold {
 			db.logger.Info("found rare", "aircraft", db.aircraftToString(&aircraft))
+			db.notifyRareAircraft(&aircraft)
 		}
+	}
+}
+
+func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
+	flight := aircraft.Flight
+
+	if len(flight) == 0 {
+		flight = flightUnknown
+	}
+	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+
+	msgBody := fmt.Sprintf("Flight %s - %s", flight, aType)
+	err := beeep.Notify("Rare Aircraft Detected", msgBody, db.icon)
+	if err != nil {
+		panic(err)
 	}
 }
 

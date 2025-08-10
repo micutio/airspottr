@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gen2brain/beeep"
 	"github.com/micutio/flighttrack/internal"
 )
 
@@ -25,18 +27,22 @@ const (
 	// summaryInterval determines how often the summary is show.
 	summaryInterval = 1 * time.Hour
 	// dashboardWarmup determines how long to 'warm up' before showing rarity reports.
-	dashboardWarmup = 15 * time.Minute
+	dashboardWarmup = 30 * time.Minute
 )
 
 var (
 	errNonOkResponse     = errors.New("non-OK response")
 	errEmptyResponseBody = errors.New("empty response body")
 	errNonJSONContent    = errors.New("non-JSON content type")
+
+	//go:embed assets/icon.png
+	icon []byte
 )
 
 func main() {
+	beeep.AppName = "flighttrack" //nolint:reassign // This is the only way to set appname in beep(?)
 	logger := slog.Default()
-	flightDash, dashboardErr := internal.NewDashboard()
+	flightDash, dashboardErr := internal.NewDashboard(icon)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)

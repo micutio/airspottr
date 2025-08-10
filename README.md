@@ -13,14 +13,16 @@ Queries various ADS-B APIs every 30 seconds
 ## TODO
 
 - [x] track occurrence by aircraft type
-- [ ] after the first hour: immediate output whenever a rare aircraft is spotted (rarity continually updated)
+- [x] after a warmup period (default 15 mins):
+  - [x] immediate output whenever a rare aircraft is spotted (rarity continually updated)
+- [x] closest military whenever there is one within 250NM
 - hourly output of top 5 aircraft by:
   - [x] most common types spotted
   - [x] least common type spotted
   - [x] fastest aircraft spotted
   - [x] highest aircraft spotted
-  - [ ] closest military whenever there is one within 250NM
 - [ ] better visual output via some TUI library
+- [ ] system-native notifications when rare aircraft spotted
 
 ## Links for further investigation
 
