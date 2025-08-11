@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	// thisAppName is the name of this application as shown on notifications.
+	thisAppName = "flighttrack"
 	// aircraftUpdateInterval determines the update rate for general aircraft.
 	aircraftUpdateInterval = 30 * time.Second
 	// milAircraftUpdateInterval determines the update rate for military aircraft.
@@ -34,15 +36,14 @@ var (
 	errNonOkResponse     = errors.New("non-OK response")
 	errEmptyResponseBody = errors.New("empty response body")
 	errNonJSONContent    = errors.New("non-JSON content type")
-
-	//go:embed assets/icon.png
-	icon []byte
 )
 
 func main() {
-	beeep.AppName = "flighttrack" //nolint:reassign // This is the only way to set appname in beep(?)
+	// Initialize logging, notifications and dashboard
+
 	logger := slog.Default()
-	flightDash, dashboardErr := internal.NewDashboard(icon)
+	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
+	flightDash, dashboardErr := internal.NewDashboard()
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)

@@ -8,7 +8,11 @@ import (
 	"os"
 )
 
-const milCodeHeaderLen int = 2
+const (
+	icaoListPath     = "./data/ICAOList.csv"
+	milCodeFilePath  = "./data/MilICAOOperatorLookUp.csv"
+	milCodeHeaderLen = 2
+)
 
 var (
 	errParseCSV  = errors.New("error parsing CSV")
@@ -23,7 +27,6 @@ type icaoAircraft struct {
 
 // getIcaoToAircraftMap returns an ICAO id to aircraft record mapping.
 func getIcaoToAircraftMap() (map[string]icaoAircraft, error) {
-	const icaoListPath string = "./data/ICAOList.csv"
 
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
@@ -93,7 +96,6 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 
 // getMilCodeToOperatorMap returns a militar code to operator mapping.
 func getMilCodeToOperatorMap() (map[string]string, error) {
-	const milCodeFilePath string = "./data/MilICAOOperatorLookUp.csv"
 
 	// Parse the CSV file
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)

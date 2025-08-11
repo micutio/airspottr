@@ -17,6 +17,8 @@ const (
 	Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
 	Lon float64 = 103.989348
+	// appIconPath is the file path to the icon png for this application.
+	appIconPath = "./assets/icon.png"
 	// aircraftRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
 	aircraftRarityThreshold = 0.02
 	// altitudeUnknown is what we use for aircraft without a given altitude.
@@ -34,8 +36,9 @@ var (
 	errParseMilCodeMap = errors.New("failed to parse mil code to operator map")
 )
 
+// TODO: change seenAircraft to map [string -> timestamp] to record the last sighting
+
 type Dashboard struct {
-	icon              []byte // icon to display in desktop notifications
 	fastest           *aircraftRecord
 	highest           *aircraftRecord
 	isWarmup          bool
@@ -47,7 +50,7 @@ type Dashboard struct {
 	logger            slog.Logger
 }
 
-func NewDashboard(icon []byte) (*Dashboard, error) {
+func NewDashboard() (*Dashboard, error) {
 	icaoToAircraftMap, icaoErr := getIcaoToAircraftMap()
 	if icaoErr != nil {
 		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoMap, icaoErr)
@@ -59,7 +62,6 @@ func NewDashboard(icon []byte) (*Dashboard, error) {
 	}
 
 	dash := Dashboard{
-		icon:              icon,
 		fastest:           nil,
 		highest:           nil,
 		isWarmup:          true,
@@ -114,6 +116,8 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 			aType = typeUnknown
 		}
 
+		// TODO: Throw away aircraft with empty registration or type \"\"
+
 		currentCount := db.seenTypeCount[aType]
 		newCount := currentCount + 1
 		db.seenTypeCount[aType] = newCount
@@ -132,7 +136,7 @@ func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
 	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
-	err := beeep.Notify("Rare Aircraft Detected", msgBody, db.icon)
+	err := beeep.Notify("Rare Aircraft Detected", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
