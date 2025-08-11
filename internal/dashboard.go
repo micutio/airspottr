@@ -129,14 +129,9 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 }
 
 func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
-	flight := aircraft.Flight
-
-	if len(flight) == 0 {
-		flight = flightUnknown
-	}
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
-	msgBody := fmt.Sprintf("Flight %s - %s", flight, aType)
+	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
 	err := beeep.Notify("Rare Aircraft Detected", msgBody, db.icon)
 	if err != nil {
 		panic(err)
