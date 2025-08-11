@@ -1,3 +1,5 @@
+[<img src="./assets/icon.png" width="100" />](./assets/icon.png)
+
 # Flight Tracker
 
 Testing flight tracking APIs and http/get requests in Go.
@@ -21,8 +23,17 @@ Queries various ADS-B APIs every 30 seconds
   - [x] least common type spotted
   - [x] fastest aircraft spotted
   - [x] highest aircraft spotted
+- [x] system-native notifications when rare aircraft spotted
+- [ ] allow notifications for the same aircraft if enough time passed since last contact (24h?)
 - [ ] better visual output via some TUI library
-- [ ] system-native notifications when rare aircraft spotted
+- [ ] current aircraft closest to your location
+- [ ] "latency", i.e.: time difference between ICAO info timestamp and displaying on screen
+- [ ] radar-like visual for nearby aircraft (look up APIs for geographic data)
+- [ ] more flight information, e.g.: origin, destination, flight time remaining
+- [ ] more unit testing
+- [ ] map hex ranges to countries of registration
+- [ ] collect additional information about unknown aircraft/types to try and identify later
+  - [ ] lat/lon position
 
 ## Links for further investigation
 
