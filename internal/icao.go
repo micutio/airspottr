@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 const (
@@ -27,7 +28,6 @@ type icaoAircraft struct {
 
 // getIcaoToAircraftMap returns an ICAO id to aircraft record mapping.
 func getIcaoToAircraftMap() (map[string]icaoAircraft, error) {
-
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
 	if err != nil {
@@ -87,7 +87,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 		key := record[0]
 		class := record[1]
 		engine := record[2]
-		manufacturer := record[3]
+		manufacturer := strings.Trim(record[3], "\"")
 		records[key] = icaoAircraft{class, engine, manufacturer}
 	}
 
@@ -96,7 +96,6 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 
 // getMilCodeToOperatorMap returns a militar code to operator mapping.
 func getMilCodeToOperatorMap() (map[string]string, error) {
-
 	// Parse the CSV file
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)
 	if err != nil {

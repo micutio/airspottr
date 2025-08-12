@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"time"
 
-	set "github.com/deckarep/golang-set/v2"
 	"github.com/gen2brain/beeep"
 )
 
@@ -36,14 +36,12 @@ var (
 	errParseMilCodeMap = errors.New("failed to parse mil code to operator map")
 )
 
-// TODO: change seenAircraft to map [string -> timestamp] to record the last sighting
-
 type Dashboard struct {
 	fastest           *aircraftRecord
 	highest           *aircraftRecord
 	isWarmup          bool
-	seenAircraft      set.Set[string] // set of all seen aircraft, mapped to their type
-	seenTypeCount     map[string]int  // types mapped to how often seen
+	seenAircraft      map[string]time.Time // set of all seen aircraft, mapped to their type
+	seenTypeCount     map[string]int       // types mapped to how often seen
 	totalTypeCount    int
 	milCodeToOperator map[string]string
 	icaoToAircraft    map[string]icaoAircraft
@@ -65,7 +63,7 @@ func NewDashboard() (*Dashboard, error) {
 		fastest:           nil,
 		highest:           nil,
 		isWarmup:          true,
-		seenAircraft:      set.NewSet[string](),
+		seenAircraft:      make(map[string]time.Time),
 		seenTypeCount:     make(map[string]int),
 		totalTypeCount:    0,
 		icaoToAircraft:    icaoToAircraftMap,
@@ -106,17 +104,33 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		db.checkHighest(&aircraft)
 		db.checkFastest(&aircraft)
 
-		isNewAircraft := db.seenAircraft.Add(aircraft.Hex)
-		if !isNewAircraft {
+		db.logger.Debug("debug", "aircraft.seen", aircraft.Seen)
+		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
+		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
+		db.logger.Debug("debug", "lastSeenTime", lastSeenTime)
+
+		value, exists := db.seenAircraft[aircraft.Hex]
+		db.seenAircraft[aircraft.Hex] = lastSeenTime
+
+		if exists && lastSeenTime.Sub(value) < time.Hour*24 {
+			// Aircraft has already been spotted recently (within the last day).
+			// No need to report this sighting again.
+			// NOTE: Alternatively we might check for different flight number as well.
 			return
 		}
+
+		// If the aircraft is new or has already been spotted, but enough time has passed,
+		// then we can report it again.
 
 		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 		if aType == "" {
 			aType = typeUnknown
 		}
 
-		// TODO: Throw away aircraft with empty registration or type \"\"
+		// Throw away aircraft with empty registration
+		if aircraft.Registration == "" {
+			continue
+		}
 
 		currentCount := db.seenTypeCount[aType]
 		newCount := currentCount + 1
@@ -124,10 +138,24 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		db.totalTypeCount++
 		aircraftRarity := float32(newCount) / float32(db.totalTypeCount)
 
-		// TODO: Define a good rarity metric.
-		if !db.isWarmup && aircraftRarity < aircraftRarityThreshold {
-			db.logger.Info("found rare", "aircraft", db.aircraftToString(&aircraft))
-			db.notifyRareAircraft(&aircraft)
+		db.logger.Debug(
+			"rarity calculation: ",
+			"newCount", newCount,
+			"totalTypeCount", db.totalTypeCount,
+			"aircraftRarity", aircraftRarity,
+			"aircraftRarityThreshold", aircraftRarityThreshold)
+
+		if aircraftRarity < aircraftRarityThreshold {
+			db.logger.Debug(
+				"found rare",
+				"aircraft",
+				db.aircraftToString(&aircraft),
+				"Δt(ms)",
+				time.Since(lastSeenTime))
+
+			if !db.isWarmup {
+				db.notifyRareAircraft(&aircraft)
+			}
 		}
 	}
 }
@@ -136,7 +164,7 @@ func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
 	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
-	err := beeep.Notify("Rare Aircraft Detected", msgBody, appIconPath)
+	err := beeep.Notify("Rare Aircraft Spotted", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
@@ -260,7 +288,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	altitude := getAltitudeAsString(aircraft.AltBaro)
 	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
 
-	return fmt.Sprintf("FLT %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f ID %q (%s)\n",
+	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %q (%s)\n",
 		flight,
 		aircraft.CachedDist,
 		altitude,
