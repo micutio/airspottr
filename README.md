@@ -25,6 +25,7 @@ Queries various ADS-B APIs every 30 seconds
   - [x] highest aircraft spotted
 - [x] system-native notifications when rare aircraft spotted
 - [x] allow notifications for the same aircraft if enough time passed since last contact (24h?)
+- [ ] persist all processed responses in history JSON file
 - [ ] printing to console, logging to file
 - [ ] colored console output
 - [ ] graceful shutdown
