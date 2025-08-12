@@ -73,7 +73,7 @@ func main() {
 	// (Though not strictly necessary for an infinite loop)
 	done := make(chan bool)
 
-	fmt.Println("aircraft Tracking dashboard")
+	fmt.Println("Aircraft Tracking")
 	fmt.Println("Press Ctrl+C to stop the program.")
 
 	// Start a goroutine to perform the requests

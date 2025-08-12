@@ -25,6 +25,9 @@ Queries various ADS-B APIs every 30 seconds
   - [x] highest aircraft spotted
 - [x] system-native notifications when rare aircraft spotted
 - [x] allow notifications for the same aircraft if enough time passed since last contact (24h?)
+- [ ] printing to console, logging to file
+- [ ] colored console output
+- [ ] graceful shutdown
 - [ ] better visual output via some TUI library
 - [ ] current aircraft closest to your location
 - [ ] "latency", i.e.: time difference between ICAO info timestamp and displaying on screen
