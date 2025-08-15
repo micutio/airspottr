@@ -20,7 +20,7 @@ const (
 	// appIconPath is the file path to the icon png for this application.
 	appIconPath = "./assets/icon.png"
 	// aircraftRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	aircraftRarityThreshold = 0.02
+	aircraftRarityThreshold = 0.01
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
@@ -146,7 +146,13 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 			"aircraftRarityThreshold", aircraftRarityThreshold)
 
 		if aircraftRarity < aircraftRarityThreshold {
-			db.logger.Debug(
+			db.logger.Info(
+				"rarity calculation: ",
+				"newCount", newCount,
+				"totalTypeCount", db.totalTypeCount,
+				"aircraftRarity", aircraftRarity,
+				"aircraftRarityThreshold", aircraftRarityThreshold)
+			db.logger.Info(
 				"found rare",
 				"aircraft",
 				db.aircraftToString(&aircraft),
