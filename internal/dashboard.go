@@ -37,14 +37,14 @@ var (
 )
 
 type Dashboard struct {
-	fastest           *aircraftRecord
-	highest           *aircraftRecord
+	Fastest           *aircraftRecord
+	Highest           *aircraftRecord
+	IcaoToAircraft    map[string]icaoAircraft
 	isWarmup          bool
 	seenAircraft      map[string]time.Time // set of all seen aircraft, mapped to their type
 	seenTypeCount     map[string]int       // types mapped to how often seen
 	totalTypeCount    int
 	milCodeToOperator map[string]string
-	icaoToAircraft    map[string]icaoAircraft
 	logger            slog.Logger
 }
 
@@ -60,13 +60,13 @@ func NewDashboard() (*Dashboard, error) {
 	}
 
 	dash := Dashboard{
-		fastest:           nil,
-		highest:           nil,
+		Fastest:           nil,
+		Highest:           nil,
 		isWarmup:          true,
 		seenAircraft:      make(map[string]time.Time),
 		seenTypeCount:     make(map[string]int),
 		totalTypeCount:    0,
-		icaoToAircraft:    icaoToAircraftMap,
+		IcaoToAircraft:    icaoToAircraftMap,
 		milCodeToOperator: milCodeToOperatorMap,
 		logger:            *slog.Default(),
 	}
@@ -122,7 +122,7 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		// If the aircraft is new or has already been spotted, but enough time has passed,
 		// then we can report it again.
 
-		aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+		aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 		if aType == "" {
 			aType = typeUnknown
 		}
@@ -167,7 +167,7 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 }
 
 func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
-	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+	aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 
 	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
 	err := beeep.Notify("Rare Aircraft Spotted", msgBody, appIconPath)
@@ -225,19 +225,19 @@ func (db *Dashboard) checkHighest(aircraft *aircraftRecord) {
 	}
 
 	//nolint:errcheck // If highest is initialized the altBaro is always valid.
-	if db.highest != nil && db.highest.AltBaro.(float64) > thisAltitude {
+	if db.Highest != nil && db.Highest.AltBaro.(float64) > thisAltitude {
 		return
 	}
 
-	db.highest = aircraft
+	db.Highest = aircraft
 }
 
 func (db *Dashboard) checkFastest(aircraft *aircraftRecord) {
-	if db.fastest != nil && db.fastest.GroundSpeed > aircraft.GroundSpeed {
+	if db.Fastest != nil && db.Fastest.GroundSpeed > aircraft.GroundSpeed {
 		return
 	}
 
-	db.fastest = aircraft
+	db.Fastest = aircraft
 }
 
 type aircraftTypeCountTuple struct {
@@ -256,9 +256,9 @@ func (db *Dashboard) PrintSummary() {
 	fmt.Println("=== Summary ===")
 	db.listTypesByRarity()
 	db.logger.Info("Fastest Aircraft:")
-	db.logger.Info(db.aircraftToString(db.fastest))
+	db.logger.Info(db.aircraftToString(db.Fastest))
 	db.logger.Info("Highest Aircraft:")
-	db.logger.Info(db.aircraftToString(db.highest))
+	db.logger.Info(db.aircraftToString(db.Highest))
 	fmt.Println("=== End Summary ===")
 }
 
@@ -285,14 +285,9 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
 	aircraft.CachedDist = Distance(thisPos, acPos).Kilometers()
 
-	flight := aircraft.Flight
-
-	if len(flight) == 0 {
-		flight = flightUnknown
-	}
-
-	altitude := getAltitudeAsString(aircraft.AltBaro)
-	aType := db.icaoToAircraft[aircraft.IcaoType].ModelCode
+	flight := aircraft.GetFlightNoAsStr()
+	altitude := aircraft.GetAltitudeAsStr()
+	aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 
 	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %q (%s)\n",
 		flight,
@@ -302,21 +297,4 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 		aircraft.NavHeading,
 		aType,
 		aircraft.Registration)
-}
-
-// getAltitudeAsString reads the altitude of an aircraft and returns it as a string.
-// The altitude is stored either as a string 'ground' or as a float denoting the measured
-// barometric altitude.
-// If the latter is the case, the float will be formatted without any decimal places
-// (unnecessary accuracy) and converted to string.
-func getAltitudeAsString(altBaro any) string {
-	if num, numOk := altBaro.(float64); numOk {
-		return fmt.Sprintf("%5.0f", num)
-	}
-
-	if str, strOk := altBaro.(string); strOk {
-		return str
-	}
-
-	return altitudeUnknown
 }

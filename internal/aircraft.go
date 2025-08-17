@@ -1,5 +1,9 @@
 package internal
 
+import (
+	"fmt"
+)
+
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
@@ -80,6 +84,32 @@ type aircraftRecord struct {
 	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
 	// cached data
 	CachedDist float64
+}
+
+// GetAltitudeAsString reads the altitude of an aircraft and returns it as a string.
+// The altitude is stored either as a string 'ground' or as a float denoting the measured
+// barometric altitude.
+// If the latter is the case, the float will be formatted without any decimal places
+// (unnecessary accuracy) and converted to string.
+func (ac *aircraftRecord) GetAltitudeAsStr() string {
+	if num, numOk := ac.AltBaro.(float64); numOk {
+		return fmt.Sprintf("%5.0f", num)
+	}
+
+	if str, strOk := ac.AltBaro.(string); strOk {
+		return str
+	}
+
+	return altitudeUnknown
+}
+
+// GetFlightAsStr converts the flight number to a unified string of length 8.
+func (ac *aircraftRecord) GetFlightNoAsStr() string {
+	if len(ac.Flight) == 0 {
+		return flightUnknown
+	}
+
+	return ac.Flight
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
