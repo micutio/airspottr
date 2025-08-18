@@ -26,6 +26,7 @@ Queries various ADS-B APIs every 30 seconds
 - [x] system-native notifications when rare aircraft spotted
 - [x] allow notifications for the same aircraft if enough time passed since last contact (24h?)
 - [x] "latency", i.e.: time difference between ICAO info timestamp and displaying on screen
+- [ ] rarity by airline
 - [ ] printing to console, logging to file
 - [ ] show total uptime in summaries
 - [ ] colored console output

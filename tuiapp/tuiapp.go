@@ -18,6 +18,10 @@
 // .
 package tuiapp
 
+// TODO:
+// - [ ] Set up ticks for ADS-B API requests to periodically update the dashboard
+// - [ ] refactor the ADS-B API request to make them reusable for both ticker and tui apps.
+
 import (
 	"fmt"
 	"log"
@@ -68,14 +72,13 @@ func Run() {
 	)
 	m := model{
 		currentAircraftTbl: currentAircraftTbl,
-		typeRarityTbl:      typeRarityTbl, // TODO: create
+		typeRarityTbl:      typeRarityTbl,
 		tableStyle:         tableStyle,
 		baseStyle:          lipgloss.NewStyle(),
 		viewStyle:          lipgloss.NewStyle(),
 	}
-
 	// Create a new Bubble Tea program with the model and enable alternate screen
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(&m, tea.WithAltScreen())
 
 	// Run the program and handle any errors
 	if _, err := p.Run(); err != nil {
@@ -103,6 +106,35 @@ type model struct {
 }
 
 type TickMsg time.Time
+type FinishCooldownMsg struct{}
+
+type ADSBRequestMsg struct{}
+type ADSBResponseMsg []byte
+
+func scheduleFinishCooldown() tea.Cmd {
+	return tea.Every(
+		1*time.Hour,
+		func(t time.Time) tea.Msg { return FinishCooldownMsg{} },
+	)
+}
+
+func scheduleNextADSBRequest() tea.Cmd {
+	return tea.Every(
+		30*time.Second,
+		func(t time.Time) tea.Msg { return ADSBRequestMsg{} },
+	)
+}
+
+func requestADSBDataCmd() tea.Cmd {
+	return func() tea.Msg {
+		body, err := internal.RequestAndProcessCivAircraft()
+		if err != nil {
+			// TODO: Log error
+			return nil
+		}
+		return ADSBResponseMsg(body)
+	}
+}
 
 type Theme struct {
 	Primary   lipgloss.AdaptiveColor
@@ -122,12 +154,14 @@ var Color = Theme{
 	Red:       lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"},
 }
 
-// Calls the tickEvery function to set up a command that sends a TickMsg every second.
+// Init calls the tickEvery function to set up a command that sends a TickMsg every second.
 // This command will be executed immediately when the program starts, initiating the periodic updates.
-func (m model) Init() tea.Cmd {
-	return tickEvery()
+func (m *model) Init() tea.Cmd {
+	// TODO: Setup all callbacks for ADS-B requests.
+	return tea.Batch(tickEvery(), scheduleNextADSBRequest(), scheduleFinishCooldown())
 }
 
+// tickEvery returns a command which emits a TickMsg every second.
 func tickEvery() tea.Cmd {
 	// tea.Every function is a helper function from the Bubble Tea framework
 	// that schedules a command to run at regular intervals.
@@ -139,9 +173,9 @@ func tickEvery() tea.Cmd {
 		})
 }
 
-// Takes a tea.Msg as input and uses a type switch to handle different types of messages.
+// Update takes a tea.Msg as input and uses a type switch to handle different types of messages.
 // Each case in the switch statement corresponds to a specific message type.
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // required by interface
 	switch msg := msg.(type) {
 	// message is sent when the window size changes
 	// save to reflect the new dimensions of the terminal window.
@@ -177,6 +211,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		}
+	case ADSBRequestMsg:
+		return m, tea.Batch(requestADSBDataCmd(), scheduleNextADSBRequest())
+	case FinishCooldownMsg:
+		// TODO: complete this branch
 	// This custom message is sent periodically by the tickEvery function.
 	// The model's lastUpdate field is updated to the current time.
 	// Fetching CPU Stats, Memory Stats & Processes
@@ -225,7 +263,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	// Sets the width of the column to the width of the terminal (m.width) and adds padding of 1 unit
 	// on the top.
 	// Render is a method from the lipgloss package that applies the defined style and returns
@@ -248,7 +286,7 @@ func (m model) View() string {
 
 // Uses lipgloss.JoinVertical and lipgloss.JoinHorizontal to arrange the header content.
 // It displays the last update time and aircraft information a structured format.
-func (m model) viewHeader() string {
+func (m *model) viewHeader() string {
 	// defines the style for list items, including borders, border color, height, and padding.
 	list := m.baseStyle.
 		Border(lipgloss.NormalBorder(), false, true, false, false).
@@ -310,6 +348,6 @@ func (m model) viewHeader() string {
 	)
 }
 
-func (m model) viewAircraft() string {
+func (m *model) viewAircraft() string {
 	return m.viewStyle.Render(m.currentAircraftTbl.View())
 }
