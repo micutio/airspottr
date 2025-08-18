@@ -74,7 +74,7 @@ func NewDashboard() (*Dashboard, error) {
 	return &dash, nil
 }
 
-func (db *Dashboard) EndWarmupPeriod() {
+func (db *Dashboard) FinishWarmupPeriod() {
 	db.isWarmup = false
 }
 

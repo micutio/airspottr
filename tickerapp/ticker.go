@@ -31,7 +31,7 @@ func Run() {
 
 	// Set a timeout for the warmup period. After that point in time we will show rare aircraft immediately
 	time.AfterFunc(internal.DashboardWarmup, func() {
-		flightDash.EndWarmupPeriod()
+		flightDash.FinishWarmupPeriod()
 	})
 
 	// Create a aircraftUpdateTicker that fires every 30 seconds
