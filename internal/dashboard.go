@@ -19,39 +19,53 @@ const (
 	Lon float64 = 103.989348
 	// appIconPath is the file path to the icon png for this application.
 	appIconPath = "./assets/icon.png"
-	// aircraftRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	aircraftRarityThreshold = 0.01
+	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
+	typeRarityThreshold = 0.01
+	// airlineRarityThreshold denotes the maximum rate an airline is seen to be considered rare.
+	airlineRarityThreshold = 0.01
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
 	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
 	flightUnknown = "unknown "
+	// flightUnknownCode is the three letter code we use for aircraft with missing flight number.
+	flightUnknownCode = "n/a"
 	// typeUnknown is what we use for aircraft with a type that's either empty or can't be found.
 	typeUnknown = "unknown"
 )
 
 // Errors used by the Dashboard.
 var (
-	errParseIcaoMap    = errors.New("failed to parse ICAO to aircraft map")
-	errParseMilCodeMap = errors.New("failed to parse mil code to operator map")
+	errParseIcaoAircraftMap = errors.New("failed to parse ICAO to aircraft map")
+	errParseIcaoAirlineMap  = errors.New("failed to parse 3LTR to airline map")
+	errParseMilCodeMap      = errors.New("failed to parse mil code to operator map")
 )
 
 type Dashboard struct {
+	isWarmup          bool
+	totalTypeCount    int
+	totalAirlineCount int
 	Fastest           *aircraftRecord
 	Highest           *aircraftRecord
+	CurrentAircraft   []aircraftRecord
 	IcaoToAircraft    map[string]icaoAircraft
-	isWarmup          bool
-	seenAircraft      map[string]time.Time // set of all seen aircraft, mapped to their type
+	IcaoToAirline     map[string]icaoAirline
+	seenAircraft      map[string]time.Time // set of all seen aircraft, mapped to last seen time
 	seenTypeCount     map[string]int       // types mapped to how often seen
-	totalTypeCount    int
+	seenAirlineCount  map[string]int       // types mapped to how often seen
 	milCodeToOperator map[string]string
 	logger            slog.Logger
 }
 
 func NewDashboard() (*Dashboard, error) {
-	icaoToAircraftMap, icaoErr := getIcaoToAircraftMap()
-	if icaoErr != nil {
-		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoMap, icaoErr)
+	icaoToAircraftMap, aircraftErr := getIcaoToAircraftMap()
+	if aircraftErr != nil {
+		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoAircraftMap, aircraftErr)
+	}
+
+	icaoToAirlineMap, airlineErr := getIcaoToAirlineMap()
+	if airlineErr != nil {
+		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseIcaoAirlineMap, airlineErr)
 	}
 
 	milCodeToOperatorMap, milCodeErr := getMilCodeToOperatorMap()
@@ -60,13 +74,17 @@ func NewDashboard() (*Dashboard, error) {
 	}
 
 	dash := Dashboard{
+		isWarmup:          true,
+		totalTypeCount:    0,
+		totalAirlineCount: 0,
 		Fastest:           nil,
 		Highest:           nil,
-		isWarmup:          true,
+		CurrentAircraft:   nil,
+		IcaoToAircraft:    icaoToAircraftMap,
+		IcaoToAirline:     icaoToAirlineMap,
 		seenAircraft:      make(map[string]time.Time),
 		seenTypeCount:     make(map[string]int),
-		totalTypeCount:    0,
-		IcaoToAircraft:    icaoToAircraftMap,
+		seenAirlineCount:  make(map[string]int),
 		milCodeToOperator: milCodeToOperatorMap,
 		logger:            *slog.Default(),
 	}
@@ -92,14 +110,15 @@ func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 		return // Valid outcome, no need to log an error.
 	}
 
-	db.processCivAircraftRecords(&data.Aircraft)
+	db.CurrentAircraft = data.Aircraft
+	db.processCivAircraftRecords()
 }
 
-func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
-	sort.Sort(ByFlight(*allAircraft))
+func (db *Dashboard) processCivAircraftRecords() {
+	sort.Sort(ByFlight(db.CurrentAircraft))
 
-	for i := range len(*allAircraft) {
-		aircraft := (*allAircraft)[i]
+	for i := range len(db.CurrentAircraft) {
+		aircraft := (db.CurrentAircraft)[i]
 
 		db.checkHighest(&aircraft)
 		db.checkFastest(&aircraft)
@@ -112,6 +131,8 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 		value, exists := db.seenAircraft[aircraft.Hex]
 		db.seenAircraft[aircraft.Hex] = lastSeenTime
 
+		// If the aircraft is new or has already been spotted, but enough time has passed,
+		// then we can report it again.
 		if exists && lastSeenTime.Sub(value) < time.Hour*24 {
 			// Aircraft has already been spotted recently (within the last day).
 			// No need to report this sighting again.
@@ -119,58 +140,104 @@ func (db *Dashboard) processCivAircraftRecords(allAircraft *[]aircraftRecord) {
 			return
 		}
 
-		// If the aircraft is new or has already been spotted, but enough time has passed,
-		// then we can report it again.
-
 		aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 		if aType == "" {
 			aType = typeUnknown
 		}
 
-		// Throw away aircraft with empty registration
+		// Ignore aircraft with empty registration
 		if aircraft.Registration == "" {
 			continue
 		}
 
-		currentCount := db.seenTypeCount[aType]
-		newCount := currentCount + 1
-		db.seenTypeCount[aType] = newCount
+		// record type and update type rarity
+		thisTypeCountCurrent := db.seenTypeCount[aType]
+		thisTypeCountNew := thisTypeCountCurrent + 1
+		db.seenTypeCount[aType] = thisTypeCountNew
 		db.totalTypeCount++
-		aircraftRarity := float32(newCount) / float32(db.totalTypeCount)
+		typeRarity := float32(thisTypeCountNew) / float32(db.totalTypeCount)
 
 		db.logger.Debug(
-			"rarity calculation: ",
-			"newCount", newCount,
+			"type rarity calculation: ",
+			"thisTypeCountNew", thisTypeCountNew,
 			"totalTypeCount", db.totalTypeCount,
-			"aircraftRarity", aircraftRarity,
-			"aircraftRarityThreshold", aircraftRarityThreshold)
+			"typeRarity", typeRarity,
+			"typeRarityThreshold", typeRarityThreshold)
 
-		if aircraftRarity < aircraftRarityThreshold {
+		if typeRarity < typeRarityThreshold {
 			db.logger.Info(
-				"rarity calculation: ",
-				"newCount", newCount,
+				"type rarity calculation: ",
+				"thisTypeCountNew", thisTypeCountNew,
 				"totalTypeCount", db.totalTypeCount,
-				"aircraftRarity", aircraftRarity,
-				"aircraftRarityThreshold", aircraftRarityThreshold)
+				"typeRarity", typeRarity,
+				"typeRarityThreshold", typeRarityThreshold)
 			db.logger.Info(
 				"found rare",
-				"aircraft",
+				"type",
 				db.aircraftToString(&aircraft),
 				"Δt(ms)",
 				time.Since(lastSeenTime))
 
 			if !db.isWarmup {
-				db.notifyRareAircraft(&aircraft)
+				db.notifyRareType(&aircraft)
+			}
+		}
+
+		// record airline and update airline rarity
+		// TODO: Also look into military operators and ownOp field
+		airlineCode := aircraft.GetFlightNoAs3LTRCode()
+		airline := db.IcaoToAirline[airlineCode]
+		thisAirlineCountCurrent := db.seenAirlineCount[airlineCode]
+		thisAirlineCountNew := thisAirlineCountCurrent + 1
+		db.seenAirlineCount[airlineCode] = thisAirlineCountNew
+		db.totalAirlineCount++
+		airlineRarity := float32(thisAirlineCountNew) / float32(db.totalAirlineCount)
+
+		db.logger.Debug(
+			"airline rarity calculation: ",
+			"thisAirlineCountNew", thisAirlineCountNew,
+			"totalAirlineCount", db.totalAirlineCount,
+			"airlineRarity", airlineRarity,
+			"airlineRarityThreshold", airlineRarityThreshold)
+
+		if airlineRarity < airlineRarityThreshold {
+			db.logger.Info(
+				"airline rarity calculation: ",
+				"thisAirlineCountNew", thisAirlineCountNew,
+				"totalAirlineCount", db.totalAirlineCount,
+				"airlineRarity", airlineRarity,
+				"airlineRarityThreshold", airlineRarityThreshold)
+			db.logger.Info(
+				"found rare",
+				"airline",
+				airline.Company,
+				"country",
+				airline.Country,
+				"Δt(ms)",
+				time.Since(lastSeenTime))
+
+			if !db.isWarmup {
+				db.notifyRareAirline(&aircraft)
 			}
 		}
 	}
 }
 
-func (db *Dashboard) notifyRareAircraft(aircraft *aircraftRecord) {
+func (db *Dashboard) notifyRareType(aircraft *aircraftRecord) {
 	aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 
 	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
-	err := beeep.Notify("Rare Aircraft Spotted", msgBody, appIconPath)
+	err := beeep.Notify("Rare Aircraft Type Spotted", msgBody, appIconPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (db *Dashboard) notifyRareAirline(aircraft *aircraftRecord) {
+	airline := db.IcaoToAirline[aircraft.GetFlightNoAs3LTRCode()]
+
+	msgBody := fmt.Sprintf("%s (%s)", airline.Company, airline.Country)
+	err := beeep.Notify("Rare Aircraft Type Spotted", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
@@ -245,16 +312,28 @@ type aircraftTypeCountTuple struct {
 	count  int
 }
 
-type ByCount []aircraftTypeCountTuple
+type ByTypeCount []aircraftTypeCountTuple
 
-func (a ByCount) Len() int           { return len(a) }
-func (a ByCount) Less(i, j int) bool { return a[i].count < a[j].count }
-func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByTypeCount) Len() int           { return len(a) }
+func (a ByTypeCount) Less(i, j int) bool { return a[i].count < a[j].count }
+func (a ByTypeCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+type airlineCountTuple struct {
+	airline string
+	count   int
+}
+
+type ByAirlineCount []airlineCountTuple
+
+func (a ByAirlineCount) Len() int           { return len(a) }
+func (a ByAirlineCount) Less(i, j int) bool { return a[i].count < a[j].count }
+func (a ByAirlineCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
 func (db *Dashboard) PrintSummary() {
 	fmt.Println("=== Summary ===")
 	db.listTypesByRarity()
+	db.listAirlineByRarity()
 	db.logger.Info("Fastest Aircraft:")
 	db.logger.Info(db.aircraftToString(db.Fastest))
 	db.logger.Info("Highest Aircraft:")
@@ -270,7 +349,7 @@ func (db *Dashboard) listTypesByRarity() {
 		i++
 	}
 
-	sort.Sort(ByCount(typeCounts))
+	sort.Sort(ByTypeCount(typeCounts))
 
 	db.logger.Info("aircraft types from least to most common")
 	for i := range typeCounts {
@@ -297,4 +376,20 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 		aircraft.NavHeading,
 		aType,
 		aircraft.Registration)
+}
+
+func (db *Dashboard) listAirlineByRarity() {
+	airlineCounts := make([]airlineCountTuple, len(db.seenAirlineCount))
+	i := 0
+	for key, value := range db.seenTypeCount {
+		airlineCounts[i] = airlineCountTuple{airline: key, count: value}
+		i++
+	}
+
+	sort.Sort(ByAirlineCount(airlineCounts))
+
+	db.logger.Info("airline from least to most common")
+	for j := range airlineCounts {
+		db.logger.Info(fmt.Sprintf("%6d - %q\n", airlineCounts[j].count, airlineCounts[j].airline))
+	}
 }

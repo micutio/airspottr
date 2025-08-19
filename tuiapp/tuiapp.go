@@ -18,9 +18,6 @@
 // .
 package tuiapp
 
-// TODO:
-// - enable to write all errors to file instead of stdout when running as tui
-
 import (
 	"log"
 	"time"
@@ -30,6 +27,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/flighttrack/internal"
 )
+
+// TODO: enable to write all errors to file instead of stdout when running as tui.
 
 func Run() {
 	tableStyle := table.DefaultStyles()
@@ -73,6 +72,8 @@ func Run() {
 	if dashErr != nil {
 		log.Fatal(dashErr)
 	}
+
+	flightDash.FinishWarmupPeriod()
 
 	appModel := model{
 		width:              0,

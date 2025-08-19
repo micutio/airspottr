@@ -82,6 +82,9 @@ type aircraftRecord struct {
 	RrLon           float64  `json:"rr_lon"`           // rough estimated longitude if no ADS-B or MLAT available
 	CalcTrack       any      `json:"calc_track"`       // ? TODO
 	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
+	// found by my own investigation
+	OwnOp       string `json:"ownOp"` // owner or operator, only rarely set
+	Description string `json:"desc"`  // aircraft type description
 	// cached data
 	CachedDist float64
 }
@@ -103,13 +106,23 @@ func (ac *aircraftRecord) GetAltitudeAsStr() string {
 	return altitudeUnknown
 }
 
-// GetFlightAsStr converts the flight number to a unified string of length 8.
+// GetFlightNoAsStr converts the flight number to a unified string of length 8.
 func (ac *aircraftRecord) GetFlightNoAsStr() string {
 	if len(ac.Flight) == 0 {
 		return flightUnknown
 	}
 
 	return ac.Flight
+}
+
+// TODO: Check that 4th char is number, otherwise probably military.
+// GetFlightNoAs3LTRCode extracts the three-letter code from the flight number.
+func (ac *aircraftRecord) GetFlightNoAs3LTRCode() string {
+	if len(ac.Flight) == 0 {
+		return flightUnknownCode
+	}
+
+	return ac.Flight[0:3]
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records

@@ -11,6 +11,7 @@ import (
 
 const (
 	icaoListPath     = "./data/ICAOList.csv"
+	airlineListPath  = "./data/Airlines.csv"
 	milCodeFilePath  = "./data/MilICAOOperatorLookUp.csv"
 	milCodeHeaderLen = 2
 )
@@ -42,12 +43,12 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
-		return nil, fmt.Errorf("parseIcaoToCsvMap: failed to open file: %w", fileErr)
+		return nil, fmt.Errorf("parseIcaoCsvToMap: failed to open file: %w", fileErr)
 	}
 	defer func() {
 		closeErr := file.Close()
 		if closeErr != nil {
-			fileErr = fmt.Errorf("parseIcaoToCsvMap: error while closing file %s: %w", filePath, closeErr)
+			fileErr = fmt.Errorf("parseIcaoCsvToMap: error while closing file %s: %w", filePath, closeErr)
 		}
 	}()
 
@@ -68,7 +69,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	// }
 	lenIcaoAircraftHeaders := 4
 	if len(headers) != lenIcaoAircraftHeaders {
-		return nil, fmt.Errorf("parseIcaoToCsvMap: %w", errHeaderLen)
+		return nil, fmt.Errorf("parseIcaoCsvToMap: %w", errHeaderLen)
 	}
 
 	records := make(map[string]icaoAircraft)
@@ -89,6 +90,76 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 		engine := record[2]
 		manufacturer := strings.Trim(record[3], "\"")
 		records[key] = icaoAircraft{class, engine, manufacturer}
+	}
+
+	return records, nil
+}
+
+// TODO: Also look at hex range csv file to get country
+
+type icaoAirline struct {
+	Company string
+	Country string
+}
+
+// getIcaoToAircraftMap returns a three-letter code to airline record mapping.
+func getIcaoToAirlineMap() (map[string]icaoAirline, error) {
+	// Parse the CSV file
+	icaoAirlineMap, err := parseAirlineCsvToMap(airlineListPath)
+	if err != nil {
+		return nil, fmt.Errorf("getIcaoToAirlineMap: %w: %w", errParseCSV, err)
+	}
+
+	return icaoAirlineMap, nil
+}
+
+// parseAirlineCsvToMap reads a CSV file and parses it into a map Three-letter-code -> airline record.
+func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
+	// Open the CSV file
+	file, fileErr := os.Open(filePath)
+	if fileErr != nil {
+		return nil, fmt.Errorf("parseAirlineCsvToMap: failed to open file: %w", fileErr)
+	}
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf("parseAirlineCsvToMap: error while closing file %s: %w", filePath, closeErr)
+		}
+	}()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(file)
+
+	// Read the header row
+	headers, headerErr := reader.Read()
+	if headerErr != nil {
+		return nil, fmt.Errorf("parseAirlineCsvToMap: failed to read header: %w", headerErr)
+	}
+
+	// icaoAirline Headers = Company,Country,Telephony,3Ltr
+	lenIcaoAirlineHeaders := 4
+	if len(headers) != lenIcaoAirlineHeaders {
+		return nil, fmt.Errorf("parseAirlineCsvMap: %w", errHeaderLen)
+	}
+
+	records := make(map[string]icaoAirline)
+
+	// Loop through the remaining records
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break // End of file
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("parseAirlineCsvToMap: failed to read record: %w", err)
+		}
+
+		company := record[0]
+		country := record[1]
+		// skipping telephony, record[2] is unused
+		threeLtrCode := record[3][0:3]
+		records[threeLtrCode] = icaoAirline{company, country}
 	}
 
 	return records, nil

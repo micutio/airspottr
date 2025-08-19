@@ -72,7 +72,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	// message is sent when a key is pressed.
 	case tea.KeyMsg:
 		switch thisMsg.String() {
-		// Toggles the focus state of the process table
+		// Toggles the focus state of the aircraft table
 		case "esc":
 			if m.currentAircraftTbl.Focused() {
 				m.tableStyle.Selected = m.baseStyle
@@ -83,12 +83,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 				m.currentAircraftTbl.SetStyles(m.tableStyle)
 				m.currentAircraftTbl.Focus()
 			}
-		// Moves the focus up in the process table if the table is focused.
+		// Moves the focus up in the aircraft table if the table is focused.
 		case "up", "k":
 			if m.currentAircraftTbl.Focused() {
 				m.currentAircraftTbl.MoveUp(1)
 			}
-		// Moves the focus down in the process table if the table is focused.
+		// Moves the focus down in the aircraft table if the table is focused.
 		case "down", "j":
 			if m.currentAircraftTbl.Focused() {
 				m.currentAircraftTbl.MoveDown(1)
@@ -103,6 +103,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	case ADSBResponseMsg:
 		responseBody := []byte(thisMsg)
 		m.dashboard.ProcessCivAircraftJSON(responseBody)
+		var rows []table.Row
+		for _, aircraft := range m.dashboard.CurrentAircraft {
+			rows = append(rows, table.Row{
+				fmt.Sprintf("%3.0f", aircraft.CachedDist),
+				aircraft.GetFlightNoAsStr(),
+				m.dashboard.IcaoToAircraft[aircraft.IcaoType].ModelCode,
+				aircraft.GetAltitudeAsStr(),
+				fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
+				fmt.Sprintf("%3.0f", aircraft.NavHeading),
+			})
+			m.currentAircraftTbl.SetRows(rows)
+		}
 		return m, nil // since we've already scheduled the next request, there is nothing to do now.
 	}
 
