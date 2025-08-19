@@ -185,7 +185,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 
 		// record airline and update airline rarity
 		// TODO: Also look into military operators and ownOp field
-		airlineCode := aircraft.GetFlightNoAs3LTRCode()
+		airlineCode := aircraft.GetFlightNoAsIcaoCode()
 		airline := db.IcaoToAirline[airlineCode]
 		thisAirlineCountCurrent := db.seenAirlineCount[airlineCode]
 		thisAirlineCountNew := thisAirlineCountCurrent + 1
@@ -234,7 +234,7 @@ func (db *Dashboard) notifyRareType(aircraft *aircraftRecord) {
 }
 
 func (db *Dashboard) notifyRareAirline(aircraft *aircraftRecord) {
-	airline := db.IcaoToAirline[aircraft.GetFlightNoAs3LTRCode()]
+	airline := db.IcaoToAirline[aircraft.GetFlightNoAsIcaoCode()]
 
 	msgBody := fmt.Sprintf("%s (%s)", airline.Company, airline.Country)
 	err := beeep.Notify("Rare Aircraft Type Spotted", msgBody, appIconPath)

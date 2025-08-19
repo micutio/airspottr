@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	icaoListPath     = "./data/ICAOList.csv"
-	airlineListPath  = "./data/Airlines.csv"
-	milCodeFilePath  = "./data/MilICAOOperatorLookUp.csv"
-	milCodeHeaderLen = 2
+	icaoListPath      = "./data/ICAOList.csv"
+	airlineListPath   = "./data/Airlines.csv"
+	regPrefixListPath = "./data/RegPrefixList.csv"
+	milCodeFilePath   = "./data/MilICAOOperatorLookUp.csv"
+	milCodeHeaderLen  = 2
 )
 
 var (
@@ -113,7 +114,7 @@ func getIcaoToAirlineMap() (map[string]icaoAirline, error) {
 	return icaoAirlineMap, nil
 }
 
-// parseAirlineCsvToMap reads a CSV file and parses it into a map Three-letter-code -> airline record.
+// parseAirlineCsvToMap reads a CSV file and parses it into a map ICAO Code -> airline record.
 func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
@@ -165,7 +166,69 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
 	return records, nil
 }
 
-// getMilCodeToOperatorMap returns a militar code to operator mapping.
+// getRegPrefixMap returns a registration prefix to country mapping
+func getRegPrefixMap() (map[string]string, error) {
+	// Parse the CSV file
+	regPrefixMap, err := parseRegPrefixCsvToMap(regPrefixListPath)
+	if err != nil {
+		return nil, fmt.Errorf("getRegPrefixMap: %w: %w", errParseCSV, err)
+	}
+
+	return regPrefixMap, nil
+}
+
+// parseAirlineCsvToMap reads a CSV file and parses it into a map regPrefix -> country.
+func parseRegPrefixCsvToMap(filePath string) (map[string]string, error) {
+	// Open the CSV file
+	file, fileErr := os.Open(filePath)
+	if fileErr != nil {
+		return nil, fmt.Errorf("parseRegPrefixCsvToMap: failed to open file: %w", fileErr)
+	}
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf("parseRegPrefixCsvToMap: error while closing file %s: %w", filePath, closeErr)
+		}
+	}()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(file)
+
+	// Read the header row
+	headers, headerErr := reader.Read()
+	if headerErr != nil {
+		return nil, fmt.Errorf("parseRegPrefixCsvToMap: failed to read header: %w", headerErr)
+	}
+
+	// regPrefix Headers = country, prefix, comment
+	lenPrefixHeaders := 3
+	if len(headers) != lenPrefixHeaders {
+		return nil, fmt.Errorf("parseRegPrefixCsvToMap: %w", errHeaderLen)
+	}
+
+	records := make(map[string]string)
+
+	// Loop through the remaining records
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break // End of file
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("parseRegPrefixCsvToMap: failed to read record: %w", err)
+		}
+
+		country := record[0]
+		prefix := record[1]
+		// skipping comment, record[2] is unused
+		records[prefix] = country
+	}
+
+	return records, nil
+}
+
+// getMilCodeToOperatorMap returns a military code to operator mapping.
 func getMilCodeToOperatorMap() (map[string]string, error) {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)

@@ -89,7 +89,7 @@ type aircraftRecord struct {
 	CachedDist float64
 }
 
-// GetAltitudeAsString reads the altitude of an aircraft and returns it as a string.
+// GetAltitudeAsStr reads the altitude of an aircraft and returns it as a string.
 // The altitude is stored either as a string 'ground' or as a float denoting the measured
 // barometric altitude.
 // If the latter is the case, the float will be formatted without any decimal places
@@ -116,8 +116,9 @@ func (ac *aircraftRecord) GetFlightNoAsStr() string {
 }
 
 // TODO: Check that 4th char is number, otherwise probably military.
-// GetFlightNoAs3LTRCode extracts the three-letter code from the flight number.
-func (ac *aircraftRecord) GetFlightNoAs3LTRCode() string {
+
+// GetFlightNoAsIcaoCode extracts the three-letter code from the flight number.
+func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
 		return flightUnknownCode
 	}
