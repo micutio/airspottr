@@ -185,8 +185,24 @@ func (db *Dashboard) processCivAircraftRecords() {
 
 		// record airline and update airline rarity
 		// TODO: Also look into military operators and ownOp field
+		// TODO: Rename airline to operator
+		// Goal: detect operator and country
+		// Strategy:
+		//	1. look a flight number, try to extract icao code and look up airline, like it's done already
+		//  2. get country from hex value
+		//  3. get country from registration prefix
+		//  4. get operator from mil-icao-operator lookup, NOTE: operator code has variable length!
+		//  5. get operator from ownOp field
 		airlineCode := aircraft.GetFlightNoAsIcaoCode()
+		if airlineCode == flightUnknownCode {
+			continue
+		}
+
 		airline := db.IcaoToAirline[airlineCode]
+		if airline.Company == "" {
+			continue
+		}
+
 		thisAirlineCountCurrent := db.seenAirlineCount[airlineCode]
 		thisAirlineCountNew := thisAirlineCountCurrent + 1
 		db.seenAirlineCount[airlineCode] = thisAirlineCountNew
@@ -352,8 +368,8 @@ func (db *Dashboard) listTypesByRarity() {
 	sort.Sort(ByTypeCount(typeCounts))
 
 	db.logger.Info("aircraft types from least to most common")
-	for i := range typeCounts {
-		db.logger.Info(fmt.Sprintf("%6d - %q\n", typeCounts[i].count, typeCounts[i].acType))
+	for j := range typeCounts {
+		db.logger.Info(fmt.Sprintf("%6d - %q\n", typeCounts[j].count, typeCounts[j].acType))
 	}
 }
 
@@ -381,8 +397,9 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 func (db *Dashboard) listAirlineByRarity() {
 	airlineCounts := make([]airlineCountTuple, len(db.seenAirlineCount))
 	i := 0
-	for key, value := range db.seenTypeCount {
-		airlineCounts[i] = airlineCountTuple{airline: key, count: value}
+	for key, value := range db.seenAirlineCount {
+		operator := db.IcaoToAirline[key].Company
+		airlineCounts[i] = airlineCountTuple{airline: operator, count: value}
 		i++
 	}
 
