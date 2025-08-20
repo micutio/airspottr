@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ const (
 	icaoListPath      = "./data/ICAOList.csv"
 	airlineListPath   = "./data/Airlines.csv"
 	regPrefixListPath = "./data/RegPrefixList.csv"
+	hexRangeListPath  = "./data/ICAOHexRange.csv"
 	milCodeFilePath   = "./data/MilICAOOperatorLookUp.csv"
 	milCodeHeaderLen  = 2
 )
@@ -161,6 +163,69 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
 		// skipping telephony, record[2] is unused
 		threeLtrCode := record[3][0:3]
 		records[threeLtrCode] = icaoAirline{company, country}
+	}
+
+	return records, nil
+}
+
+type hexRange struct {
+	LowerBound int64
+	UpperBound int64
+}
+
+// getHexRangeMap returns a hex registration range to country mapping
+func getHexRangeMap() (map[hexRange]string, error) {
+	// Parse the CSV file
+	hexRangeMap, err := parseHexRangeCsvToMap(hexRangeListPath)
+	if err != nil {
+		return nil, fmt.Errorf("getRegPrefixMap: %w: %w", errParseCSV, err)
+	}
+
+	return hexRangeMap, nil
+}
+
+// parseAirlineCsvToMap reads a CSV file and parses it into a map regPrefix -> country.
+func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
+	// Open the CSV file
+	file, fileErr := os.Open(filePath)
+	if fileErr != nil {
+		return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to open file: %w", fileErr)
+	}
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf("parseHexRangeCsvToMap: error while closing file %s: %w", filePath, closeErr)
+		}
+	}()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(file)
+
+	// Does not have a header row, so we don't need to read it first.
+
+	records := make(map[hexRange]string)
+
+	// Loop through the remaining records
+	for {
+		record, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			break // End of file
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to read record: %w", err)
+		}
+
+		lowerBound, err := strconv.ParseInt(record[0], 16, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to convert lower bound hex string: %s", record[0])
+		}
+		upperBound, err := strconv.ParseInt(record[1], 16, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to convert upper bound hex string: %s", record[1])
+		}
+		// skipping comment, record[2] is unused
+		records[hexRange{lowerBound, upperBound}] = record[2]
 	}
 
 	return records, nil

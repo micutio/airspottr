@@ -53,6 +53,7 @@ type Dashboard struct {
 	seenAircraft      map[string]time.Time // set of all seen aircraft, mapped to last seen time
 	seenTypeCount     map[string]int       // types mapped to how often seen
 	seenAirlineCount  map[string]int       // types mapped to how often seen
+	hexRangeToCountry map[hexRange]string
 	milCodeToOperator map[string]string
 	logger            slog.Logger
 }
@@ -85,6 +86,7 @@ func NewDashboard() (*Dashboard, error) {
 		seenAircraft:      make(map[string]time.Time),
 		seenTypeCount:     make(map[string]int),
 		seenAirlineCount:  make(map[string]int),
+		hexRangeToCountry: make(map[hexRange]string),
 		milCodeToOperator: milCodeToOperatorMap,
 		logger:            *slog.Default(),
 	}
