@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"strings"
 )
 
 // See https://www.adsbexchange.com/version-2-api-wip/
@@ -117,13 +118,15 @@ func (ac *aircraftRecord) GetFlightNoAsStr() string {
 
 // TODO: Check that 4th char is number, otherwise probably military.
 
-// GetFlightNoAsIcaoCode extracts the three-letter code from the flight number.
+// GetFlightNoAsIcaoCode trims whitespaces and digits from the flight number,
+// resulting in the three-digit icao code for civilian flights and arbitrary length codes
+// for military, government and private flights.
 func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
 		return flightUnknownCode
 	}
 
-	return ac.Flight[0:3]
+	return strings.TrimSpace(stripDigits(ac.Flight))
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gen2brain/beeep"
 )
@@ -57,13 +58,15 @@ type aircraftSighting struct {
 type Dashboard struct {
 	isWarmup           bool
 	totalTypeCount     int
-	totalAirlineCount  int
+	totalOperatorCount int
+	totalCountryCount  int
 	Fastest            *aircraftRecord
 	Highest            *aircraftRecord
 	CurrentAircraft    []aircraftRecord
 	aircraftSightings  map[string]aircraftSighting // set of all seen aircraft, maps hex to last seen time
 	seenTypeCount      map[string]int              // types mapped to how often seen
-	seenAirlineCount   map[string]int              // airlines mapped to how often seen
+	seenOperatorCount  map[string]int              // airlines mapped to how often seen
+	seenCountryCount   map[string]int              // airlines mapped to how often seen
 	IcaoToAircraft     map[string]icaoAircraft
 	IcaoToAirline      map[string]icaoOperator
 	regPrefixToCountry map[string]string
@@ -90,7 +93,7 @@ func NewDashboard() (*Dashboard, error) {
 
 	hexRangeToCountryMap, hexRangeErr := getHexRangeToCountryMap()
 	if hexRangeErr != nil {
-		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseRegToCountryMap, regErr)
+		return nil, fmt.Errorf("newDashboard: %w caused by %w", errParseHexRangeToCountryMap, regErr)
 	}
 
 	milCodeToOperatorMap, milCodeErr := getMilCodeToOperatorMap()
@@ -101,17 +104,17 @@ func NewDashboard() (*Dashboard, error) {
 	dash := Dashboard{
 		isWarmup:           true,
 		totalTypeCount:     0,
-		totalAirlineCount:  0,
+		totalOperatorCount: 0,
 		Fastest:            nil,
 		Highest:            nil,
 		CurrentAircraft:    nil,
 		aircraftSightings:  make(map[string]aircraftSighting),
 		seenTypeCount:      make(map[string]int),
-		seenAirlineCount:   make(map[string]int),
+		seenOperatorCount:  make(map[string]int),
 		IcaoToAircraft:     icaoToAircraftMap,
 		IcaoToAirline:      icaoToAirlineMap,
 		regPrefixToCountry: regPrefixToCountryMap,
-		hexRangeToCountry:  make(map[hexRange]string),
+		hexRangeToCountry:  hexRangeToCountryMap,
 		milCodeToOperator:  milCodeToOperatorMap,
 		logger:             *slog.Default(),
 	}
@@ -165,15 +168,18 @@ func (db *Dashboard) processCivAircraftRecords() {
 		// The received data often misses the flight number, so keep track of which registrations we have the airline
 		// and update it if we see the same aircraft again.
 
-		db.updateType(&aircraft, &sighting)
+		thisFlightNo := aircraft.GetFlightNoAsIcaoCode()
+		isNewFlight := sighting.lastFlightNo != thisFlightNo
+		sighting.lastFlightNo = thisFlightNo
+		db.updateType(&aircraft, &sighting, isNewFlight)
 		db.updateOperatorAndCountry(&aircraft, &sighting)
 	}
 }
 
-func (db *Dashboard) updateType(aircraft *aircraftRecord, sighting *aircraftSighting) {
+func (db *Dashboard) updateType(aircraft *aircraftRecord, sighting *aircraftSighting, isNewFlight bool) {
 
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.typeDesc != typeUnknown && time.Since(sighting.lastSeen) < time.Hour*6 {
+	if sighting.typeDesc != typeUnknown && !isNewFlight {
 		return
 	}
 
@@ -233,19 +239,20 @@ func (db *Dashboard) updateOperatorAndCountry(aircraft *aircraftRecord, sighting
 	//  3. get country from registration prefix
 	//  4. get operator from mil-icao-operator lookup, NOTE: operator code has variable length!
 	//  5. get operator from ownOp field
-	airlineCode := aircraft.GetFlightNoAsIcaoCode()
-	if airlineCode == flightUnknownCode {
+	flightCode := aircraft.GetFlightNoAsIcaoCode()
+	if flightCode == flightUnknownCode {
 		return
 	}
 
-	operator, exists := db.IcaoToAirline[airlineCode]
-	if !exists {
-		operator = icaoOperator{}
+	operatorRecord, exists := db.IcaoToAirline[flightCode]
+	if exists {
+		sighting.operator = operatorRecord.Company
+		sighting.country = operatorRecord.Country
 	}
 
-	if operator.Company == "" {
+	if sighting.operator == "" {
 		// try other ways of getting the operator
-		militaryOperator := db.milCodeToOperator[strings.TrimSpace(flightNo)[0:3]]
+		militaryOperator := db.milCodeToOperator[flightCode]
 		if militaryOperator != "" {
 			operator.Company = militaryOperator
 		}
@@ -254,7 +261,7 @@ func (db *Dashboard) updateOperatorAndCountry(aircraft *aircraftRecord, sighting
 	if operator.Country == "" {
 		hexAsInt, err := strconv.ParseInt(aircraft.Hex, 16, 64)
 		if err != nil {
-			// TODO: A way to clean this up?
+			// TODO: Any way to clean this up?
 			db.logger.Error("unable to convert hex to int", "value", aircraft.Hex)
 			os.Exit(1)
 		}
@@ -266,21 +273,29 @@ func (db *Dashboard) updateOperatorAndCountry(aircraft *aircraftRecord, sighting
 		}
 
 		if operator.Country == "" {
-			// TODO: parse registration prefix and use reg-prefix map
+			registration := aircraft.Registration
+			prefixEnd := strings.Index(registration, "-")
+			if prefixEnd != -1 {
+				regPrefix := registration[0:prefixEnd]
+				country, countryExists := db.regPrefixToCountry[regPrefix]
+				if countryExists {
+					operator.Country = country
+				}
+			}
 		}
 	}
 
-	thisAirlineCountCurrent := db.seenAirlineCount[airlineCode]
+	thisAirlineCountCurrent := db.seenOperatorCount[flightCode]
 	thisAirlineCountNew := thisAirlineCountCurrent + 1
-	db.seenAirlineCount[airlineCode] = thisAirlineCountNew
-	db.totalAirlineCount++
-	airlineRarity := float32(thisAirlineCountNew) / float32(db.totalAirlineCount)
+	db.seenOperatorCount[flightCode] = thisAirlineCountNew
+	db.totalOperatorCount++
+	airlineRarity := float32(thisAirlineCountNew) / float32(db.totalOperatorCount)
 
 	db.logger.Info(
 		"operator rarity calculation:",
 		"operator", operator,
 		"thisAirlineCountNew", thisAirlineCountNew,
-		"totalAirlineCount", db.totalAirlineCount,
+		"totalOperatorCount", db.totalOperatorCount,
 		"airlineRarity", airlineRarity,
 		"airlineRarityThreshold", airlineRarityThreshold)
 
@@ -288,7 +303,7 @@ func (db *Dashboard) updateOperatorAndCountry(aircraft *aircraftRecord, sighting
 		db.logger.Debug(
 			"operator rarity calculation: ",
 			"thisAirlineCountNew", thisAirlineCountNew,
-			"totalAirlineCount", db.totalAirlineCount,
+			"totalOperatorCount", db.totalOperatorCount,
 			"airlineRarity", airlineRarity,
 			"airlineRarityThreshold", airlineRarityThreshold)
 		db.logger.Info(
@@ -462,9 +477,9 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 }
 
 func (db *Dashboard) listAirlineByRarity() {
-	airlineCounts := make([]airlineCountTuple, len(db.seenAirlineCount))
+	airlineCounts := make([]airlineCountTuple, len(db.seenOperatorCount))
 	i := 0
-	for key, value := range db.seenAirlineCount {
+	for key, value := range db.seenOperatorCount {
 		operator := db.IcaoToAirline[key].Company
 		airlineCounts[i] = airlineCountTuple{airline: operator, count: value}
 		i++
@@ -476,4 +491,13 @@ func (db *Dashboard) listAirlineByRarity() {
 	for j := range airlineCounts {
 		db.logger.Info(fmt.Sprintf("%6d - %q\n", airlineCounts[j].count, airlineCounts[j].airline))
 	}
+}
+
+func stripDigits(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsDigit(r) {
+			return -1 // Remove the digit
+		}
+		return r // Keep the character
+	}, str)
 }
