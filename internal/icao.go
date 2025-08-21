@@ -100,13 +100,13 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 
 // TODO: Also look at hex range csv file to get country
 
-type icaoAirline struct {
+type icaoOperator struct {
 	Company string
 	Country string
 }
 
 // getIcaoToAircraftMap returns a three-letter code to airline record mapping.
-func getIcaoToAirlineMap() (map[string]icaoAirline, error) {
+func getIcaoToAirlineMap() (map[string]icaoOperator, error) {
 	// Parse the CSV file
 	icaoAirlineMap, err := parseAirlineCsvToMap(airlineListPath)
 	if err != nil {
@@ -117,7 +117,7 @@ func getIcaoToAirlineMap() (map[string]icaoAirline, error) {
 }
 
 // parseAirlineCsvToMap reads a CSV file and parses it into a map ICAO Code -> airline record.
-func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
+func parseAirlineCsvToMap(filePath string) (map[string]icaoOperator, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -139,13 +139,13 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
 		return nil, fmt.Errorf("parseAirlineCsvToMap: failed to read header: %w", headerErr)
 	}
 
-	// icaoAirline Headers = Company,Country,Telephony,3Ltr
+	// icaoOperator Headers = Company,Country,Telephony,3Ltr
 	lenIcaoAirlineHeaders := 4
 	if len(headers) != lenIcaoAirlineHeaders {
 		return nil, fmt.Errorf("parseAirlineCsvMap: %w", errHeaderLen)
 	}
 
-	records := make(map[string]icaoAirline)
+	records := make(map[string]icaoOperator)
 
 	// Loop through the remaining records
 	for {
@@ -162,7 +162,7 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoAirline, error) {
 		country := record[1]
 		// skipping telephony, record[2] is unused
 		threeLtrCode := record[3][0:3]
-		records[threeLtrCode] = icaoAirline{company, country}
+		records[threeLtrCode] = icaoOperator{company, country}
 	}
 
 	return records, nil
@@ -173,8 +173,8 @@ type hexRange struct {
 	UpperBound int64
 }
 
-// getHexRangeMap returns a hex registration range to country mapping
-func getHexRangeMap() (map[hexRange]string, error) {
+// getHexRangeToCountryMap returns a hex registration range to country mapping
+func getHexRangeToCountryMap() (map[hexRange]string, error) {
 	// Parse the CSV file
 	hexRangeMap, err := parseHexRangeCsvToMap(hexRangeListPath)
 	if err != nil {
