@@ -20,7 +20,7 @@ const (
 	// SummaryInterval determines how often the summary is show.
 	SummaryInterval = 1 * time.Hour
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
-	DashboardWarmup = 30 * time.Minute
+	DashboardWarmup = 1 * time.Hour
 )
 
 var (

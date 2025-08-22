@@ -3,11 +3,13 @@ package internal
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
+// civAircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.
 type civAircraftResult struct {
 	Now         float64          `json:"now"`         // time this file was generated in [ms]
 	ResultCount int              `json:"resultCount"` // total count of aircraft returned
@@ -15,6 +17,7 @@ type civAircraftResult struct {
 	Aircraft    []aircraftRecord `json:"aircraft"`    // list of Aircraft records
 }
 
+// milAircraftResult mirrors the JSON which is returned for military aircraft queries.
 type milAircraftResult struct {
 	Msg      string           `json:"msg"`   // error message, usually "no error"
 	Now      int              `json:"now"`   // time this file was generated in ms
@@ -24,6 +27,7 @@ type milAircraftResult struct {
 	Aircraft []aircraftRecord `json:"ac"`    // list of Aircraft records
 }
 
+// aircraftRecord is used by both civilian and military aircraft queries.
 type aircraftRecord struct {
 	Alert           int      `json:"alert"`            // flight status alert bit
 	AltBaro         any      `json:"alt_baro"`         // altitude in [feet] or string "ground"
@@ -108,15 +112,14 @@ func (ac *aircraftRecord) GetAltitudeAsStr() string {
 }
 
 // GetFlightNoAsStr converts the flight number to a unified string of length 8.
+// Returns either the full flight number or 'unknown ' if it was not transmitted.
 func (ac *aircraftRecord) GetFlightNoAsStr() string {
-	if len(ac.Flight) == 0 {
+	if ac.Flight == "" {
 		return flightUnknown
 	}
 
 	return ac.Flight
 }
-
-// TODO: Check that 4th char is number, otherwise probably military.
 
 // GetFlightNoAsIcaoCode trims whitespaces and digits from the flight number,
 // resulting in the three-digit icao code for civilian flights and arbitrary length codes
@@ -126,7 +129,28 @@ func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
 		return flightUnknownCode
 	}
 
-	return strings.TrimSpace(stripDigits(ac.Flight))
+	return stripDigits(strings.TrimSpace(ac.Flight))
+}
+
+// GetRegistrationPrefix returns the prefix of the registration if it exists, otherwise
+// it returns the entire registration
+func (ac *aircraftRecord) GetRegistrationPrefix() string {
+	prefixEnd := strings.Index(ac.Registration, "-")
+
+	if prefixEnd != -1 {
+		return ac.Registration[0:prefixEnd]
+	} else {
+		return ac.Registration
+	}
+}
+
+func stripDigits(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsDigit(r) {
+			return -1 // Remove the digit
+		}
+		return r // Keep the character
+	}, str)
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
