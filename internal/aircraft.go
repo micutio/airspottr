@@ -132,16 +132,15 @@ func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
 	return stripDigits(strings.TrimSpace(ac.Flight))
 }
 
-// GetRegistrationPrefix returns the prefix of the registration if it exists, otherwise
-// it returns the entire registration
+// GetRegistrationPrefix returns the prefix of the registration if it exists,
+// otherwise it returns the entire registration.
 func (ac *aircraftRecord) GetRegistrationPrefix() string {
 	prefixEnd := strings.Index(ac.Registration, "-")
 
 	if prefixEnd != -1 {
 		return ac.Registration[0:prefixEnd]
-	} else {
-		return ac.Registration
 	}
+	return ac.Registration
 }
 
 func stripDigits(str string) string {

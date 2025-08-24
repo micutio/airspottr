@@ -22,6 +22,7 @@ const (
 var (
 	errParseCSV  = errors.New("error parsing CSV")
 	errHeaderLen = errors.New("unexpected header length")
+	errParseHex  = errors.New("unable to parse hexadecimal string")
 )
 
 type icaoAircraft struct {
@@ -98,8 +99,6 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 	return records, nil
 }
 
-// TODO: Also look at hex range csv file to get country
-
 type icaoOperator struct {
 	Company string
 	Country string
@@ -173,7 +172,7 @@ type hexRange struct {
 	UpperBound int64
 }
 
-// getHexRangeToCountryMap returns a hex registration range to country mapping
+// getHexRangeToCountryMap returns a hex registration range to country mapping.
 func getHexRangeToCountryMap() (map[hexRange]string, error) {
 	// Parse the CSV file
 	hexRangeMap, err := parseHexRangeCsvToMap(hexRangeListPath)
@@ -218,11 +217,11 @@ func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
 
 		lowerBound, err := strconv.ParseInt(record[0], 16, 64)
 		if err != nil {
-			return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to convert lower bound hex string: %s", record[0])
+			return nil, fmt.Errorf("parseHexRangeCsvToMap: %w: %s", errParseHex, record[0])
 		}
 		upperBound, err := strconv.ParseInt(record[1], 16, 64)
 		if err != nil {
-			return nil, fmt.Errorf("parseHexRangeCsvToMap: failed to convert upper bound hex string: %s", record[1])
+			return nil, fmt.Errorf("parseHexRangeCsvToMap: %w: %s", errParseHex, record[1])
 		}
 		// skipping comment, record[2] is unused
 		records[hexRange{lowerBound, upperBound}] = record[2]
@@ -231,7 +230,7 @@ func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
 	return records, nil
 }
 
-// getRegPrefixMap returns a registration prefix to country mapping
+// getRegPrefixMap returns a registration prefix to country mapping.
 func getRegPrefixMap() (map[string]string, error) {
 	// Parse the CSV file
 	regPrefixMap, err := parseRegPrefixCsvToMap(regPrefixListPath)

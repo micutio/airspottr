@@ -1,4 +1,4 @@
-﻿package internal
+package internal
 
 import "testing"
 
@@ -15,14 +15,15 @@ func getTestFlights() []testFlight {
 }
 
 func TestFlightToAirlineConversion(t *testing.T) {
-	for _, ft := range getTestFlights() {
-		aircraft := aircraftRecord{ //nolint:exhauststruct // convenience for testing
-			Flight: ft.flightNo,
+	for _, flight := range getTestFlights() {
+		aircraft := aircraftRecord{ //nolint:exhaustruct // convenience for testing
+			Flight: flight.flightNo,
 		}
 
 		icaoCode := aircraft.GetFlightNoAsIcaoCode()
-		if icaoCode != ft.expectedCode {
-			t.Errorf("fail: want %v, got %v", ft.expectedCode, icaoCode)
+
+		if icaoCode != flight.expectedCode {
+			t.Errorf("fail: want %v, got %v", flight.expectedCode, icaoCode)
 		}
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
+	"log" //nolint:depguard // Don't feel like using slog
 	"sort"
 	"strconv"
 	"strings"
@@ -76,10 +76,11 @@ type Dashboard struct {
 	regPrefixToCountry map[string]string
 	hexRangeToCountry  map[hexRange]string
 	milCodeToOperator  map[string]string
-	logger             slog.Logger
+	consoleOut         log.Logger
+	errOut             log.Logger
 }
 
-func NewDashboard() (*Dashboard, error) {
+func NewDashboard(logParams LogParams) (*Dashboard, error) {
 	const initError = "newDashboard: %w caused by %w"
 
 	icaoToAircraftMap, aircraftErr := getIcaoToAircraftMap()
@@ -124,7 +125,8 @@ func NewDashboard() (*Dashboard, error) {
 		regPrefixToCountry: regPrefixToCountryMap,
 		hexRangeToCountry:  hexRangeToCountryMap,
 		milCodeToOperator:  milCodeToOperatorMap,
-		logger:             *slog.Default(),
+		consoleOut:         *log.New(logParams.ConsoleOut, "", 0),
+		errOut:             *log.New(logParams.ErrorOut, "dashboard", log.LstdFlags),
 	}
 
 	return &dash, nil
@@ -143,7 +145,7 @@ func (db *Dashboard) FinishWarmupPeriod() {
 func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 	var data civAircraftResult
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-		db.logger.Error("dashboard:", slog.Any("failed to unmarshal Json", err))
+		db.errOut.Println(fmt.Errorf("failed to unmarshal Json: %w", err))
 		return
 	}
 
@@ -215,27 +217,30 @@ func (db *Dashboard) updateType(aircraft *aircraftRecord, sighting *aircraftSigh
 	db.totalTypeCount++
 	typeRarity := float32(thisTypeCountNew) / float32(db.totalTypeCount)
 
-	db.logger.Debug(
-		"type rarity calculation: ",
-		" aircraft flight", aircraft.Flight,
-		"type", sighting.typeDesc,
-		"thisTypeCountNew", thisTypeCountNew,
-		"totalTypeCount", db.totalTypeCount,
-		"typeRarity", typeRarity,
-		"typeRarityThreshold", typeRarityThreshold)
+	// db.logger.Debug(
+	//	"type rarity calculation: ",
+	//	" aircraft flight", aircraft.Flight,
+	//	"type", sighting.typeDesc,
+	//	"thisTypeCountNew", thisTypeCountNew,
+	//	"totalTypeCount", db.totalTypeCount,
+	//	"typeRarity", typeRarity,
+	//	"typeRarityThreshold", typeRarityThreshold)
 
-	if typeRarity < typeRarityThreshold {
-		db.logger.Info(
-			"type rarity calculation: ",
-			"thisTypeCountNew", thisTypeCountNew,
-			"totalTypeCount", db.totalTypeCount,
-			"typeRarity", typeRarity,
-			"typeRarityThreshold", typeRarityThreshold)
-		db.logger.Info("found rare type", "", db.aircraftToString(aircraft))
+	if typeRarity > typeRarityThreshold {
+		return
+	}
 
-		if !db.isWarmup {
-			db.notifyRareType(aircraft, sighting)
-		}
+	// db.logger.Info(
+	//	"type rarity calculation: ",
+	//	"thisTypeCountNew", thisTypeCountNew,
+	//	"totalTypeCount", db.totalTypeCount,
+	//	"typeRarity", typeRarity,
+	//	"typeRarityThreshold", typeRarityThreshold)
+
+	db.consoleOut.Printf("found rare type %s\n", db.aircraftToString(aircraft))
+
+	if !db.isWarmup {
+		db.notifyRareType(aircraft, sighting)
 	}
 }
 
@@ -280,24 +285,26 @@ func (db *Dashboard) updateOperator(aircraft *aircraftRecord, sighting *aircraft
 	db.totalOperatorCount++
 	operatorRarity := float32(thisOperatorCountNew) / float32(db.totalOperatorCount)
 
-	db.logger.Debug(
-		"operator rarity calculation:",
-		"operator", sighting.operator,
-		"thisOperatorCountNew", thisOperatorCountNew,
-		"totalOperatorCount", db.totalOperatorCount,
-		"operatorRarity", operatorRarity,
-		"operatorRarityThreshold", operatorRarityThreshold)
+	// db.logger.Debug(
+	//	"operator rarity calculation:",
+	//	"operator", sighting.operator,
+	//	"thisOperatorCountNew", thisOperatorCountNew,
+	//	"totalOperatorCount", db.totalOperatorCount,
+	//	"operatorRarity", operatorRarity,
+	//	"operatorRarityThreshold", operatorRarityThreshold)
 
 	if operatorRarity > operatorRarityThreshold {
 		return
 	}
-	db.logger.Debug(
-		"operator rarity calculation: ",
-		"thisOperatorCountNew", thisOperatorCountNew,
-		"totalOperatorCount", db.totalOperatorCount,
-		"operatorRarity", operatorRarity,
-		"operatorRarityThreshold", operatorRarityThreshold)
-	db.logger.Info("found rare operator", "", sighting.operator)
+
+	// db.logger.Debug(
+	//	"operator rarity calculation: ",
+	//	"thisOperatorCountNew", thisOperatorCountNew,
+	//	"totalOperatorCount", db.totalOperatorCount,
+	//	"operatorRarity", operatorRarity,
+	//	"operatorRarityThreshold", operatorRarityThreshold)
+
+	db.consoleOut.Printf("found rare operator: %s\n", sighting.operator)
 
 	if !db.isWarmup {
 		db.notifyRareOperator(aircraft, sighting)
@@ -345,25 +352,25 @@ func (db *Dashboard) updateCountry(aircraft *aircraftRecord, sighting *aircraftS
 	db.totalCountryCount++
 	countryRarity := float32(thisCountryCountNew) / float32(db.totalCountryCount)
 
-	db.logger.Debug(
-		"country rarity calculation:",
-		"country", sighting.country,
-		"thisCountryCountNew", thisCountryCountNew,
-		"totalCountryCount", db.totalCountryCount,
-		"countryRarity", countryRarity,
-		"countryRarityThreshold", countryRarityThreshold)
+	// db.logger.Debug(
+	//	"country rarity calculation:",
+	//	"country", sighting.country,
+	//	"thisCountryCountNew", thisCountryCountNew,
+	//	"totalCountryCount", db.totalCountryCount,
+	//	"countryRarity", countryRarity,
+	//	"countryRarityThreshold", countryRarityThreshold)
 
 	if countryRarity > countryRarityThreshold {
 		return
 	}
 
-	db.logger.Debug(
-		"country rarity calculation: ",
-		"thisCountryCountNew", thisCountryCountNew,
-		"totalCountryCount", db.totalCountryCount,
-		"countryRarity", countryRarity,
-		"countryRarityThreshold", countryRarityThreshold)
-	db.logger.Info("found rare country", "", sighting.country)
+	// db.logger.Debug(
+	//	"country rarity calculation: ",
+	//	"thisCountryCountNew", thisCountryCountNew,
+	//	"totalCountryCount", db.totalCountryCount,
+	//	"countryRarity", countryRarity,
+	//	"countryRarityThreshold", countryRarityThreshold)
+	db.consoleOut.Printf("found rare country: %s\n", sighting.country)
 
 	if !db.isWarmup {
 		db.notifyRareCountry(aircraft, sighting)
@@ -373,7 +380,7 @@ func (db *Dashboard) updateCountry(aircraft *aircraftRecord, sighting *aircraftS
 func (db *Dashboard) getCountryByHexRange(hexAsStr string) string {
 	hexAsInt, err := strconv.ParseInt(hexAsStr, 16, 64)
 	if err != nil {
-		db.logger.Error("unable to convert hex to int", "value", hexAsStr)
+		db.errOut.Printf("unable to convert hex to int: %s\n", hexAsStr)
 		return countryUnknown
 	}
 	for key, value := range db.hexRangeToCountry {
@@ -452,15 +459,15 @@ func (db *Dashboard) updateFastest(aircraft *aircraftRecord) {
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
 func (db *Dashboard) PrintSummary() {
-	fmt.Println("=== Summary ===")
+	db.consoleOut.Println("=== Summary ===")
 	db.listByRarity("aircraft", db.seenTypeCount)
 	db.listByRarity("operator", db.seenOperatorCount)
 	db.listByRarity("country", db.seenCountryCount)
-	db.logger.Info("Fastest Aircraft:")
-	db.logger.Info(db.aircraftToString(db.Fastest))
-	db.logger.Info("Highest Aircraft:")
-	db.logger.Info(db.aircraftToString(db.Highest))
-	fmt.Println("=== End Summary ===")
+	db.consoleOut.Println("Fastest Aircraft:")
+	db.consoleOut.Println(db.aircraftToString(db.Fastest))
+	db.consoleOut.Println("Highest Aircraft:")
+	db.consoleOut.Println(db.aircraftToString(db.Highest))
+	db.consoleOut.Println("=== End Summary ===")
 }
 
 type propertyCountTuple struct {
@@ -484,9 +491,9 @@ func (db *Dashboard) listByRarity(propertyName string, propertyCountMap map[stri
 
 	sort.Sort(ByCount(propertyCounts))
 
-	db.logger.Info("rarity from least to most common", "value", propertyName)
+	db.consoleOut.Printf("Rarity from least to most common %s", propertyName)
 	for j := range propertyCounts {
-		db.logger.Info(fmt.Sprintf("%6d - %q\n", propertyCounts[j].count, propertyCounts[j].property))
+		db.consoleOut.Printf("%6d - %q\n", propertyCounts[j].count, propertyCounts[j].property)
 	}
 }
 
@@ -518,7 +525,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 func (db *Dashboard) ProcessMilAircraftJSON(jsonBytes []byte) {
 	var data milAircraftResult
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-		db.logger.Error("dashboard:", slog.Any("failed to unmarshal military aircraft JSON", err))
+		db.errOut.Println(fmt.Errorf("failed to unmarshal military aircraft JSON %w", err))
 		return
 	}
 
@@ -545,7 +552,7 @@ func (db *Dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
 		return
 	}
 
-	db.logger.Info("Military aircraft in increasing distance from here:\n")
+	db.consoleOut.Println("Military aircraft in increasing distance from here:")
 
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
@@ -553,6 +560,6 @@ func (db *Dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
 			continue
 		}
 
-		db.logger.Info(db.aircraftToString(&aircraft))
+		db.consoleOut.Println(db.aircraftToString(&aircraft))
 	}
 }

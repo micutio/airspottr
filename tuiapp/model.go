@@ -16,7 +16,7 @@ type ADSBResponseMsg []byte
 
 func tick() tea.Cmd {
 	return tea.Every(
-		30*time.Second,
+		internal.AircraftUpdateInterval,
 		func(t time.Time) tea.Msg {
 			return TickMsg(t)
 		},
@@ -50,7 +50,7 @@ type model struct {
 	tableStyle         table.Styles
 
 	lastUpdate time.Time
-	dashboard  internal.Dashboard
+	dashboard  *internal.Dashboard
 }
 
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.

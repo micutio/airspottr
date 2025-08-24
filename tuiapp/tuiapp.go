@@ -19,13 +19,19 @@
 package tuiapp
 
 import (
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/flighttrack/internal"
+)
+
+const (
+	errLogFilePath = "./flighttracker.log"
 )
 
 // TODO: enable to write all errors to file instead of stdout when running as tui.
@@ -68,7 +74,18 @@ func Run() {
 		table.WithStyles(tableStyle),
 	)
 
-	flightDash, dashErr := internal.NewDashboard()
+	errLogFile, err := os.OpenFile(errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	defer errLogFile.Close()
+
+	consoleParams := internal.LogParams{
+		ConsoleOut: io.Discard,
+		ErrorOut:   errLogFile,
+	}
+
+	flightDash, dashErr := internal.NewDashboard(consoleParams)
 	if dashErr != nil {
 		log.Fatal(dashErr)
 	}
@@ -84,7 +101,7 @@ func Run() {
 		typeRarityTbl:      typeRarityTbl,
 		tableStyle:         tableStyle,
 		lastUpdate:         time.Unix(0, 0),
-		dashboard:          *flightDash,
+		dashboard:          flightDash,
 	}
 	// Create a new Bubble Tea program with the appModel and enable alternate screen
 	p := tea.NewProgram(&appModel, tea.WithAltScreen())

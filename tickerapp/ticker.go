@@ -23,7 +23,13 @@ func Run() {
 
 	logger := slog.Default()
 	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
-	flightDash, dashboardErr := internal.NewDashboard()
+
+	logParams := internal.LogParams{
+		ConsoleOut: os.Stdout,
+		ErrorOut:   os.Stderr,
+	}
+
+	flightDash, dashboardErr := internal.NewDashboard(logParams)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
