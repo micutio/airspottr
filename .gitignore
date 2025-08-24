@@ -4,6 +4,8 @@
 
 # Executable in linux
 flighttrack
+# log file
+flighttracker.log
 
 # Binaries for programs and plugins
 *.exe

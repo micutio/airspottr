@@ -171,9 +171,13 @@ func (m *model) viewHeader() string {
 	highest := m.dashboard.Highest
 	fastest := m.dashboard.Fastest
 
+	if highest == nil || fastest == nil {
+		return ""
+	}
+
 	return m.viewStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
-			fmt.Sprintf("Last update: %d milliseconds ago\n", time.Since(m.lastUpdate).Milliseconds()),
+			fmt.Sprintf("Last update: %d seconds ago\n", time.Since(m.lastUpdate).Seconds()),
 			list.Border(lipgloss.NormalBorder(), false).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Highest"),
