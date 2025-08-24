@@ -177,7 +177,7 @@ func (m *model) viewHeader() string {
 
 	return m.viewStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
-			fmt.Sprintf("Last update: %d seconds ago\n", time.Since(m.lastUpdate).Seconds()),
+			fmt.Sprintf("Last update: %2.0f seconds ago\n", time.Since(m.lastUpdate).Seconds()),
 			list.Border(lipgloss.NormalBorder(), false).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Highest"),

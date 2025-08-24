@@ -160,6 +160,7 @@ func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 
 func (db *Dashboard) processCivAircraftRecords() {
 	sort.Sort(ByFlight(db.CurrentAircraft))
+	thisPos := newCoordinates(Lat, Lon)
 
 	for i := range len(db.CurrentAircraft) {
 		// Step 1: Get aircraft and time of sighting
@@ -184,6 +185,10 @@ func (db *Dashboard) processCivAircraftRecords() {
 		thisFlightNo := aircraft.GetFlightNoAsStr()
 		isNewFlight := sighting.lastFlightNo != thisFlightNo
 		sighting.lastFlightNo = thisFlightNo
+
+		// Step 3: Update distance
+		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
+		(db.CurrentAircraft)[i].CachedDist = Distance(thisPos, acPos).Kilometers()
 
 		// Step 3: Update all aircraft, type, operator and country statistics
 		db.updateHighest(&aircraft)
