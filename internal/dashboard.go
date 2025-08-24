@@ -493,7 +493,7 @@ func (db *Dashboard) listByRarity(propertyName string, propertyCountMap map[stri
 
 	db.consoleOut.Printf("Rarity from least to most common %s", propertyName)
 	for j := range propertyCounts {
-		db.consoleOut.Printf("%6d - %q\n", propertyCounts[j].count, propertyCounts[j].property)
+		db.consoleOut.Printf("%6d - %s\n", propertyCounts[j].count, propertyCounts[j].property)
 	}
 }
 
@@ -508,7 +508,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	altitude := aircraft.GetAltitudeAsStr()
 	aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 
-	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %q (%s)",
+	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
 		flight,
 		aircraft.CachedDist,
 		altitude,
