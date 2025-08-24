@@ -37,8 +37,10 @@ const (
 // TODO: enable to write all errors to file instead of stdout when running as tui.
 
 func Run() {
+	theme := getDefaultTheme()
+
 	tableStyle := table.DefaultStyles()
-	tableStyle.Selected = lipgloss.NewStyle().Background(Color.Highlight)
+	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
 
 	// Create a new table with specified columns and initial empty rows.
 	currentAircraftTbl := table.New(
@@ -74,9 +76,9 @@ func Run() {
 		table.WithStyles(tableStyle),
 	)
 
-	errLogFile, err := os.OpenFile(errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Failed to open log file: %v", err)
+	errLogFile, fileErr := os.OpenFile(errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if fileErr != nil {
+		log.Fatalf("Failed to open log file: %v", fileErr)
 	}
 	defer errLogFile.Close()
 
@@ -97,6 +99,7 @@ func Run() {
 		height:             0,
 		baseStyle:          lipgloss.NewStyle(),
 		viewStyle:          lipgloss.NewStyle(),
+		theme:              getDefaultTheme(),
 		currentAircraftTbl: currentAircraftTbl,
 		typeRarityTbl:      typeRarityTbl,
 		tableStyle:         tableStyle,
@@ -107,7 +110,7 @@ func Run() {
 	p := tea.NewProgram(&appModel, tea.WithAltScreen())
 
 	// Run the program and handle any errors
-	if _, err := p.Run(); err != nil {
-		log.Fatalf("Error running program: %v", err)
+	if _, progErr := p.Run(); progErr != nil {
+		log.Fatalf("Error running program: %v", progErr)
 	}
 }

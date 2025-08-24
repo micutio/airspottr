@@ -4,25 +4,17 @@
 package tickerapp
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
-	"github.com/gen2brain/beeep"
 	"github.com/micutio/flighttrack/internal"
-)
-
-const (
-	// thisAppName is the name of this application as shown on notifications.
-	thisAppName = "flighttrack ticker"
 )
 
 func Run() {
 	// Initialize logging, notifications and dashboard
 
 	logger := slog.Default()
-	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
 
 	logParams := internal.LogParams{
 		ConsoleOut: os.Stdout,
@@ -59,9 +51,6 @@ func Run() {
 	// Use a channel to gracefully stop the program if needed.
 	// (Though not strictly necessary for an infinite loop)
 	done := make(chan bool)
-
-	fmt.Println("Aircraft Tracking")
-	fmt.Println("Press Ctrl+C to stop the program.")
 
 	// Start a goroutine to perform the requests
 	go func() {

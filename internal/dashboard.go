@@ -508,7 +508,7 @@ func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
 	altitude := aircraft.GetAltitudeAsStr()
 	aType := db.IcaoToAircraft[aircraft.IcaoType].ModelCode
 
-	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %q (%s)\n",
+	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %q (%s)",
 		flight,
 		aircraft.CachedDist,
 		altitude,

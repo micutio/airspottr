@@ -2,15 +2,21 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/gen2brain/beeep"
 	"github.com/micutio/flighttrack/tickerapp"
+	"github.com/micutio/flighttrack/tuiapp"
 	"github.com/spf13/pflag"
+)
+
+const (
+	// thisAppName is the name of this application as shown on notifications.
+	thisAppName = "FLTRK"
 )
 
 // TODO: Argument parsing, e.g.: `--tui` to run app either as TUI or pure cli.
 // TODO: Change title of the console!
 func main() {
+	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
 	// Define the flag with a long name ("name") and a short name ("n").
 
 	isLaunchTicker := pflag.BoolP(
@@ -25,6 +31,6 @@ func main() {
 	if *isLaunchTicker {
 		tickerapp.Run()
 	} else {
-		fmt.Println("TUI feature coming soon!")
+		tuiapp.Run()
 	}
 }

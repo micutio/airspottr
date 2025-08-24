@@ -40,17 +40,16 @@ func requestADSBDataCmd() tea.Cmd {
 // - View() string
 // This forms the base for the TUI app.
 type model struct {
-	width     int
-	height    int
-	baseStyle lipgloss.Style
-	viewStyle lipgloss.Style
-
+	width              int
+	height             int
+	baseStyle          lipgloss.Style
+	viewStyle          lipgloss.Style
+	theme              Theme
 	currentAircraftTbl table.Model
 	typeRarityTbl      table.Model
 	tableStyle         table.Styles
-
-	lastUpdate time.Time
-	dashboard  *internal.Dashboard
+	lastUpdate         time.Time
+	dashboard          *internal.Dashboard
 }
 
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.
@@ -79,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 				m.currentAircraftTbl.SetStyles(m.tableStyle)
 				m.currentAircraftTbl.Blur()
 			} else {
-				m.tableStyle.Selected = m.tableStyle.Selected.Background(Color.Highlight)
+				m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
 				m.currentAircraftTbl.SetStyles(m.tableStyle)
 				m.currentAircraftTbl.Focus()
 			}
@@ -150,7 +149,7 @@ func (m *model) viewHeader() string {
 	// defines the style for list items, including borders, border color, height, and padding.
 	list := m.baseStyle.
 		Border(lipgloss.NormalBorder(), false, true, false, false).
-		BorderForeground(Color.Border).
+		BorderForeground(m.theme.Border).
 		Height(4).
 		Padding(0, 1)
 
@@ -159,13 +158,8 @@ func (m *model) viewHeader() string {
 
 	// Helper function that formats a key-value pair with an optional suffix.
 	// It aligns the value to the right and renders it with the specified style.
-	listItem := func(key string, value string, suffix ...string) string {
-		finalSuffix := ""
-		if len(suffix) > 0 {
-			finalSuffix = suffix[0]
-		}
-
-		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(fmt.Sprintf("%s%s", value, finalSuffix))
+	listItem := func(key string, value string) string {
+		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(value)
 
 		listItemKey := func(key string) string {
 			return m.baseStyle.Render(key + ":")
