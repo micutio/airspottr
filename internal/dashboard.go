@@ -22,11 +22,11 @@ const (
 	// appIconPath is the file path to the icon png for this application.
 	appIconPath = "./assets/icon.png"
 	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	typeRarityThreshold = 0.01
+	typeRarityThreshold = 0.001
 	// operatorRarityThreshold denotes the maximum rate an operator is seen to be considered rare.
-	operatorRarityThreshold = 0.01
+	operatorRarityThreshold = 0.001
 	// countryRarityThreshold denotes the maximum rate a country is seen to be considered rare.
-	countryRarityThreshold = 0.01
+	countryRarityThreshold = 0.001
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
@@ -319,19 +319,19 @@ func (db *Dashboard) updateCountry(aircraft *aircraftRecord, sighting *aircraftS
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != flightUnknownCode {
 		if operatorRecord, exists := db.IcaoToAirline[flightCode]; exists {
-			sighting.country = operatorRecord.Country
+			sighting.country = strings.ToUpper(operatorRecord.Country)
 		}
 	}
 
 	// Option #2: Detect country by the range of it's hex registration.
 	if sighting.country == countryUnknown {
-		sighting.country = db.getCountryByHexRange(aircraft.Hex)
+		sighting.country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
 	}
 
 	// Option #3: Detect country by its ICAO registration prefix.
 	if sighting.country == countryUnknown {
 		if country, exists := db.getCountryByRegPrefix(aircraft.Registration); exists {
-			sighting.country = country
+			sighting.country = strings.ToUpper(country)
 		}
 	}
 
