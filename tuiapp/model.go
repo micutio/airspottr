@@ -191,9 +191,12 @@ func (m *model) viewHeader() string {
 
 	return m.viewStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
-			fmt.Sprintf("UpTime: %v\n", time.Since(m.startTime)),
-			fmt.Sprintf("Last update: %2.0f seconds ago\n", time.Since(m.lastUpdate).Seconds()),
-			list.Border(lipgloss.RoundedBorder(), true, true, true, true).Render(
+			list.Border(lipgloss.RoundedBorder()).Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					fmt.Sprintf("UpTime: %v\n", time.Since(m.startTime)),
+					fmt.Sprintf("Last update: %2.0f seconds ago\n", time.Since(m.lastUpdate).Seconds())),
+			),
+			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Highest"),
 					lipgloss.JoinHorizontal(
@@ -203,10 +206,6 @@ func (m *model) viewHeader() string {
 						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].ModelCode),
 						listItem("REG", highest.Registration),
 					),
-				),
-			),
-			list.Border(lipgloss.RoundedBorder(), true, true, true, true).Render(
-				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Fastest"),
 					lipgloss.JoinHorizontal(
 						lipgloss.Left,
@@ -222,5 +221,5 @@ func (m *model) viewHeader() string {
 }
 
 func (m *model) viewAircraft() string {
-	return m.viewStyle.Render(m.currentAircraftTbl.View())
+	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.currentAircraftTbl.View())
 }
