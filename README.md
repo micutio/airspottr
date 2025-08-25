@@ -1,16 +1,18 @@
 [<img src="./assets/icon.png" width="100" />](./assets/icon.png)
 
-# Flight Tracker
+# airspottr - Plane Spotting In Your Terminal
 
-Testing flight tracking APIs and http/get requests in Go.
+A command line tool which shows real-life aircraft in your surrounding
+and keeps track of rare aircraft types, airlines and countries of origin.
 
-Queries various ADS-B APIs every 30 seconds
+## Output
 
-## Current output
-
-- list of detected military aircraft world-wide (once upon program start)
-- fastest aircraft
-- highest aircraft
+- list of aircraft currently in the vicinity of a given geographical coordinate
+- fastest aircraft overall recorded
+- highest aircraft overall recorded
+- list of aircraft types by rarity
+- list of airlines by rarity
+- list of countries of origin by rarity
 
 ## TODO
 
@@ -26,8 +28,8 @@ Queries various ADS-B APIs every 30 seconds
 - [x] system-native notifications when rare aircraft spotted
 - [x] allow notifications for the same aircraft if enough time passed since last contact (24h?)
 - [x] "latency", i.e.: time difference between ICAO info timestamp and displaying on screen
-- [ ] rarity by airline
-- [ ] printing to console, logging to file
+- [x] rarity by airline
+- [x] printing to console, logging to file
 - [ ] show total uptime in summaries
 - [ ] colored console output
 - [ ] graceful shutdown
@@ -37,7 +39,7 @@ Queries various ADS-B APIs every 30 seconds
 - [ ] radar-like visual for nearby aircraft (look up APIs for geographic data)
 - [ ] more flight information, e.g.: origin, destination, flight time remaining
 - [ ] more unit testing
-- [ ] map hex ranges to countries of registration
+- [x] map hex ranges to countries of registration
 - [ ] collect additional information about unknown aircraft/types to try and identify later
   - [ ] lat/lon position
 

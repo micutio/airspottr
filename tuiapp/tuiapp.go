@@ -27,11 +27,11 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/flighttrack/internal"
+	"github.com/micutio/airspottr/internal"
 )
 
 const (
-	errLogFilePath = "./flighttracker.log"
+	errLogFilePath = "./airspottr.log"
 )
 
 // TODO: enable to write all errors to file instead of stdout when running as tui.

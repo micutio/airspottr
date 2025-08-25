@@ -11,7 +11,7 @@ import (
 // - error logs go to stderr
 // # TUI mode
 // - console output goes to `dev/null` or os-dependent equivalents
-// - error logs go to log file `/flighttrack.log`
+// - error logs go to log file `/airspottr.log`
 // .
 type LogParams struct {
 	ConsoleOut io.Writer

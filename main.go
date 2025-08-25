@@ -3,8 +3,8 @@ package main
 
 import (
 	"github.com/gen2brain/beeep"
-	"github.com/micutio/flighttrack/tickerapp"
-	"github.com/micutio/flighttrack/tuiapp"
+	"github.com/micutio/airspottr/tickerapp"
+	"github.com/micutio/airspottr/tuiapp"
 	"github.com/spf13/pflag"
 )
 

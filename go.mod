@@ -1,4 +1,4 @@
-module github.com/micutio/flighttrack
+module github.com/micutio/airspottr
 
 go 1.24.4
 

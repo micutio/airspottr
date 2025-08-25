@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/micutio/flighttrack/internal"
+	"github.com/micutio/airspottr/internal"
 )
 
 func Run() {
