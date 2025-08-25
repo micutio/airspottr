@@ -10,18 +10,29 @@ import (
 	"github.com/micutio/airspottr/internal"
 )
 
-type TickMsg time.Time
+type UpdateTickMsg time.Time
 
-type ADSBResponseMsg []byte
-
-func tick() tea.Cmd {
+func updateTick() tea.Cmd {
 	return tea.Every(
-		internal.AircraftUpdateInterval,
+		time.Second,
 		func(t time.Time) tea.Msg {
-			return TickMsg(t)
+			return UpdateTickMsg(t)
 		},
 	)
 }
+
+type AircraftQueryTickMsg time.Time
+
+func aircraftQueryTick() tea.Cmd {
+	return tea.Every(
+		internal.AircraftUpdateInterval,
+		func(t time.Time) tea.Msg {
+			return AircraftQueryTickMsg(t)
+		},
+	)
+}
+
+type ADSBResponseMsg []byte
 
 func requestADSBDataCmd() tea.Cmd {
 	return func() tea.Msg {
@@ -48,6 +59,7 @@ type model struct {
 	currentAircraftTbl table.Model
 	typeRarityTbl      table.Model
 	tableStyle         table.Styles
+	startTime          time.Time
 	lastUpdate         time.Time
 	dashboard          *internal.Dashboard
 }
@@ -55,7 +67,7 @@ type model struct {
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.
 // This command will be executed immediately when the program starts, initiating the periodic updates.
 func (m *model) Init() tea.Cmd {
-	return tick()
+	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd())
 }
 
 // Update takes a tea.Msg as input and uses a type switch to handle different types of messages.
@@ -96,9 +108,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		}
-	case TickMsg:
+	case UpdateTickMsg:
+		return m, updateTick()
+	case AircraftQueryTickMsg:
 		m.lastUpdate = time.Time(thisMsg)
-		return m, tea.Batch(requestADSBDataCmd(), tick())
+		return m, tea.Batch(requestADSBDataCmd(), aircraftQueryTick())
 	case ADSBResponseMsg:
 		responseBody := []byte(thisMsg)
 		m.dashboard.ProcessCivAircraftJSON(responseBody)
@@ -150,7 +164,7 @@ func (m *model) viewHeader() string {
 	list := m.baseStyle.
 		Border(lipgloss.NormalBorder(), false, true, false, false).
 		BorderForeground(m.theme.Border).
-		Height(4).
+		Height(1).
 		Padding(0, 1)
 
 	// Applies bold styling to the text.
@@ -177,8 +191,9 @@ func (m *model) viewHeader() string {
 
 	return m.viewStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
+			fmt.Sprintf("UpTime: %v\n", time.Since(m.startTime)),
 			fmt.Sprintf("Last update: %2.0f seconds ago\n", time.Since(m.lastUpdate).Seconds()),
-			list.Border(lipgloss.NormalBorder(), false).Render(
+			list.Border(lipgloss.RoundedBorder(), true, true, true, true).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Highest"),
 					lipgloss.JoinHorizontal(
@@ -190,7 +205,7 @@ func (m *model) viewHeader() string {
 					),
 				),
 			),
-			list.Border(lipgloss.NormalBorder(), false).Render(
+			list.Border(lipgloss.RoundedBorder(), true, true, true, true).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					listHeader("Fastest"),
 					lipgloss.JoinHorizontal(

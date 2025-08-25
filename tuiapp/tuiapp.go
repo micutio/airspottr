@@ -103,6 +103,7 @@ func Run() {
 		currentAircraftTbl: currentAircraftTbl,
 		typeRarityTbl:      typeRarityTbl,
 		tableStyle:         tableStyle,
+		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
 		dashboard:          flightDash,
 	}
