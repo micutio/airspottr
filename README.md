@@ -31,6 +31,8 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 - [x] rarity by airline
 - [x] printing to console, logging to file
 - [ ] show total uptime in summaries
+- [ ] private location via command line argument
+- [ ] show location in TUI and maybe ticker output
 - [ ] colored console output
 - [ ] graceful shutdown
 - [ ] better visual output via some TUI library
