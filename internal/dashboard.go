@@ -16,9 +16,9 @@ import (
 
 const (
 	// Lat is Latitude of SIN Airport.
-	Lat float64 = 1.359297
+	// Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
-	Lon float64 = 103.989348
+	// Lon float64 = 103.989348
 	// appIconPath is the file path to the icon png for this application.
 	appIconPath = "./assets/icon.png"
 	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
@@ -61,6 +61,8 @@ type aircraftSighting struct {
 
 type Dashboard struct {
 	isWarmup           bool
+	Lat                float32
+	Lon                float32
 	Fastest            *aircraftRecord
 	Highest            *aircraftRecord
 	CurrentAircraft    []aircraftRecord
@@ -80,7 +82,7 @@ type Dashboard struct {
 	errOut             log.Logger
 }
 
-func NewDashboard(logParams LogParams) (*Dashboard, error) {
+func NewDashboard(lat float32, lon float32, logParams LogParams) (*Dashboard, error) {
 	const initError = "newDashboard: %w caused by %w"
 
 	icaoToAircraftMap, aircraftErr := getIcaoToAircraftMap()
@@ -110,6 +112,8 @@ func NewDashboard(logParams LogParams) (*Dashboard, error) {
 
 	dash := Dashboard{
 		isWarmup:           true,
+		Lat:                lat,
+		Lon:                lon,
 		Fastest:            nil,
 		Highest:            nil,
 		CurrentAircraft:    nil,
@@ -160,7 +164,7 @@ func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 
 func (db *Dashboard) processCivAircraftRecords() {
 	sort.Sort(ByFlight(db.CurrentAircraft))
-	thisPos := newCoordinates(Lat, Lon)
+	thisPos := newCoordinates(float64(db.Lat), float64(db.Lon))
 
 	for i := range len(db.CurrentAircraft) {
 		// Step 1: Get aircraft and time of sighting
@@ -505,7 +509,7 @@ func (db *Dashboard) listByRarity(propertyName string, propertyCountMap map[stri
 // aircraftToString generates a one-liner consisting of the most relevant information about the
 // given aircraft.
 func (db *Dashboard) aircraftToString(aircraft *aircraftRecord) string {
-	thisPos := newCoordinates(Lat, Lon)
+	thisPos := newCoordinates(float64(db.Lat), float64(db.Lon))
 	acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
 	aircraft.CachedDist = Distance(thisPos, acPos).Kilometers()
 
@@ -543,7 +547,7 @@ func (db *Dashboard) ProcessMilAircraftJSON(jsonBytes []byte) {
 }
 
 func (db *Dashboard) processMilAircraftRecords(allAircraft *[]aircraftRecord) {
-	thisPos := newCoordinates(Lat, Lon)
+	thisPos := newCoordinates(float64(db.Lat), float64(db.Lon))
 	for i := range len(*allAircraft) {
 		aircraft := (*allAircraft)[i]
 		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)

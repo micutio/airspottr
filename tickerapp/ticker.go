@@ -4,6 +4,7 @@
 package tickerapp
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -11,9 +12,10 @@ import (
 	"github.com/micutio/airspottr/internal"
 )
 
-func Run() {
-	// Initialize logging, notifications and dashboard
+func Run(options internal.RequestOptions) {
+	fmt.Printf("airspottr launching at Lat: %.3f, Lon: %.3f\n", options.Lat, options.Lon)
 
+	// TODO: Replace slog logger!
 	logger := slog.Default()
 
 	logParams := internal.LogParams{
@@ -21,7 +23,7 @@ func Run() {
 		ErrorOut:   os.Stderr,
 	}
 
-	flightDash, dashboardErr := internal.NewDashboard(logParams)
+	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, logParams)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
@@ -57,7 +59,7 @@ func Run() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				if body, err := internal.RequestAndProcessCivAircraft(); err != nil {
+				if body, err := internal.RequestAndProcessCivAircraft(options); err != nil {
 					logger.Error("main: ", slog.Any("error", err))
 				} else {
 					flightDash.ProcessCivAircraftJSON(body)

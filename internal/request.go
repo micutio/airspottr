@@ -27,13 +27,23 @@ var (
 	ErrNonOkResponse     = errors.New("non-OK response")
 	ErrEmptyResponseBody = errors.New("empty response body")
 	ErrNonJSONContent    = errors.New("non-JSON content type")
+
+	UrlAdsbOpenData    = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
+	UrlAdsbOpenDataMil = "https://opendata.adsb.fi/api/v2/mil"
+	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
+	// UrlAdsbOneMil      = "https://api.adsb.one/v2/mil"
+	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
+	// UrlAdsbLolMil      = "https://api.adsb.lol/v2/mil"
 )
 
-func RequestAndProcessCivAircraft() ([]byte, error) {
+type RequestOptions struct {
+	Lat float32
+	Lon float32
+}
+
+func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
 	// Define the URL for the HTTP GET request
-	targetURL := fmt.Sprintf(
-		"https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250", Lat, Lon,
-	)
+	targetURL := fmt.Sprintf(UrlAdsbOpenData, opts.Lat, opts.Lon)
 
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
@@ -46,7 +56,7 @@ func RequestAndProcessCivAircraft() ([]byte, error) {
 
 func RequestAndProcessMilAircraft() ([]byte, error) {
 	// Define the URL for the HTTP GET request
-	targetURL := "https://opendata.adsb.fi/api/v2/mil"
+	targetURL := UrlAdsbOpenDataMil
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
 	if requestErr != nil {

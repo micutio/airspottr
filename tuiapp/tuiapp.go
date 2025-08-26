@@ -20,7 +20,7 @@ package tuiapp
 
 import (
 	"io"
-	"log"
+	"log" //nolint:depguard // Don't feel like using slog
 	"os"
 	"time"
 
@@ -34,9 +34,7 @@ const (
 	errLogFilePath = "./airspottr.log"
 )
 
-// TODO: enable to write all errors to file instead of stdout when running as tui.
-
-func Run() {
+func Run(requestOptions internal.RequestOptions) {
 	theme := getDefaultTheme()
 
 	tableStyle := table.DefaultStyles()
@@ -87,7 +85,7 @@ func Run() {
 		ErrorOut:   errLogFile,
 	}
 
-	flightDash, dashErr := internal.NewDashboard(consoleParams)
+	flightDash, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)
 	if dashErr != nil {
 		log.Fatal(dashErr)
 	}
@@ -106,6 +104,7 @@ func Run() {
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
 		dashboard:          flightDash,
+		options:            requestOptions,
 	}
 	// Create a new Bubble Tea program with the appModel and enable alternate screen
 	p := tea.NewProgram(&appModel, tea.WithAltScreen())

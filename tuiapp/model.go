@@ -34,9 +34,9 @@ func aircraftQueryTick() tea.Cmd {
 
 type ADSBResponseMsg []byte
 
-func requestADSBDataCmd() tea.Cmd {
+func requestADSBDataCmd(opts internal.RequestOptions) tea.Cmd {
 	return func() tea.Msg {
-		body, err := internal.RequestAndProcessCivAircraft()
+		body, err := internal.RequestAndProcessCivAircraft(opts)
 		if err != nil {
 			// TODO: Log error
 			return nil
@@ -62,12 +62,13 @@ type model struct {
 	startTime          time.Time
 	lastUpdate         time.Time
 	dashboard          *internal.Dashboard
+	options            internal.RequestOptions
 }
 
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.
 // This command will be executed immediately when the program starts, initiating the periodic updates.
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd())
+	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd(m.options))
 }
 
 // Update takes a tea.Msg as input and uses a type switch to handle different types of messages.
@@ -112,7 +113,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 		return m, updateTick()
 	case AircraftQueryTickMsg:
 		m.lastUpdate = time.Time(thisMsg)
-		return m, tea.Batch(requestADSBDataCmd(), aircraftQueryTick())
+		return m, tea.Batch(requestADSBDataCmd(m.options), aircraftQueryTick())
 	case ADSBResponseMsg:
 		responseBody := []byte(thisMsg)
 		m.dashboard.ProcessCivAircraftJSON(responseBody)
