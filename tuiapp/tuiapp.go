@@ -19,6 +19,7 @@
 package tuiapp
 
 import (
+	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
 	"os"
@@ -37,25 +38,67 @@ const (
 func Run(requestOptions internal.RequestOptions) {
 	theme := getDefaultTheme()
 
+	// STEP 1: Create logs and dashboard. ////////////////////////////////////////////////////////
+	errLogFile, fileErr := os.OpenFile(
+		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+	if fileErr != nil {
+		log.Fatalf("Failed to open log file: %v", fileErr)
+	}
+	defer func() {
+		closeErr := errLogFile.Close()
+		if closeErr != nil {
+			fileErr = fmt.Errorf(
+				"tuiApp.Run(): error while closing file %s: %w",
+				errLogFilePath,
+				closeErr)
+		}
+	}()
+
+	consoleParams := internal.LogParams{
+		ConsoleOut: io.Discard,
+		ErrorOut:   errLogFile,
+	}
+
+	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)
+	if dashErr != nil {
+		log.Fatal(dashErr)
+	}
+
+	// TODO: Introduce extra command and message to finish warmup period.
+	dashboard.FinishWarmupPeriod()
+
+	// STEP 2: Initialise visual styles for tables. //////////////////////////////////////////////
 	tableStyle := table.DefaultStyles()
 	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
 
 	// Create a new table with specified columns and initial empty rows.
+	maxTypeLen := 0
+	for _, value := range dashboard.IcaoToAircraft {
+		if len(value.Make) > maxTypeLen {
+			maxTypeLen = len(value.Make)
+		}
+	}
+
+	dstLen := 7
+	fnoLen := 10
+	spdLen := 5
+	initialTableHeight := 5
+
 	currentAircraftTbl := table.New(
 		// table header
 		table.WithColumns(
 			[]table.Column{
-				{Title: "DST", Width: 8},
-				{Title: "FNO", Width: 8},
-				{Title: "TID", Width: 20}, // TODO: Find max length in icao table
-				{Title: "ALT", Width: 8},
-				{Title: "SPD", Width: 8},
-				{Title: "HDG", Width: 8},
+				{Title: "DST", Width: dstLen},
+				{Title: "FNO", Width: fnoLen},
+				{Title: "TID", Width: maxTypeLen},
+				{Title: "ALT", Width: dstLen},
+				{Title: "SPD", Width: spdLen},
+				{Title: "HDG", Width: spdLen},
 			},
 		),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
-		table.WithHeight(20), // TODO: Tie to console window height
+		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
 
@@ -64,34 +107,17 @@ func Run(requestOptions internal.RequestOptions) {
 		// table header
 		table.WithColumns(
 			[]table.Column{
-				{Title: "Count", Width: 8},
-				{Title: "Type", Width: 8},
+				{Title: "Count", Width: fnoLen},
+				{Title: "Type", Width: maxTypeLen},
 			},
 		),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
-		table.WithHeight(40), // TODO: Tie to console window height
+		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
 
-	errLogFile, fileErr := os.OpenFile(errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if fileErr != nil {
-		log.Fatalf("Failed to open log file: %v", fileErr)
-	}
-	defer errLogFile.Close()
-
-	consoleParams := internal.LogParams{
-		ConsoleOut: io.Discard,
-		ErrorOut:   errLogFile,
-	}
-
-	flightDash, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)
-	if dashErr != nil {
-		log.Fatal(dashErr)
-	}
-
-	flightDash.FinishWarmupPeriod()
-
+	// STEP 3: Initialise model and run the application. /////////////////////////////////////////
 	appModel := model{
 		width:              0,
 		height:             0,
@@ -103,7 +129,7 @@ func Run(requestOptions internal.RequestOptions) {
 		tableStyle:         tableStyle,
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
-		dashboard:          flightDash,
+		dashboard:          dashboard,
 		options:            requestOptions,
 	}
 	// Create a new Bubble Tea program with the appModel and enable alternate screen

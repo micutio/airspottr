@@ -26,9 +26,9 @@ var (
 )
 
 type icaoAircraft struct {
-	Class     string
-	Engine    string
-	ModelCode string
+	Class  string
+	Engine string
+	Make   string
 }
 
 // getIcaoToAircraftMap returns an ICAO id to aircraft record mapping.

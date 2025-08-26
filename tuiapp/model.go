@@ -78,7 +78,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	// message is sent when the window size changes
 	// save to reflect the new dimensions of the terminal window.
 	case tea.WindowSizeMsg:
+		headerHeight := 10 // TODO: Make this cleaner and clearer.
 		m.height = thisMsg.Height
+		m.currentAircraftTbl.SetHeight(m.height - headerHeight)
+		m.typeRarityTbl.SetHeight(m.height - headerHeight)
 		m.width = thisMsg.Width
 
 	// message is sent when a key is pressed.
@@ -122,7 +125,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 			rows = append(rows, table.Row{
 				fmt.Sprintf("%3.0f", aircraft.CachedDist),
 				aircraft.GetFlightNoAsStr(),
-				m.dashboard.IcaoToAircraft[aircraft.IcaoType].ModelCode,
+				m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make,
 				aircraft.GetAltitudeAsStr(),
 				fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
 				fmt.Sprintf("%3.0f", aircraft.NavHeading),
@@ -191,7 +194,7 @@ func (m *model) viewHeader() string {
 	}
 
 	return m.viewStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Top,
+		lipgloss.JoinHorizontal(lipgloss.Top,
 			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					fmt.Sprintf("UpTime: %v\n", time.Since(m.startTime)),
@@ -204,7 +207,7 @@ func (m *model) viewHeader() string {
 						lipgloss.Left,
 						listItem("ALT", highest.GetAltitudeAsStr()),
 						listItem("FNO", highest.GetFlightNoAsStr()),
-						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].ModelCode),
+						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
 						listItem("REG", highest.Registration),
 					),
 					listHeader("Fastest"),
@@ -212,7 +215,7 @@ func (m *model) viewHeader() string {
 						lipgloss.Left,
 						listItem("SPD", fmt.Sprintf("%3.0f", fastest.GroundSpeed)),
 						listItem("FNO", fastest.GetFlightNoAsStr()),
-						listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].ModelCode),
+						listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
 						listItem("REG", fastest.Registration),
 					),
 				),
