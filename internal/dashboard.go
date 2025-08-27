@@ -166,9 +166,9 @@ func (db *Dashboard) processCivAircraftRecords() {
 	sort.Sort(ByFlight(db.CurrentAircraft))
 	thisPos := newCoordinates(float64(db.Lat), float64(db.Lon))
 
-	for i := range len(db.CurrentAircraft) {
+	for idx := range len(db.CurrentAircraft) {
 		// Step 1: Get aircraft and time of sighting
-		aircraft := (db.CurrentAircraft)[i]
+		aircraft := (db.CurrentAircraft)[idx]
 		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
@@ -192,7 +192,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 
 		// Step 3: Update distance
 		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
-		(db.CurrentAircraft)[i].CachedDist = Distance(thisPos, acPos).Kilometers()
+		(db.CurrentAircraft)[idx].CachedDist = Distance(thisPos, acPos).Kilometers()
 
 		// Step 3: Update all aircraft, type, operator and country statistics
 		db.updateHighest(&aircraft)

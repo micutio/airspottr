@@ -21,19 +21,19 @@ const (
 	SummaryInterval = 1 * time.Hour
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
 	DashboardWarmup = 1 * time.Hour
+
+	URLAdsbOpenData    = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
+	URLAdsbOpenDataMil = "https://opendata.adsb.fi/api/v2/mil"
+	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
+	// UrlAdsbOneMil      = "https://api.adsb.one/v2/mil"
+	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
+	// UrlAdsbLolMil      = "https://api.adsb.lol/v2/mil"
 )
 
 var (
 	ErrNonOkResponse     = errors.New("non-OK response")
 	ErrEmptyResponseBody = errors.New("empty response body")
 	ErrNonJSONContent    = errors.New("non-JSON content type")
-
-	UrlAdsbOpenData    = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
-	UrlAdsbOpenDataMil = "https://opendata.adsb.fi/api/v2/mil"
-	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
-	// UrlAdsbOneMil      = "https://api.adsb.one/v2/mil"
-	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
-	// UrlAdsbLolMil      = "https://api.adsb.lol/v2/mil"
 )
 
 type RequestOptions struct {
@@ -43,7 +43,7 @@ type RequestOptions struct {
 
 func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
 	// Define the URL for the HTTP GET request
-	targetURL := fmt.Sprintf(UrlAdsbOpenData, opts.Lat, opts.Lon)
+	targetURL := fmt.Sprintf(URLAdsbOpenData, opts.Lat, opts.Lon)
 
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
@@ -56,7 +56,7 @@ func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
 
 func RequestAndProcessMilAircraft() ([]byte, error) {
 	// Define the URL for the HTTP GET request
-	targetURL := UrlAdsbOpenDataMil
+	targetURL := URLAdsbOpenDataMil
 	// This case is executed every time the ticker "ticks"
 	body, requestErr := sendRequest(targetURL)
 	if requestErr != nil {

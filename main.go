@@ -14,17 +14,12 @@ const (
 	thisAppName = "airspottr"
 )
 
-var (
-	argIsUseTicker bool
-	argLatLon      []float32
-)
-
 // TODO: Predefine some locations to make launching the app less cumbersome:
 // - Singapore, New York, Hamburg, ...
-func setupCommandLineFlags() {
+func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
 	// Whether to launch the Ticker or TUI app.
 	pflag.BoolVarP(
-		&argIsUseTicker,
+		argIsUseTicker,
 		"ticker",
 		"t",
 		false,
@@ -33,7 +28,7 @@ func setupCommandLineFlags() {
 
 	// Location to plane spot, provided as lat,lon coordinates
 	pflag.Float32SliceVarP(
-		&argLatLon,
+		argLatLon,
 		"latlon",
 		"l",
 		[]float32{0, 0},
@@ -43,7 +38,10 @@ func setupCommandLineFlags() {
 func main() {
 	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
 
-	setupCommandLineFlags()
+	argIsUseTicker := false
+	var argLatLon []float32
+
+	setupCommandLineFlags(&argIsUseTicker, &argLatLon)
 
 	// Parse all arguments provided to the program on launch.
 	pflag.Parse()

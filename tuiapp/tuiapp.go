@@ -40,7 +40,7 @@ func Run(requestOptions internal.RequestOptions) {
 
 	// STEP 1: Create logs and dashboard. ////////////////////////////////////////////////////////
 	errLogFile, fileErr := os.OpenFile(
-		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // 0o666
 	if fileErr != nil {
 		log.Fatalf("Failed to open log file: %v", fileErr)
 	}
@@ -61,7 +61,8 @@ func Run(requestOptions internal.RequestOptions) {
 
 	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)
 	if dashErr != nil {
-		log.Fatal(dashErr)
+		log.Println(fmt.Errorf("tuiapp.Run: %w", dashErr))
+		return
 	}
 
 	// TODO: Introduce extra command and message to finish warmup period.
@@ -137,6 +138,6 @@ func Run(requestOptions internal.RequestOptions) {
 
 	// Run the program and handle any errors
 	if _, progErr := p.Run(); progErr != nil {
-		log.Fatalf("Error running program: %v", progErr)
+		log.Println(fmt.Errorf("error running program: %w", progErr))
 	}
 }
