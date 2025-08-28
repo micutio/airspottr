@@ -2,6 +2,7 @@ package tuiapp
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -108,6 +109,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 			if m.currentAircraftTbl.Focused() {
 				m.currentAircraftTbl.MoveDown(1)
 			}
+		case "h":
+			if m.currentAircraftTbl.Focused() {
+				m.currentAircraftTbl.HelpView()
+			}
 		// Quits the program by returning the tea.Quit command.
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -115,17 +120,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	case UpdateTickMsg:
 		return m, updateTick()
 	case AircraftQueryTickMsg:
-		m.lastUpdate = time.Time(thisMsg)
 		return m, tea.Batch(requestADSBDataCmd(m.options), aircraftQueryTick())
 	case ADSBResponseMsg:
+		m.lastUpdate = time.Now()
 		responseBody := []byte(thisMsg)
 		m.dashboard.ProcessCivAircraftJSON(responseBody)
 		var rows []table.Row
 		for _, aircraft := range m.dashboard.CurrentAircraft {
+			aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
+
+			// Filter out aircraft where both flight number and type are unknown.
+			if aircraft.Flight == "" && aircraftType == "" {
+				continue
+			}
+
 			rows = append(rows, table.Row{
 				fmt.Sprintf("%3.0f", aircraft.CachedDist),
 				aircraft.GetFlightNoAsStr(),
-				m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make,
+				aircraftType,
 				aircraft.GetAltitudeAsStr(),
 				fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
 				fmt.Sprintf("%3.0f", aircraft.NavHeading),
@@ -193,12 +205,18 @@ func (m *model) viewHeader() string {
 		return ""
 	}
 
+	tSince := time.Since(m.startTime)
+	hours := tSince.Hours()
+	mins := math.Mod(math.Floor(tSince.Minutes()), 60.0)
+	secs := math.Mod(math.Floor(tSince.Seconds()), 60.0)
+
 	return m.viewStyle.Render(
 		lipgloss.JoinHorizontal(lipgloss.Top,
 			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					fmt.Sprintf("UpTime: %v\n", time.Since(m.startTime)),
-					fmt.Sprintf("Last update: %2.0f seconds ago\n", time.Since(m.lastUpdate).Seconds())),
+					fmt.Sprintf("Location   : %6.3f, %6.3f", m.dashboard.Lat, m.dashboard.Lon),
+					fmt.Sprintf("UpTime     : %.0f Hr %2.0f Min %2.0f Sec", hours, mins, secs),
+					fmt.Sprintf("Last Update: %2.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
 			),
 			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
