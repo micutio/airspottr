@@ -84,72 +84,81 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 		m.currentAircraftTbl.SetHeight(m.height - headerHeight)
 		m.typeRarityTbl.SetHeight(m.height - headerHeight)
 		m.width = thisMsg.Width
-
 	// message is sent when a key is pressed.
 	case tea.KeyMsg:
-		switch thisMsg.String() {
-		// Toggles the focus state of the aircraft table
-		case "esc":
-			if m.currentAircraftTbl.Focused() {
-				m.tableStyle.Selected = m.baseStyle
-				m.currentAircraftTbl.SetStyles(m.tableStyle)
-				m.currentAircraftTbl.Blur()
-			} else {
-				m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
-				m.currentAircraftTbl.SetStyles(m.tableStyle)
-				m.currentAircraftTbl.Focus()
-			}
-		// Moves the focus up in the aircraft table if the table is focused.
-		case "up", "k":
-			if m.currentAircraftTbl.Focused() {
-				m.currentAircraftTbl.MoveUp(1)
-			}
-		// Moves the focus down in the aircraft table if the table is focused.
-		case "down", "j":
-			if m.currentAircraftTbl.Focused() {
-				m.currentAircraftTbl.MoveDown(1)
-			}
-		case "h":
-			if m.currentAircraftTbl.Focused() {
-				m.currentAircraftTbl.HelpView()
-			}
-		// Quits the program by returning the tea.Quit command.
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		}
+		return m, m.processKeyMsg(thisMsg)
 	case UpdateTickMsg:
 		return m, updateTick()
 	case AircraftQueryTickMsg:
 		return m, tea.Batch(requestADSBDataCmd(m.options), aircraftQueryTick())
 	case ADSBResponseMsg:
-		m.lastUpdate = time.Now()
-		responseBody := []byte(thisMsg)
-		m.dashboard.ProcessCivAircraftJSON(responseBody)
-		var rows []table.Row
-		for _, aircraft := range m.dashboard.CurrentAircraft {
-			aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
-
-			// Filter out aircraft where both flight number and type are unknown.
-			if aircraft.Flight == "" && aircraftType == "" {
-				continue
-			}
-
-			rows = append(rows, table.Row{
-				fmt.Sprintf("%3.0f", aircraft.CachedDist),
-				aircraft.GetFlightNoAsStr(),
-				aircraftType,
-				aircraft.GetAltitudeAsStr(),
-				fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
-				fmt.Sprintf("%3.0f", aircraft.NavHeading),
-			})
-			m.currentAircraftTbl.SetRows(rows)
-		}
-		return m, nil // since we've already scheduled the next request, there is nothing to do now.
+		m.processADSBResponse(thisMsg)
+		return m, nil
 	}
 
 	// If the message type does not match any of the handled cases, the model is returned unchanged,
 	// and no new command is issued.
 	return m, nil
+}
+
+func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
+	switch msg.String() {
+	// Toggles the focus state of the aircraft table
+	case "esc":
+		if m.currentAircraftTbl.Focused() {
+			m.tableStyle.Selected = m.baseStyle
+			m.currentAircraftTbl.SetStyles(m.tableStyle)
+			m.currentAircraftTbl.Blur()
+		} else {
+			m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
+			m.currentAircraftTbl.SetStyles(m.tableStyle)
+			m.currentAircraftTbl.Focus()
+		}
+	// Moves the focus up in the aircraft table if the table is focused.
+	case "up", "k":
+		if m.currentAircraftTbl.Focused() {
+			m.currentAircraftTbl.MoveUp(1)
+		}
+	// Moves the focus down in the aircraft table if the table is focused.
+	case "down", "j":
+		if m.currentAircraftTbl.Focused() {
+			m.currentAircraftTbl.MoveDown(1)
+		}
+	case "h":
+		if m.currentAircraftTbl.Focused() {
+			m.currentAircraftTbl.HelpView()
+		}
+	// Quits the program by returning the tea.Quit command.
+	case "q", "ctrl+c":
+		return tea.Quit
+	}
+	return nil
+}
+
+func (m *model) processADSBResponse(msg ADSBResponseMsg) {
+	m.lastUpdate = time.Now()
+	responseBody := []byte(msg)
+	m.dashboard.ProcessCivAircraftJSON(responseBody)
+	rows := make([]table.Row, len(m.dashboard.CurrentAircraft))
+	for idx, aircraft := range m.dashboard.CurrentAircraft {
+		aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
+
+		// Filter out aircraft where both flight number and type are unknown.
+		if aircraft.Flight == "" && aircraftType == "" {
+			continue
+		}
+
+		rows[idx] = table.Row{
+			fmt.Sprintf("%3.0f", aircraft.CachedDist),
+			aircraft.GetFlightNoAsStr(),
+			aircraftType,
+			aircraft.GetAltitudeAsStr(),
+			fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
+			fmt.Sprintf("%3.0f", aircraft.NavHeading),
+		}
+		m.currentAircraftTbl.SetRows(rows)
+	}
+	// since we've already scheduled the next request, there is nothing to return now.
 }
 
 func (m *model) View() string {
@@ -205,10 +214,12 @@ func (m *model) viewHeader() string {
 		return ""
 	}
 
+	minutesInHour := 60.0
+	secsInMinute := 60.0
 	tSince := time.Since(m.startTime)
 	hours := tSince.Hours()
-	mins := math.Mod(math.Floor(tSince.Minutes()), 60.0)
-	secs := math.Mod(math.Floor(tSince.Seconds()), 60.0)
+	mins := math.Mod(math.Floor(tSince.Minutes()), minutesInHour)
+	secs := math.Mod(math.Floor(tSince.Seconds()), secsInMinute)
 
 	return m.viewStyle.Render(
 		lipgloss.JoinHorizontal(lipgloss.Top,
