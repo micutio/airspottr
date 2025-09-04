@@ -54,9 +54,11 @@ func Run(requestOptions internal.RequestOptions) {
 		}
 	}()
 
+	var errFileWriter io.Writer = errLogFile
+
 	consoleParams := internal.LogParams{
-		ConsoleOut: io.Discard,
-		ErrorOut:   errLogFile,
+		ConsoleOut: &io.Discard,
+		ErrorOut:   &errFileWriter,
 	}
 
 	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)

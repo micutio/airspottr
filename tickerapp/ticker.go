@@ -5,6 +5,7 @@ package tickerapp
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"time"
@@ -18,9 +19,12 @@ func Run(options internal.RequestOptions) {
 	// TODO: Replace slog logger!
 	logger := slog.Default()
 
+	stdout := io.Writer(os.Stdout)
+	stderr := io.Writer(os.Stderr)
+
 	logParams := internal.LogParams{
-		ConsoleOut: os.Stdout,
-		ErrorOut:   os.Stderr,
+		ConsoleOut: &stdout,
+		ErrorOut:   &stderr,
 	}
 
 	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, logParams)

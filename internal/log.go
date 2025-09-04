@@ -14,6 +14,6 @@ import (
 // - error logs go to log file `/airspottr.log`
 // .
 type LogParams struct {
-	ConsoleOut io.Writer
-	ErrorOut   io.Writer
+	ConsoleOut *io.Writer
+	ErrorOut   *io.Writer
 }

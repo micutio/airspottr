@@ -129,9 +129,11 @@ func NewDashboard(lat float32, lon float32, logParams LogParams) (*Dashboard, er
 		regPrefixToCountry: regPrefixToCountryMap,
 		hexRangeToCountry:  hexRangeToCountryMap,
 		milCodeToOperator:  milCodeToOperatorMap,
-		consoleOut:         *log.New(logParams.ConsoleOut, "", 0),
-		errOut:             *log.New(logParams.ErrorOut, "dashboard", log.LstdFlags),
+		consoleOut:         *log.New(*logParams.ConsoleOut, "", 0),
+		errOut:             *log.New(*logParams.ErrorOut, "dashboard", log.LstdFlags),
 	}
+
+	dash.errOut.Println("Dashboard init")
 
 	return &dash, nil
 }
