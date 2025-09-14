@@ -73,52 +73,12 @@ func Run(requestOptions internal.RequestOptions) {
 	// STEP 2: Initialise visual styles for tables. //////////////////////////////////////////////
 	tableStyle := table.DefaultStyles()
 	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
+	maxTypeNameLen := dashboard.GetMaxTypeNameLength()
 
-	// Create a new table with specified columns and initial empty rows.
-	maxTypeLen := 0
-	for _, value := range dashboard.IcaoToAircraft {
-		if len(value.Make) > maxTypeLen {
-			maxTypeLen = len(value.Make)
-		}
-	}
-
-	dstLen := 7
-	fnoLen := 10
-	spdLen := 5
-	initialTableHeight := 5
-
-	currentAircraftTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "DST", Width: dstLen},
-				{Title: "FNO", Width: fnoLen},
-				{Title: "TID", Width: maxTypeLen},
-				{Title: "ALT", Width: dstLen},
-				{Title: "SPD", Width: spdLen},
-				{Title: "HDG", Width: spdLen},
-			},
-		),
-		table.WithRows([]table.Row{}),
-		table.WithFocused(false),
-		table.WithHeight(initialTableHeight),
-		table.WithStyles(tableStyle),
-	)
-
-	// Create a new table with specified columns and initial empty rows.
-	typeRarityTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "Count", Width: fnoLen},
-				{Title: "Type", Width: maxTypeLen},
-			},
-		),
-		table.WithRows([]table.Row{}),
-		table.WithFocused(false),
-		table.WithHeight(initialTableHeight),
-		table.WithStyles(tableStyle),
-	)
+	currentAircraftTbl := newCurrentAircraftTable(tableStyle, maxTypeNameLen)
+	typeRarityTbl := newTypeRarityTable(tableStyle)
+	operatorRarityTbl := newOperatorRarityTable(tableStyle)
+	countryRarityTbl := newCountryRarityTable(tableStyle)
 
 	// STEP 3: Initialise model and run the application. /////////////////////////////////////////
 	appModel := model{
@@ -129,6 +89,8 @@ func Run(requestOptions internal.RequestOptions) {
 		theme:              getDefaultTheme(),
 		currentAircraftTbl: currentAircraftTbl,
 		typeRarityTbl:      typeRarityTbl,
+		operatorRarityTbl:  operatorRarityTbl,
+		countryRarityTbl:   countryRarityTbl,
 		tableStyle:         tableStyle,
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),

@@ -59,6 +59,8 @@ type model struct {
 	theme              Theme
 	currentAircraftTbl table.Model
 	typeRarityTbl      table.Model
+	operatorRarityTbl  table.Model
+	countryRarityTbl   table.Model
 	tableStyle         table.Styles
 	startTime          time.Time
 	lastUpdate         time.Time
@@ -80,10 +82,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	// save to reflect the new dimensions of the terminal window.
 	case tea.WindowSizeMsg:
 		headerHeight := 10 // TODO: Make this cleaner and clearer.
+		leftSideWidthRatio := 0.5
+		rightSideWidthRatio := 1.0 - leftSideWidthRatio
+		ratioPerRightTable := 0.28
+		rightSideTableRatio := rightSideWidthRatio * ratioPerRightTable
+
 		m.height = thisMsg.Height
 		m.currentAircraftTbl.SetHeight(m.height - headerHeight)
 		m.typeRarityTbl.SetHeight(m.height - headerHeight)
+		m.operatorRarityTbl.SetHeight(m.height - headerHeight)
+		m.countryRarityTbl.SetHeight(m.height - headerHeight)
 		m.width = thisMsg.Width
+
+		// TODO: Set type column width of current aircraft table to variable size.
+
+		// Adjust widths of all tables
+		m.currentAircraftTbl.SetWidth(int(float64(m.width) * leftSideWidthRatio))
+
+		m.typeRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
+		m.typeRarityTbl.Columns()[1].Width = m.typeRarityTbl.Width() - m.typeRarityTbl.Columns()[0].Width
+
+		m.operatorRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
+		m.operatorRarityTbl.Columns()[1].Width = m.operatorRarityTbl.Width() - m.operatorRarityTbl.Columns()[0].Width
+
+		m.countryRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
+		m.countryRarityTbl.Columns()[1].Width = m.countryRarityTbl.Width() - m.countryRarityTbl.Columns()[0].Width
+
 	// message is sent when a key is pressed.
 	case tea.KeyMsg:
 		return m, m.processKeyMsg(thisMsg)
@@ -135,11 +159,14 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
+// processADSBResponse processes new data from the ADS-B data source and updates the tables accordingly.
 func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	m.lastUpdate = time.Now()
 	responseBody := []byte(msg)
 	m.dashboard.ProcessCivAircraftJSON(responseBody)
-	rows := make([]table.Row, len(m.dashboard.CurrentAircraft))
+
+	// Update current aircraft table.
+	currentAircraftRows := make([]table.Row, len(m.dashboard.CurrentAircraft))
 	for idx, aircraft := range m.dashboard.CurrentAircraft {
 		aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
 
@@ -148,7 +175,7 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 			continue
 		}
 
-		rows[idx] = table.Row{
+		currentAircraftRows[idx] = table.Row{
 			fmt.Sprintf("%3.0f", aircraft.CachedDist),
 			aircraft.GetFlightNoAsStr(),
 			aircraftType,
@@ -156,8 +183,42 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 			fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
 			fmt.Sprintf("%3.0f", aircraft.NavHeading),
 		}
-		m.currentAircraftTbl.SetRows(rows)
 	}
+	m.currentAircraftTbl.SetRows(currentAircraftRows)
+
+	// Update current type rarity table.
+	typeRarities := m.dashboard.GetTypeRarities()
+	typeRarityRows := make([]table.Row, len(typeRarities))
+	for typeIdx := range typeRarities {
+		typeRarityRows[typeIdx] = table.Row{
+			fmt.Sprintf("%5d", typeRarities[typeIdx].Count),
+			typeRarities[typeIdx].Property,
+		}
+	}
+	m.typeRarityTbl.SetRows(typeRarityRows)
+
+	// Update current operator rarity table.
+	operatorRarities := m.dashboard.GetOperatorRarities()
+	operatorRarityRows := make([]table.Row, len(operatorRarities))
+	for operatorIdx := range operatorRarities {
+		operatorRarityRows[operatorIdx] = table.Row{
+			fmt.Sprintf("%5d", operatorRarities[operatorIdx].Count),
+			operatorRarities[operatorIdx].Property,
+		}
+	}
+	m.operatorRarityTbl.SetRows(operatorRarityRows)
+
+	// Update current type rarity table.
+	countryRarities := m.dashboard.GetCountryRarities()
+	countryRarityRows := make([]table.Row, len(countryRarities))
+	for countryIdx := range countryRarities {
+		countryRarityRows[countryIdx] = table.Row{
+			fmt.Sprintf("%5d", countryRarities[countryIdx].Count),
+			countryRarities[countryIdx].Property,
+		}
+	}
+	m.countryRarityTbl.SetRows(countryRarityRows)
+
 	// since we've already scheduled the next request, there is nothing to return now.
 }
 
@@ -175,7 +236,15 @@ func (m *model) View() string {
 			// Vertically join multiple elements aligned to the left.
 			lipgloss.JoinVertical(lipgloss.Left,
 				column(m.viewHeader()),
-				column(m.viewAircraft()),
+				column(
+					lipgloss.JoinHorizontal(
+						lipgloss.Top,
+						m.viewAircraft(),
+						m.viewTypeRarity(),
+						m.viewOperatorRarity(),
+						m.viewCountryRarity(),
+					),
+				),
 			),
 		)
 
@@ -255,4 +324,16 @@ func (m *model) viewHeader() string {
 
 func (m *model) viewAircraft() string {
 	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.currentAircraftTbl.View())
+}
+
+func (m *model) viewTypeRarity() string {
+	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.typeRarityTbl.View())
+}
+
+func (m *model) viewOperatorRarity() string {
+	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.operatorRarityTbl.View())
+}
+
+func (m *model) viewCountryRarity() string {
+	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.countryRarityTbl.View())
 }

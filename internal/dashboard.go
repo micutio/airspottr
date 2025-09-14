@@ -481,31 +481,62 @@ func (db *Dashboard) PrintSummary() {
 	db.consoleOut.Println("=== End Summary ===")
 }
 
-type propertyCountTuple struct {
-	property string
-	count    int
+type PropertyCountTuple struct {
+	Property string
+	Count    int
 }
 
-type ByCount []propertyCountTuple
+type ByCount []PropertyCountTuple
 
 func (a ByCount) Len() int           { return len(a) }
-func (a ByCount) Less(i, j int) bool { return a[i].count < a[j].count }
+func (a ByCount) Less(i, j int) bool { return a[i].Count < a[j].Count }
 func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func (db *Dashboard) listByRarity(propertyName string, propertyCountMap map[string]int) {
-	propertyCounts := make([]propertyCountTuple, len(propertyCountMap))
+func getSortedCountsForProperty(propertyCountMap map[string]int) []PropertyCountTuple {
+	propertyCounts := make([]PropertyCountTuple, len(propertyCountMap))
 	i := 0
 	for key, value := range propertyCountMap {
-		propertyCounts[i] = propertyCountTuple{property: key, count: value}
+		propertyCounts[i] = PropertyCountTuple{Property: key, Count: value}
 		i++
 	}
 
 	sort.Sort(ByCount(propertyCounts))
+	return propertyCounts
+}
+
+func (db *Dashboard) listByRarity(propertyName string, propertyCountMap map[string]int) {
+	propertyCounts := getSortedCountsForProperty(propertyCountMap)
 
 	db.consoleOut.Printf("Rarity from least to most common %s", propertyName)
 	for j := range propertyCounts {
-		db.consoleOut.Printf("%6d - %s\n", propertyCounts[j].count, propertyCounts[j].property)
+		db.consoleOut.Printf("%6d - %s\n", propertyCounts[j].Count, propertyCounts[j].Property)
 	}
+}
+
+func (db *Dashboard) GetMaxTypeNameLength() int {
+	// Create a new table with specified columns and initial empty rows.
+	maxTypeLen := 0
+	for _, value := range db.IcaoToAircraft {
+		if len(value.Make) > maxTypeLen {
+			maxTypeLen = len(value.Make)
+		}
+	}
+	return maxTypeLen
+}
+
+// GetTypeRarities contains all seen types ever, sorted by their counts in increasing order.
+func (db *Dashboard) GetTypeRarities() []PropertyCountTuple {
+	return getSortedCountsForProperty(db.seenTypeCount)
+}
+
+// GetOperatorRarities contains all seen operators ever, sorted by their counts in increasing order.
+func (db *Dashboard) GetOperatorRarities() []PropertyCountTuple {
+	return getSortedCountsForProperty(db.seenOperatorCount)
+}
+
+// GetCountryRarities contains all seen countries ever, sorted by their counts in increasing order.
+func (db *Dashboard) GetCountryRarities() []PropertyCountTuple {
+	return getSortedCountsForProperty(db.seenCountryCount)
 }
 
 // aircraftToString generates a one-liner consisting of the most relevant information about the

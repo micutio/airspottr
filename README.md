@@ -16,8 +16,8 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 
 ## TODO
 
-- [ ] show total uptime in summaries
-- [ ] show location in TUI and maybe ticker output
+- [x] show total uptime in summaries
+- [x] show location in TUI and maybe ticker output
 - [ ] colored console output
 - [ ] graceful shutdown
 - [ ] current aircraft closest to your location
