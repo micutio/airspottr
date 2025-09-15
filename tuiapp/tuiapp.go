@@ -72,8 +72,10 @@ func Run(requestOptions internal.RequestOptions) {
 
 	// STEP 2: Initialise visual styles for tables. //////////////////////////////////////////////
 	tableStyle := table.DefaultStyles()
+	tableStyle.Header.Padding(0)
+	tableStyle.Cell.Padding(0)
 	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
-	maxTypeNameLen := dashboard.GetMaxTypeNameLength()
+	maxTypeNameLen := dashboard.GetMaxTypeNameLength() / 3.0
 
 	currentAircraftTbl := newCurrentAircraftTable(tableStyle, maxTypeNameLen)
 	typeRarityTbl := newTypeRarityTable(tableStyle)

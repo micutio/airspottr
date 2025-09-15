@@ -81,33 +81,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	// message is sent when the window size changes
 	// save to reflect the new dimensions of the terminal window.
 	case tea.WindowSizeMsg:
-		headerHeight := 10 // TODO: Make this cleaner and clearer.
-		leftSideWidthRatio := 0.5
-		rightSideWidthRatio := 1.0 - leftSideWidthRatio
-		ratioPerRightTable := 0.28
-		rightSideTableRatio := rightSideWidthRatio * ratioPerRightTable
-
 		m.height = thisMsg.Height
-		m.currentAircraftTbl.SetHeight(m.height - headerHeight)
-		m.typeRarityTbl.SetHeight(m.height - headerHeight)
-		m.operatorRarityTbl.SetHeight(m.height - headerHeight)
-		m.countryRarityTbl.SetHeight(m.height - headerHeight)
 		m.width = thisMsg.Width
-
-		// TODO: Set type column width of current aircraft table to variable size.
-
-		// Adjust widths of all tables
-		m.currentAircraftTbl.SetWidth(int(float64(m.width) * leftSideWidthRatio))
-
-		m.typeRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
-		m.typeRarityTbl.Columns()[1].Width = m.typeRarityTbl.Width() - m.typeRarityTbl.Columns()[0].Width
-
-		m.operatorRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
-		m.operatorRarityTbl.Columns()[1].Width = m.operatorRarityTbl.Width() - m.operatorRarityTbl.Columns()[0].Width
-
-		m.countryRarityTbl.SetWidth(int(float64(m.width) * rightSideTableRatio))
-		m.countryRarityTbl.Columns()[1].Width = m.countryRarityTbl.Width() - m.countryRarityTbl.Columns()[0].Width
-
+		m.resizeTables()
 	// message is sent when a key is pressed.
 	case tea.KeyMsg:
 		return m, m.processKeyMsg(thisMsg)
@@ -123,6 +99,40 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	// If the message type does not match any of the handled cases, the model is returned unchanged,
 	// and no new command is issued.
 	return m, nil
+}
+
+func (m *model) resizeTables() {
+	headerHeight := 10 // TODO: Make this cleaner and clearer.
+
+	m.currentAircraftTbl.SetHeight(m.height - headerHeight)
+	m.typeRarityTbl.SetHeight(m.height - headerHeight)
+	m.operatorRarityTbl.SetHeight(m.height - headerHeight)
+	m.countryRarityTbl.SetHeight(m.height - headerHeight)
+
+	// TODO: Set type column width of current aircraft table to variable size.
+
+	// Adjust widths of all tables
+	leftSideWidthRatio := 0.5
+	leftSideWidth := int(float64(m.width) * leftSideWidthRatio)
+	rightSideWidth := m.width - leftSideWidth
+	rightSideTableCount := 3.0
+	rightSideTableRatio := 1.0 / rightSideTableCount
+	rightSideTableWidth := int(float64(rightSideWidth) * rightSideTableRatio)
+
+	m.currentAircraftTbl.SetWidth(leftSideWidth - 2 - len(m.currentAircraftTbl.Columns()))
+
+	m.typeRarityTbl.SetWidth(rightSideTableWidth - 2 - len(m.typeRarityTbl.Columns()))
+	m.typeRarityTbl.Columns()[1].Width = m.typeRarityTbl.Width() - m.typeRarityTbl.Columns()[0].Width
+
+	m.operatorRarityTbl.SetWidth(rightSideTableWidth - 2 - len(m.operatorRarityTbl.Columns()))
+	m.operatorRarityTbl.Columns()[1].Width = m.operatorRarityTbl.Width() - m.operatorRarityTbl.Columns()[0].Width
+
+	m.countryRarityTbl.SetWidth(
+		rightSideWidth -
+			rightSideTableWidth -
+			rightSideTableWidth -
+			2 - len(m.countryRarityTbl.Columns()))
+	m.countryRarityTbl.Columns()[1].Width = m.countryRarityTbl.Width() - m.countryRarityTbl.Columns()[0].Width
 }
 
 func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
@@ -227,7 +237,7 @@ func (m *model) View() string {
 	// on the top.
 	// Render is a method from the lipgloss package that applies the defined style and returns
 	// a function that can render styled content.
-	column := m.baseStyle.Width(m.width).Padding(1, 0, 0, 0).Render
+	column := m.baseStyle.Width(m.width).Padding(0, 0, 0, 0).Render
 	// Set the content to match the terminal dimensions (m.width and m.height).
 	content := m.baseStyle.
 		Width(m.width).
@@ -259,7 +269,7 @@ func (m *model) viewHeader() string {
 		Border(lipgloss.NormalBorder(), false, true, false, false).
 		BorderForeground(m.theme.Border).
 		Height(1).
-		Padding(0, 1)
+		Padding(0, 0)
 
 	// Applies bold styling to the text.
 	listHeader := m.baseStyle.Bold(true).Render
