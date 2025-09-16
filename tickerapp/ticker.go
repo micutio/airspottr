@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal/dash"
 )
 
 func Run(options internal.RequestOptions) {
@@ -22,12 +23,9 @@ func Run(options internal.RequestOptions) {
 	stdout := io.Writer(os.Stdout)
 	stderr := io.Writer(os.Stderr)
 
-	logParams := internal.LogParams{
-		ConsoleOut: &stdout,
-		ErrorOut:   &stderr,
-	}
+	notify := internal.NewNotify(&stdout)
 
-	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, logParams)
+	flightDash, dashboardErr := dash.NewDashboard(options.Lon, options.Lon, &stderr)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
@@ -38,19 +36,11 @@ func Run(options internal.RequestOptions) {
 		flightDash.FinishWarmupPeriod()
 	})
 
-	// Create a aircraftUpdateTicker that fires every 30 seconds
+	// Create an aircraft update ticker that fires in a given interval
 	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
 	defer aircraftUpdateTicker.Stop()
 
-	// aircraft and military aircraft updates should not coincide to avoid exceeding the api limit.
-	// Hence, stagger them by 15 seconds.
-	milAircraftUpdateTicker := time.NewTicker(internal.MilAircraftUpdateInterval)
-	defer milAircraftUpdateTicker.Stop()
-
-	time.AfterFunc(internal.MilAircraftUpdateDelay, func() {
-		milAircraftUpdateTicker.Reset(internal.MilAircraftUpdateInterval)
-	})
-
+	// Create a summary ticker that fires in a given interval
 	summaryTicker := time.NewTicker(internal.SummaryInterval)
 	defer summaryTicker.Stop()
 
@@ -68,14 +58,8 @@ func Run(options internal.RequestOptions) {
 				} else {
 					flightDash.ProcessCivAircraftJSON(body)
 				}
-			case <-milAircraftUpdateTicker.C:
-				if body, err := internal.RequestAndProcessMilAircraft(); err != nil {
-					logger.Error("main: %w", slog.Any("error", err))
-				} else {
-					flightDash.ProcessMilAircraftJSON(body)
-				}
 			case <-summaryTicker.C:
-				flightDash.PrintSummary()
+				notify.PrintSummary(flightDash)
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
 				logger.Info("Stopping HTTP GET request routine.")
@@ -84,13 +68,6 @@ func Run(options internal.RequestOptions) {
 			}
 		}
 	}()
-
-	// Run once in the beginning.
-	if body, err := internal.RequestAndProcessMilAircraft(); err != nil {
-		logger.Error("main: ", slog.Any("error", err))
-	} else {
-		flightDash.ProcessMilAircraftJSON(body)
-	}
 
 	// Keep the main goroutine alive indefinitely, or until an interrupt signal is received
 	// In a real application, you might have other logic here or use a wait group.

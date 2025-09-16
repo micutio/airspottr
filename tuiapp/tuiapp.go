@@ -29,6 +29,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal/dash"
 )
 
 const (
@@ -56,12 +57,7 @@ func Run(requestOptions internal.RequestOptions) {
 
 	var errFileWriter io.Writer = errLogFile
 
-	consoleParams := internal.LogParams{
-		ConsoleOut: &io.Discard,
-		ErrorOut:   &errFileWriter,
-	}
-
-	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, consoleParams)
+	dashboard, dashErr := dash.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errFileWriter)
 	if dashErr != nil {
 		log.Println(fmt.Errorf("tuiapp.Run: %w", dashErr))
 		return

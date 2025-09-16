@@ -13,21 +13,14 @@ import (
 const (
 	// AircraftUpdateInterval determines the update rate for general aircraft.
 	AircraftUpdateInterval = 30 * time.Second
-	// MilAircraftUpdateInterval determines the update rate for military aircraft.
-	MilAircraftUpdateInterval = 15 * time.Minute
-	// MilAircraftUpdateDelay determines interleaving between general and mil aircraft api calls.
-	MilAircraftUpdateDelay = 15 * time.Second
 	// SummaryInterval determines how often the summary is show.
 	SummaryInterval = 1 * time.Hour
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
 	DashboardWarmup = 1 * time.Hour
 
-	URLAdsbOpenData    = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
-	URLAdsbOpenDataMil = "https://opendata.adsb.fi/api/v2/mil"
+	URLAdsbOpenData = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
-	// UrlAdsbOneMil      = "https://api.adsb.one/v2/mil"
 	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
-	// UrlAdsbLolMil      = "https://api.adsb.lol/v2/mil"
 )
 
 var (
@@ -49,18 +42,6 @@ func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
 	body, requestErr := sendRequest(targetURL)
 	if requestErr != nil {
 		return nil, fmt.Errorf("requestAndProcessCivAircraft: error during request: %w", requestErr)
-	}
-
-	return body, nil
-}
-
-func RequestAndProcessMilAircraft() ([]byte, error) {
-	// Define the URL for the HTTP GET request
-	targetURL := URLAdsbOpenDataMil
-	// This case is executed every time the ticker "ticks"
-	body, requestErr := sendRequest(targetURL)
-	if requestErr != nil {
-		return nil, fmt.Errorf("error during request: %w", requestErr)
 	}
 
 	return body, nil

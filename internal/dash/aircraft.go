@@ -1,4 +1,4 @@
-package internal
+package dash
 
 import (
 	"fmt"
@@ -15,16 +15,6 @@ type civAircraftResult struct {
 	ResultCount int              `json:"resultCount"` // total count of aircraft returned
 	Ptime       float64          `json:"ptime"`       // server processing time required in [ms]
 	Aircraft    []aircraftRecord `json:"aircraft"`    // list of Aircraft records
-}
-
-// milAircraftResult mirrors the JSON which is returned for military aircraft queries.
-type milAircraftResult struct {
-	Msg      string           `json:"msg"`   // error message, usually "no error"
-	Now      int              `json:"now"`   // time this file was generated in ms
-	Total    int              `json:"total"` // total count of aircraft returned
-	CTime    int              `json:"ctime"`
-	PTime    int              `json:"ptime"` // server processing time required in [ms]
-	Aircraft []aircraftRecord `json:"ac"`    // list of Aircraft records
 }
 
 // aircraftRecord is used by both civilian and military aircraft queries.
@@ -92,6 +82,7 @@ type aircraftRecord struct {
 	Description string `json:"desc"`  // aircraft type description
 	// cached data
 	CachedDist float64
+	CachedType string
 }
 
 // GetAltitudeAsStr reads the altitude of an aircraft and returns it as a string.
