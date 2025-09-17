@@ -29,7 +29,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/airspottr/internal"
-	"github.com/micutio/airspottr/internal/dash"
 )
 
 const (
@@ -57,7 +56,10 @@ func Run(requestOptions internal.RequestOptions) {
 
 	var errFileWriter io.Writer = errLogFile
 
-	dashboard, dashErr := dash.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errFileWriter)
+	devNull := io.Writer(os.DevNull)
+	notify := internal.NewNotify(&devNull)
+
+	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errFileWriter)
 	if dashErr != nil {
 		log.Println(fmt.Errorf("tuiapp.Run: %w", dashErr))
 		return
@@ -93,6 +95,7 @@ func Run(requestOptions internal.RequestOptions) {
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
 		dashboard:          dashboard,
+		notify:             notify,
 		options:            requestOptions,
 	}
 	// Create a new Bubble Tea program with the appModel and enable alternate screen

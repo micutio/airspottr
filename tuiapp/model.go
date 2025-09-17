@@ -65,6 +65,7 @@ type model struct {
 	startTime          time.Time
 	lastUpdate         time.Time
 	dashboard          *internal.Dashboard
+	notify             *internal.Notify
 	options            internal.RequestOptions
 }
 
@@ -197,7 +198,8 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	m.currentAircraftTbl.SetRows(currentAircraftRows)
 
 	// Update current type rarity table.
-	typeRarities := m.dashboard.GetTypeRarities()
+	// typeRarities := m.dashboard.GetTypeRarities()
+	typeRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenTypeCount)
 	typeRarityRows := make([]table.Row, len(typeRarities))
 	for typeIdx := range typeRarities {
 		typeRarityRows[typeIdx] = table.Row{
@@ -208,7 +210,8 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	m.typeRarityTbl.SetRows(typeRarityRows)
 
 	// Update current operator rarity table.
-	operatorRarities := m.dashboard.GetOperatorRarities()
+	// operatorRarities := m.dashboard.GetOperatorRarities()
+	operatorRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenOperatorCount)
 	operatorRarityRows := make([]table.Row, len(operatorRarities))
 	for operatorIdx := range operatorRarities {
 		operatorRarityRows[operatorIdx] = table.Row{
@@ -219,7 +222,8 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	m.operatorRarityTbl.SetRows(operatorRarityRows)
 
 	// Update current type rarity table.
-	countryRarities := m.dashboard.GetCountryRarities()
+	// countryRarities := m.dashboard.GetCountryRarities()
+	countryRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenCountryCount)
 	countryRarityRows := make([]table.Row, len(countryRarities))
 	for countryIdx := range countryRarities {
 		countryRarityRows[countryIdx] = table.Row{
@@ -228,6 +232,9 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 		}
 	}
 	m.countryRarityTbl.SetRows(countryRarityRows)
+
+	// finally send out notifications for any rare sightings that occurred
+	m.notify.EmitRarityNotifications(m.dashboard.RareSightings)
 
 	// since we've already scheduled the next request, there is nothing to return now.
 }

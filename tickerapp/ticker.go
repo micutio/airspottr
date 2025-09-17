@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/micutio/airspottr/internal"
-	"github.com/micutio/airspottr/internal/dash"
 )
 
 func Run(options internal.RequestOptions) {
@@ -25,7 +24,7 @@ func Run(options internal.RequestOptions) {
 
 	notify := internal.NewNotify(&stdout)
 
-	flightDash, dashboardErr := dash.NewDashboard(options.Lon, options.Lon, &stderr)
+	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, &stderr)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
@@ -57,6 +56,7 @@ func Run(options internal.RequestOptions) {
 					logger.Error("main: ", slog.Any("error", err))
 				} else {
 					flightDash.ProcessCivAircraftJSON(body)
+					notify.EmitRarityNotifications(flightDash.RareSightings)
 				}
 			case <-summaryTicker.C:
 				notify.PrintSummary(flightDash)

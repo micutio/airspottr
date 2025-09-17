@@ -15,32 +15,32 @@ const (
 	piHalf                   float64 = math.Pi / 180
 )
 
-// Conversion function
-
-func degreesToRadian(d float64) float64 {
-	return d * piHalf
-}
-
 // Coordinate type
 
-type coordinates struct {
+type Coordinates struct {
 	Latitude  float64
 	Longitude float64
 }
 
-func (c coordinates) toRadians() coordinates {
-	return coordinates{
+// NewCoordinates returns a coordinates struct based on parameters passed.
+func NewCoordinates(latitude, longitude float64) Coordinates {
+	return Coordinates{
+		Latitude:  latitude,
+		Longitude: longitude,
+	}
+}
+
+func (c Coordinates) toRadians() Coordinates {
+	return Coordinates{
 		Latitude:  degreesToRadian(c.Latitude),
 		Longitude: degreesToRadian(c.Longitude),
 	}
 }
 
-// newCoordinates returns a coordinates struct based on parameters passed.
-func newCoordinates(latitude, longitude float64) coordinates {
-	return coordinates{
-		Latitude:  latitude,
-		Longitude: longitude,
-	}
+// Conversion function
+
+func degreesToRadian(d float64) float64 {
+	return d * piHalf
 }
 
 // distance type
@@ -68,7 +68,7 @@ func (d DistanceStruct) NauticalMiles() float64 {
 // Distance calculates distance using the haversine formula.
 //
 //nolint:mnd // readability of mathmatic formula
-func Distance(p, q coordinates) DistanceStruct {
+func Distance(p, q Coordinates) DistanceStruct {
 	fromPos := p.toRadians()
 	toPos := q.toRadians()
 

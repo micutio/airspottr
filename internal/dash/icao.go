@@ -25,14 +25,14 @@ var (
 	errParseHex  = errors.New("unable to parse hexadecimal string")
 )
 
-type icaoAircraft struct {
+type IcaoAircraft struct {
 	Class  string
 	Engine string
 	Make   string
 }
 
-// getIcaoToAircraftMap returns an ICAO id to aircraft record mapping.
-func getIcaoToAircraftMap() (map[string]icaoAircraft, error) {
+// GetIcaoToAircraftMap returns an ICAO id to aircraft record mapping.
+func GetIcaoToAircraftMap() (map[string]IcaoAircraft, error) {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
 	if err != nil {
@@ -43,7 +43,7 @@ func getIcaoToAircraftMap() (map[string]icaoAircraft, error) {
 }
 
 // parseIcaoCsvToMap reads a CSV file and parses it into a map ICAO -> aircraft spec.
-func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
+func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -76,7 +76,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 		return nil, fmt.Errorf("parseIcaoCsvToMap: %w", errHeaderLen)
 	}
 
-	records := make(map[string]icaoAircraft)
+	records := make(map[string]IcaoAircraft)
 
 	// Loop through the remaining records
 	for {
@@ -93,19 +93,19 @@ func parseIcaoCsvToMap(filePath string) (map[string]icaoAircraft, error) {
 		class := record[1]
 		engine := record[2]
 		manufacturer := strings.Trim(record[3], "\"")
-		records[key] = icaoAircraft{class, engine, manufacturer}
+		records[key] = IcaoAircraft{class, engine, manufacturer}
 	}
 
 	return records, nil
 }
 
-type icaoOperator struct {
+type IcaoOperator struct {
 	Company string
 	Country string
 }
 
-// getIcaoToAircraftMap returns a three-letter code to airline record mapping.
-func getIcaoToAirlineMap() (map[string]icaoOperator, error) {
+// GetIcaoToAircraftMap returns a three-letter code to airline record mapping.
+func GetIcaoToAirlineMap() (map[string]IcaoOperator, error) {
 	// Parse the CSV file
 	icaoAirlineMap, err := parseAirlineCsvToMap(airlineListPath)
 	if err != nil {
@@ -116,7 +116,7 @@ func getIcaoToAirlineMap() (map[string]icaoOperator, error) {
 }
 
 // parseAirlineCsvToMap reads a CSV file and parses it into a map ICAO Code -> airline record.
-func parseAirlineCsvToMap(filePath string) (map[string]icaoOperator, error) {
+func parseAirlineCsvToMap(filePath string) (map[string]IcaoOperator, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -144,7 +144,7 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoOperator, error) {
 		return nil, fmt.Errorf("parseAirlineCsvMap: %w", errHeaderLen)
 	}
 
-	records := make(map[string]icaoOperator)
+	records := make(map[string]IcaoOperator)
 
 	// Loop through the remaining records
 	for {
@@ -161,19 +161,19 @@ func parseAirlineCsvToMap(filePath string) (map[string]icaoOperator, error) {
 		country := record[1]
 		// skipping telephony, record[2] is unused
 		threeLtrCode := record[3][0:3]
-		records[threeLtrCode] = icaoOperator{company, country}
+		records[threeLtrCode] = IcaoOperator{company, country}
 	}
 
 	return records, nil
 }
 
-type hexRange struct {
+type HexRange struct {
 	LowerBound int64
 	UpperBound int64
 }
 
-// getHexRangeToCountryMap returns a hex registration range to country mapping.
-func getHexRangeToCountryMap() (map[hexRange]string, error) {
+// GetHexRangeToCountryMap returns a hex registration range to country mapping.
+func GetHexRangeToCountryMap() (map[HexRange]string, error) {
 	// Parse the CSV file
 	hexRangeMap, err := parseHexRangeCsvToMap(hexRangeListPath)
 	if err != nil {
@@ -184,7 +184,7 @@ func getHexRangeToCountryMap() (map[hexRange]string, error) {
 }
 
 // parseAirlineCsvToMap reads a CSV file and parses it into a map regPrefix -> country.
-func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
+func parseHexRangeCsvToMap(filePath string) (map[HexRange]string, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -202,7 +202,7 @@ func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
 
 	// Does not have a header row, so we don't need to read it first.
 
-	records := make(map[hexRange]string)
+	records := make(map[HexRange]string)
 
 	// Loop through the remaining records
 	for {
@@ -224,14 +224,14 @@ func parseHexRangeCsvToMap(filePath string) (map[hexRange]string, error) {
 			return nil, fmt.Errorf("parseHexRangeCsvToMap: %w: %s", errParseHex, record[1])
 		}
 		// skipping comment, record[2] is unused
-		records[hexRange{lowerBound, upperBound}] = record[2]
+		records[HexRange{lowerBound, upperBound}] = record[2]
 	}
 
 	return records, nil
 }
 
-// getRegPrefixMap returns a registration prefix to country mapping.
-func getRegPrefixMap() (map[string]string, error) {
+// GetRegPrefixMap returns a registration prefix to country mapping.
+func GetRegPrefixMap() (map[string]string, error) {
 	// Parse the CSV file
 	regPrefixMap, err := parseRegPrefixCsvToMap(regPrefixListPath)
 	if err != nil {
@@ -292,8 +292,8 @@ func parseRegPrefixCsvToMap(filePath string) (map[string]string, error) {
 	return records, nil
 }
 
-// getMilCodeToOperatorMap returns a military code to operator mapping.
-func getMilCodeToOperatorMap() (map[string]string, error) {
+// GetMilCodeToOperatorMap returns a military code to operator mapping.
+func GetMilCodeToOperatorMap() (map[string]string, error) {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseMilCodeToMap(milCodeFilePath)
 	if err != nil {

@@ -1,5 +1,5 @@
-// Package dash provides the Dashboard type and all associated program logic.
-package dash
+// Package internal provides the Dashboard type and all associated program logic.
+package internal
 
 import (
 	"encoding/json"
@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/micutio/airspottr/internal/dash"
 )
 
 const (
@@ -18,14 +20,6 @@ const (
 	// Lat float64 = 1.359297
 	// Lon is Longitude of SIN Airport.
 	// Lon float64 = 103.989348
-	// appIconPath is the file path to the icon png for this application.
-	appIconPath = "./assets/icon.png"
-	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	typeRarityThreshold = 0.001
-	// operatorRarityThreshold denotes the maximum rate an operator is seen to be considered rare.
-	operatorRarityThreshold = 0.001
-	// countryRarityThreshold denotes the maximum rate a country is seen to be considered rare.
-	countryRarityThreshold = 0.001
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
 	// flightUnknown is what we use for aircraft with missing flight number.
@@ -50,35 +44,26 @@ var (
 	errParseMilCodeMap           = errors.New("failed to parse mil code to operator map")
 )
 
-type aircraftSighting struct {
-	lastSeen     time.Time
-	lastFlightNo string
-	typeDesc     string // typeDesc is the full name of the aircraft type
-	operator     string // operator can be either airline or military organisation
-	country      string // country of registration
-}
-
 type Dashboard struct {
 	isWarmup           bool
 	Lat                float32
 	Lon                float32
-	Fastest            *aircraftRecord
-	Highest            *aircraftRecord
-	CurrentAircraft    []aircraftRecord
-	aircraftSightings  map[string]aircraftSighting // set of all seen aircraft, maps hex to last seen time
+	Fastest            *AircraftRecord
+	Highest            *AircraftRecord
+	CurrentAircraft    []AircraftRecord
+	RareSightings      []RareSighting
+	aircraftSightings  map[string]AircraftSighting // set of all seen aircraft, maps hex to last seen time
 	totalTypeCount     int
 	totalOperatorCount int
 	totalCountryCount  int
-	seenTypeCount      map[string]int // types mapped to how often seen
-	seenOperatorCount  map[string]int // airlines mapped to how often seen
-	seenCountryCount   map[string]int // airlines mapped to how often seen
-	IcaoToAircraft     map[string]icaoAircraft
-	IcaoToAirline      map[string]icaoOperator
+	SeenTypeCount      map[string]int // types mapped to how often seen
+	SeenOperatorCount  map[string]int // airlines mapped to how often seen
+	SeenCountryCount   map[string]int // airlines mapped to how often seen
+	IcaoToAircraft     map[string]dash.IcaoAircraft
+	IcaoToAirline      map[string]dash.IcaoOperator
 	regPrefixToCountry map[string]string
-	hexRangeToCountry  map[hexRange]string
+	hexRangeToCountry  map[dash.HexRange]string
 	milCodeToOperator  map[string]string
-	// TODO: Move out to notifications
-	consoleOut log.Logger
 	// TODO: Check whether possible to move out to notifications
 	errOut log.Logger
 }
@@ -86,45 +71,46 @@ type Dashboard struct {
 func NewDashboard(lat float32, lon float32, stderr *io.Writer) (*Dashboard, error) {
 	const initError = "newDashboard: %w caused by %w"
 
-	icaoToAircraftMap, aircraftErr := getIcaoToAircraftMap()
+	icaoToAircraftMap, aircraftErr := dash.GetIcaoToAircraftMap()
 	if aircraftErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAircraftMap, aircraftErr)
 	}
 
-	icaoToAirlineMap, airlineErr := getIcaoToAirlineMap()
+	icaoToAirlineMap, airlineErr := dash.GetIcaoToAirlineMap()
 	if airlineErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAirlineMap, airlineErr)
 	}
 
-	regPrefixToCountryMap, regErr := getRegPrefixMap()
+	regPrefixToCountryMap, regErr := dash.GetRegPrefixMap()
 	if regErr != nil {
 		return nil, fmt.Errorf(initError, errParseRegToCountryMap, regErr)
 	}
 
-	hexRangeToCountryMap, hexRangeErr := getHexRangeToCountryMap()
+	hexRangeToCountryMap, hexRangeErr := dash.GetHexRangeToCountryMap()
 	if hexRangeErr != nil {
 		return nil, fmt.Errorf(initError, errParseHexRangeToCountryMap, hexRangeErr)
 	}
 
-	milCodeToOperatorMap, milCodeErr := getMilCodeToOperatorMap()
+	milCodeToOperatorMap, milCodeErr := dash.GetMilCodeToOperatorMap()
 	if milCodeErr != nil {
 		return nil, fmt.Errorf(initError, errParseMilCodeMap, milCodeErr)
 	}
 
-	dash := Dashboard{
+	dashboard := Dashboard{
 		isWarmup:           true,
 		Lat:                lat,
 		Lon:                lon,
 		Fastest:            nil,
 		Highest:            nil,
 		CurrentAircraft:    nil,
-		aircraftSightings:  make(map[string]aircraftSighting),
+		RareSightings:      nil,
+		aircraftSightings:  make(map[string]AircraftSighting),
 		totalTypeCount:     0,
 		totalOperatorCount: 0,
 		totalCountryCount:  0,
-		seenTypeCount:      make(map[string]int),
-		seenOperatorCount:  make(map[string]int),
-		seenCountryCount:   make(map[string]int),
+		SeenTypeCount:      make(map[string]int),
+		SeenOperatorCount:  make(map[string]int),
+		SeenCountryCount:   make(map[string]int),
 		IcaoToAircraft:     icaoToAircraftMap,
 		IcaoToAirline:      icaoToAirlineMap,
 		regPrefixToCountry: regPrefixToCountryMap,
@@ -133,9 +119,9 @@ func NewDashboard(lat float32, lon float32, stderr *io.Writer) (*Dashboard, erro
 		errOut:             *log.New(*stderr, "dashboard", log.LstdFlags),
 	}
 
-	dash.errOut.Println("Dashboard init")
+	dashboard.errOut.Println("Dashboard init")
 
-	return &dash, nil
+	return &dashboard, nil
 }
 
 func (db *Dashboard) FinishWarmupPeriod() {
@@ -166,7 +152,8 @@ func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
 
 func (db *Dashboard) processCivAircraftRecords() {
 	sort.Sort(ByFlight(db.CurrentAircraft))
-	thisPos := newCoordinates(float64(db.Lat), float64(db.Lon))
+	thisPos := dash.NewCoordinates(float64(db.Lat), float64(db.Lon))
+	var rareSightings []RareSighting
 
 	for idx := range len(db.CurrentAircraft) {
 		// Step 1: Get aircraft and time of sighting
@@ -177,12 +164,12 @@ func (db *Dashboard) processCivAircraftRecords() {
 		// Step 2: Retrieve previous sighting or create new one.
 		sighting, exists := db.aircraftSightings[aircraft.Hex]
 		if !exists {
-			sighting = aircraftSighting{
+			sighting = AircraftSighting{
 				lastSeen:     lastSeenTime,
 				lastFlightNo: flightUnknown,
-				typeDesc:     typeUnknown,
-				operator:     operatorUnknown,
-				country:      countryUnknown,
+				TypeDesc:     typeUnknown,
+				Operator:     operatorUnknown,
+				Country:      countryUnknown,
 			}
 		}
 
@@ -201,15 +188,15 @@ func (db *Dashboard) processCivAircraftRecords() {
 		}
 
 		// Step 3: Update distance
-		acPos := newCoordinates(aircraft.Lat, aircraft.Lon)
-		(db.CurrentAircraft)[idx].CachedDist = Distance(thisPos, acPos).Kilometers()
-		aircraft.CachedDist = Distance(thisPos, acPos).Kilometers()
+		acPos := dash.NewCoordinates(aircraft.Lat, aircraft.Lon)
+		(db.CurrentAircraft)[idx].CachedDist = dash.Distance(thisPos, acPos).Kilometers()
+		aircraft.CachedDist = dash.Distance(thisPos, acPos).Kilometers()
 
 		// Step 3: Update all aircraft, type, operator and country statistics
 		db.updateHighest(&aircraft)
 		db.updateFastest(&aircraft)
 
-		newRarities := noRarity
+		newRarities := NoRarity
 		rareTypeFlag := db.updateType(&sighting, &aircraft, isNewFlight)
 		rareOperatorFlag := db.updateOperator(&sighting, &aircraft, isNewFlight)
 		rareCountryFlag := db.updateCountry(&sighting, &aircraft, isNewFlight)
@@ -218,20 +205,27 @@ func (db *Dashboard) processCivAircraftRecords() {
 		newRarities |= rareOperatorFlag << 1
 		newRarities |= rareCountryFlag << 2
 
-		emitRarityNotifications(newRarities, &aircraft, &sighting, &db.consoleOut, db.isWarmup)
+		if newRarities != NoRarity {
+			rareSightings = append(db.RareSightings, RareSighting{
+				Rarities: newRarities,
+				Aircraft: &aircraft,
+				Sighting: &sighting,
+			})
+		}
 
 		// Finally, update the records
 		db.aircraftSightings[aircraft.Hex] = sighting
 	}
+	db.RareSightings = rareSightings
 }
 
 func (db *Dashboard) updateType(
-	sighting *aircraftSighting,
-	aircraft *aircraftRecord,
+	sighting *AircraftSighting,
+	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag rarityFlag) {
+) (foundRareFlag RarityFlag) {
 	// We already know the type or just saw this one recently, no need to update again.
-	isTypeKnown := sighting.typeDesc != typeUnknown
+	isTypeKnown := sighting.TypeDesc != typeUnknown
 	isFlightKnown := !isNewFlight
 	if isTypeKnown && isFlightKnown {
 		return 0
@@ -243,12 +237,12 @@ func (db *Dashboard) updateType(
 		return 0
 	}
 
-	sighting.typeDesc = aType
+	sighting.TypeDesc = aType
 	aircraft.CachedType = aType
 
 	// Valid type found! Record type and update type rarities.
-	thisTypeCountNew := db.seenTypeCount[aType] + 1
-	db.seenTypeCount[aType] = thisTypeCountNew
+	thisTypeCountNew := db.SeenTypeCount[aType] + 1
+	db.SeenTypeCount[aType] = thisTypeCountNew
 	db.totalTypeCount++
 	typeRarity := float32(thisTypeCountNew) / float32(db.totalTypeCount)
 
@@ -276,12 +270,12 @@ func (db *Dashboard) updateType(
 }
 
 func (db *Dashboard) updateOperator(
-	sighting *aircraftSighting,
-	aircraft *aircraftRecord,
+	sighting *AircraftSighting,
+	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag rarityFlag) {
+) (foundRareFlag RarityFlag) {
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.operator != operatorUnknown && !isNewFlight {
+	if sighting.Operator != operatorUnknown && !isNewFlight {
 		return 0
 	}
 
@@ -294,29 +288,29 @@ func (db *Dashboard) updateOperator(
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != flightUnknownCode {
 		if operatorRecord, opExists := db.IcaoToAirline[flightCode]; opExists {
-			sighting.operator = operatorRecord.Company
+			sighting.Operator = operatorRecord.Company
 		}
 	}
 
 	// Unable to detect airline, maybe it's military or government.
-	if sighting.operator == operatorUnknown {
+	if sighting.Operator == operatorUnknown {
 		if militaryOperator, milOpExists := db.milCodeToOperator[flightCode]; milOpExists {
-			sighting.operator = militaryOperator
+			sighting.Operator = militaryOperator
 		}
 	}
 
 	// Operator still not found, check whether the 'ownOp' field in the aircraft record is set.
-	if sighting.operator == operatorUnknown && aircraft.OwnOp != "" {
-		sighting.operator = aircraft.OwnOp
+	if sighting.Operator == operatorUnknown && aircraft.OwnOp != "" {
+		sighting.Operator = aircraft.OwnOp
 	}
 
 	// Did not manage to find out the operator of this aircraft.
-	if sighting.operator == operatorUnknown {
+	if sighting.Operator == operatorUnknown {
 		return 0
 	}
 
-	thisOperatorCountNew := db.seenOperatorCount[sighting.operator] + 1
-	db.seenOperatorCount[sighting.operator] = thisOperatorCountNew
+	thisOperatorCountNew := db.SeenOperatorCount[sighting.Operator] + 1
+	db.SeenOperatorCount[sighting.Operator] = thisOperatorCountNew
 	db.totalOperatorCount++
 	operatorRarity := float32(thisOperatorCountNew) / float32(db.totalOperatorCount)
 
@@ -343,12 +337,12 @@ func (db *Dashboard) updateOperator(
 }
 
 func (db *Dashboard) updateCountry(
-	sighting *aircraftSighting,
-	aircraft *aircraftRecord,
+	sighting *AircraftSighting,
+	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag rarityFlag) {
+) (foundRareFlag RarityFlag) {
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.country != countryUnknown && !isNewFlight {
+	if sighting.Country != countryUnknown && !isNewFlight {
 		return 0
 	}
 
@@ -361,29 +355,29 @@ func (db *Dashboard) updateCountry(
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != flightUnknownCode {
 		if operatorRecord, exists := db.IcaoToAirline[flightCode]; exists {
-			sighting.country = strings.ToUpper(operatorRecord.Country)
+			sighting.Country = strings.ToUpper(operatorRecord.Country)
 		}
 	}
 
 	// Option #2: Detect country by the range of it's hex registration.
-	if sighting.country == countryUnknown {
-		sighting.country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
+	if sighting.Country == countryUnknown {
+		sighting.Country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
 	}
 
 	// Option #3: Detect country by its ICAO registration prefix.
-	if sighting.country == countryUnknown {
+	if sighting.Country == countryUnknown {
 		if country, exists := db.getCountryByRegPrefix(aircraft.Registration); exists {
-			sighting.country = strings.ToUpper(country)
+			sighting.Country = strings.ToUpper(country)
 		}
 	}
 
 	// Unable to detect country of this aircraft.
-	if sighting.country == countryUnknown {
+	if sighting.Country == countryUnknown {
 		return 0
 	}
 
-	thisCountryCountNew := db.seenCountryCount[sighting.country] + 1
-	db.seenCountryCount[sighting.country] = thisCountryCountNew
+	thisCountryCountNew := db.SeenCountryCount[sighting.Country] + 1
+	db.SeenCountryCount[sighting.Country] = thisCountryCountNew
 	db.totalCountryCount++
 	countryRarity := float32(thisCountryCountNew) / float32(db.totalCountryCount)
 
@@ -432,7 +426,7 @@ func (db *Dashboard) getCountryByRegPrefix(reg string) (string, bool) {
 	return "", false
 }
 
-func (db *Dashboard) updateHighest(aircraft *aircraftRecord) {
+func (db *Dashboard) updateHighest(aircraft *AircraftRecord) {
 	thisAltitude, thisAltOk := aircraft.AltBaro.(float64)
 	if !thisAltOk {
 		return
@@ -446,7 +440,7 @@ func (db *Dashboard) updateHighest(aircraft *aircraftRecord) {
 	db.Highest = aircraft
 }
 
-func (db *Dashboard) updateFastest(aircraft *aircraftRecord) {
+func (db *Dashboard) updateFastest(aircraft *AircraftRecord) {
 	if db.Fastest != nil && db.Fastest.GroundSpeed > aircraft.GroundSpeed {
 		return
 	}

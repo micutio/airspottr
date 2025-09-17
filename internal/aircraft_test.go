@@ -1,4 +1,4 @@
-package dash
+package internal
 
 import "testing"
 
@@ -16,7 +16,7 @@ func getTestFlights() []testFlight {
 
 func TestFlightToAirlineConversion(t *testing.T) {
 	for _, flight := range getTestFlights() {
-		aircraft := aircraftRecord{ //nolint:exhaustruct // convenience for testing
+		aircraft := AircraftRecord{ //nolint:exhaustruct // convenience for testing
 			Flight: flight.flightNo,
 		}
 

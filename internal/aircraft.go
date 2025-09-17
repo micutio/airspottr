@@ -1,4 +1,4 @@
-package dash
+package internal
 
 import (
 	"fmt"
@@ -14,11 +14,11 @@ type civAircraftResult struct {
 	Now         float64          `json:"now"`         // time this file was generated in [ms]
 	ResultCount int              `json:"resultCount"` // total count of aircraft returned
 	Ptime       float64          `json:"ptime"`       // server processing time required in [ms]
-	Aircraft    []aircraftRecord `json:"aircraft"`    // list of Aircraft records
+	Aircraft    []AircraftRecord `json:"aircraft"`    // list of Aircraft records
 }
 
-// aircraftRecord is used by both civilian and military aircraft queries.
-type aircraftRecord struct {
+// AircraftRecord is used by both civilian and military aircraft queries.
+type AircraftRecord struct {
 	Alert           int      `json:"alert"`            // flight status alert bit
 	AltBaro         any      `json:"alt_baro"`         // altitude in [feet] or string "ground"
 	AltGeom         int      `json:"alt_geom"`         // altitude in [feet]
@@ -90,7 +90,7 @@ type aircraftRecord struct {
 // barometric altitude.
 // If the latter is the case, the float will be formatted without any decimal places
 // (unnecessary accuracy) and converted to string.
-func (ac *aircraftRecord) GetAltitudeAsStr() string {
+func (ac *AircraftRecord) GetAltitudeAsStr() string {
 	if num, numOk := ac.AltBaro.(float64); numOk {
 		return fmt.Sprintf("%5.0f", num)
 	}
@@ -104,7 +104,7 @@ func (ac *aircraftRecord) GetAltitudeAsStr() string {
 
 // GetFlightNoAsStr converts the flight number to a unified string of length 8.
 // Returns either the full flight number or 'unknown ' if it was not transmitted.
-func (ac *aircraftRecord) GetFlightNoAsStr() string {
+func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	if ac.Flight == "" {
 		return flightUnknown
 	}
@@ -115,7 +115,7 @@ func (ac *aircraftRecord) GetFlightNoAsStr() string {
 // GetFlightNoAsIcaoCode trims whitespaces and digits from the flight number,
 // resulting in the three-digit icao code for civilian flights and arbitrary length codes
 // for military, government and private flights.
-func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
+func (ac *AircraftRecord) GetFlightNoAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
 		return flightUnknownCode
 	}
@@ -125,7 +125,7 @@ func (ac *aircraftRecord) GetFlightNoAsIcaoCode() string {
 
 // GetRegistrationPrefix returns the prefix of the registration if it exists,
 // otherwise it returns the entire registration.
-func (ac *aircraftRecord) GetRegistrationPrefix() string {
+func (ac *AircraftRecord) GetRegistrationPrefix() string {
 	prefixEnd := strings.Index(ac.Registration, "-")
 
 	if prefixEnd != -1 {
@@ -145,7 +145,7 @@ func stripDigits(str string) string {
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
 // by flight.
-type ByFlight []aircraftRecord
+type ByFlight []AircraftRecord
 
 func (a ByFlight) Len() int           { return len(a) }
 func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
@@ -153,8 +153,9 @@ func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // ByDistance implements the comparator interface and allows sorting a list of aircraft records.
 // by distance to a given lon,lat coordinate.
-type ByDistance []aircraftRecord
+type ByDistance []AircraftRecord
 
 func (a ByDistance) Len() int           { return len(a) }
 func (a ByDistance) Less(i, j int) bool { return a[i].CachedDist < a[j].CachedDist }
 func (a ByDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+

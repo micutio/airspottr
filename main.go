@@ -36,9 +36,10 @@ func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
 }
 
 func main() {
+	// TODO: Move into notification
 	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
 
-	argIsUseTicker := false
+	var argIsUseTicker bool
 	var argLatLon []float32
 
 	setupCommandLineFlags(&argIsUseTicker, &argLatLon)
