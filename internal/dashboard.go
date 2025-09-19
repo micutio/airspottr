@@ -64,8 +64,7 @@ type Dashboard struct {
 	regPrefixToCountry map[string]string
 	hexRangeToCountry  map[dash.HexRange]string
 	milCodeToOperator  map[string]string
-	// TODO: Check whether possible to move out to notifications
-	errOut log.Logger
+	errOut             log.Logger
 }
 
 func NewDashboard(lat float32, lon float32, stderr *io.Writer) (*Dashboard, error) {

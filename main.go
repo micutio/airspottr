@@ -2,7 +2,6 @@
 package main
 
 import (
-	"github.com/gen2brain/beeep"
 	"github.com/micutio/airspottr/internal"
 	"github.com/micutio/airspottr/tickerapp"
 	"github.com/micutio/airspottr/tuiapp"
@@ -36,8 +35,6 @@ func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
 }
 
 func main() {
-	// TODO: Move into notification
-	beeep.AppName = thisAppName //nolint:reassign // This is the only way to set app name in beeep.
 
 	var argIsUseTicker bool
 	var argLatLon []float32
@@ -53,8 +50,8 @@ func main() {
 	}
 
 	if argIsUseTicker {
-		tickerapp.Run(options)
+		tickerapp.Run(thisAppName, options)
 	} else {
-		tuiapp.Run(options)
+		tuiapp.Run(thisAppName, options)
 	}
 }

@@ -35,19 +35,38 @@ const (
 	errLogFilePath = "./airspottr.log"
 )
 
-func Run(requestOptions internal.RequestOptions) {
+func Run(appName string, requestOptions internal.RequestOptions) {
 	theme := getDefaultTheme()
 
 	// STEP 1: Create logs and dashboard. ////////////////////////////////////////////////////////
-	errLogFile, fileErr := os.OpenFile(
+	// Open os.DevNull for writing
+	nullFile, nullFileErr := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if nullFileErr != nil {
+		fmt.Printf("Error opening os.DevNull: %v\n", nullFileErr)
+		return
+	}
+	defer func() {
+		closeErr := nullFile.Close()
+		if closeErr != nil {
+			closeErr = fmt.Errorf(
+				"tuiApp.Run(): error while closing file %s: %w",
+				errLogFilePath,
+				closeErr)
+		}
+	}()
+
+	var devNullWriter io.Writer = nullFile
+	notify := internal.NewNotify(appName, &devNullWriter)
+
+	errLogFile, errFileErr := os.OpenFile(
 		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // 0o666
-	if fileErr != nil {
-		log.Fatalf("Failed to open log file: %v", fileErr)
+	if errFileErr != nil {
+		log.Fatalf("Failed to open log file: %v", errFileErr)
 	}
 	defer func() {
 		closeErr := errLogFile.Close()
 		if closeErr != nil {
-			fileErr = fmt.Errorf(
+			errFileErr = fmt.Errorf(
 				"tuiApp.Run(): error while closing file %s: %w",
 				errLogFilePath,
 				closeErr)
@@ -55,10 +74,6 @@ func Run(requestOptions internal.RequestOptions) {
 	}()
 
 	var errFileWriter io.Writer = errLogFile
-
-	devNull := io.Writer(os.DevNull)
-	notify := internal.NewNotify(&devNull)
-
 	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errFileWriter)
 	if dashErr != nil {
 		log.Println(fmt.Errorf("tuiapp.Run: %w", dashErr))

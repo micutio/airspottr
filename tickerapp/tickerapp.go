@@ -13,8 +13,8 @@ import (
 	"github.com/micutio/airspottr/internal"
 )
 
-func Run(options internal.RequestOptions) {
-	fmt.Printf("airspottr launching at Lat: %.3f, Lon: %.3f\n", options.Lat, options.Lon)
+func Run(appName string, options internal.RequestOptions) {
+	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
 
 	// TODO: Replace slog logger!
 	logger := slog.Default()
@@ -22,7 +22,7 @@ func Run(options internal.RequestOptions) {
 	stdout := io.Writer(os.Stdout)
 	stderr := io.Writer(os.Stderr)
 
-	notify := internal.NewNotify(&stdout)
+	notify := internal.NewNotify(appName, &stdout)
 
 	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, &stderr)
 	if dashboardErr != nil {
