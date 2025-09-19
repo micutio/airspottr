@@ -45,7 +45,6 @@ func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[str
 	}
 }
 
-// TODO: Complete this function!
 func (notify *Notify) EmitRarityNotifications(rareSightings []RareSighting) {
 	for _, rareSighting := range rareSightings {
 		switch rareSighting.Rarities {
@@ -61,9 +60,30 @@ func (notify *Notify) EmitRarityNotifications(rareSightings []RareSighting) {
 			notify.Stdout.Printf("found rare country: %s\n", rareSighting.Sighting.Country)
 			notifyRareCountry(rareSighting.Aircraft, rareSighting.Sighting)
 		case RareTypeAndOperator:
+			notify.Stdout.Printf(
+				"found rare type and operator: %s run by %s\n",
+				aircraftToString(rareSighting.Aircraft),
+				rareSighting.Sighting.Operator)
+			notifyRareTypeAndOperator(rareSighting.Aircraft, rareSighting.Sighting)
 		case RareTypeAndCountry:
+			notify.Stdout.Printf(
+				"found rare type and country: %s -> %s\n",
+				aircraftToString(rareSighting.Aircraft),
+				rareSighting.Sighting.Country)
+			notifyRareTypeAndCountry(rareSighting.Aircraft, rareSighting.Sighting)
 		case RareOperatorAndCountry:
+			notify.Stdout.Printf(
+				"found rare operator and country: %s -> %s\n",
+				rareSighting.Sighting.Operator,
+				rareSighting.Sighting.Country)
+			notifyRareOperatorAndCountry(rareSighting.Aircraft, rareSighting.Sighting)
 		case RareTypeOperatorCountry:
+			notify.Stdout.Printf(
+				"found the TRIFECTA: %s -> %s -> %s\n",
+				aircraftToString(rareSighting.Aircraft),
+				rareSighting.Sighting.Operator,
+				rareSighting.Sighting.Country)
+			notifyRareCountry(rareSighting.Aircraft, rareSighting.Sighting)
 		}
 	}
 }
@@ -98,6 +118,74 @@ func notifyRareCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
 
 	msgBody := fmt.Sprintf("%s-based %s (%s)", country, aircraft.Description, aircraft.Registration)
 	err := beeep.Notify("Rare Country Spotted", msgBody, appIconPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func notifyRareTypeAndOperator(aircraft *AircraftRecord, sighting *AircraftSighting) {
+	var aType string
+	if aircraft.Description != "" {
+		aType = aircraft.Description
+	} else {
+		aType = sighting.TypeDesc
+	}
+
+	operator := sighting.Operator
+	msgTitle := "Rare Type & Operator Spotted"
+	msgBody := fmt.Sprintf("%s (%s) operated by\n%s", aType, aircraft.Registration, operator)
+	err := beeep.Notify(msgTitle, msgBody, appIconPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func notifyRareTypeAndCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
+	var aType string
+	if aircraft.Description != "" {
+		aType = aircraft.Description
+	} else {
+		aType = sighting.TypeDesc
+	}
+
+	country := sighting.Country
+	msgTitle := "Rare Type & Country Spotted"
+	msgBody := fmt.Sprintf("%s (%s) registered in\n%s", aType, aircraft.Registration, country)
+	err := beeep.Notify(msgTitle, msgBody, appIconPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func notifyRareOperatorAndCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
+	operator := sighting.Operator
+	country := sighting.Country
+	msgTitle := "Rare Operator & Country Spotted"
+	msgBody := fmt.Sprintf("%s\nflying aircraft registered in\n%s", operator, country)
+	err := beeep.Notify(msgTitle, msgBody, appIconPath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func notifyRareTypeOperatorCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
+	var aType string
+	if aircraft.Description != "" {
+		aType = aircraft.Description
+	} else {
+		aType = sighting.TypeDesc
+	}
+
+	operator := sighting.Operator
+	country := sighting.Country
+	msgTitle := "TRIFECTA spotted!"
+	msgBody := fmt.Sprintf(
+		"%s (%s),\nrunby %s,\nregistered in%s",
+		aType,
+		aircraft.Registration,
+		operator,
+		country)
+	err := beeep.Notify(msgTitle, msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
