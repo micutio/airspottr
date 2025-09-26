@@ -1,4 +1,4 @@
-﻿package internal
+package internal
 
 const (
 	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
