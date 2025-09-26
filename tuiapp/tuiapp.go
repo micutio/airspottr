@@ -52,6 +52,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 				"tuiApp.Run(): error while closing file %s: %w",
 				errLogFilePath,
 				closeErr)
+			log.Fatal(closeErr)
 		}
 	}()
 
@@ -61,7 +62,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 	errLogFile, errFileErr := os.OpenFile(
 		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // 0o666
 	if errFileErr != nil {
-		log.Fatalf("Failed to open log file: %v", errFileErr)
+		log.Printf("Failed to open log file: %v\n", errFileErr)
 	}
 	defer func() {
 		closeErr := errLogFile.Close()
@@ -70,6 +71,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 				"tuiApp.Run(): error while closing file %s: %w",
 				errLogFilePath,
 				closeErr)
+			log.Fatal(closeErr)
 		}
 	}()
 
@@ -88,9 +90,8 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 	tableStyle.Header.Padding(0)
 	tableStyle.Cell.Padding(0)
 	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
-	maxTypeNameLen := dashboard.GetMaxTypeNameLength() / 3.0
 
-	currentAircraftTbl := newCurrentAircraftTable(tableStyle, maxTypeNameLen)
+	currentAircraftTbl := newCurrentAircraftTable(tableStyle)
 	typeRarityTbl := newTypeRarityTable(tableStyle)
 	operatorRarityTbl := newOperatorRarityTable(tableStyle)
 	countryRarityTbl := newCountryRarityTable(tableStyle)

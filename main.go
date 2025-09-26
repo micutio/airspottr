@@ -14,7 +14,6 @@ const (
 )
 
 func main() {
-
 	var argIsUseTicker bool
 	var argLatLon []float32
 
@@ -55,4 +54,3 @@ func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
 		[]float32{0, 0},
 		"define the location where to spot planes")
 }
-

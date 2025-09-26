@@ -202,7 +202,7 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	typeRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenTypeCount)
 	typeRarityRows := make([]table.Row, len(typeRarities))
 	for typeIdx := range typeRarities {
-		propertyCountToRow(typeRarities[typeIdx])
+		typeRarityRows[typeIdx] = propertyCountToRow(typeRarities[typeIdx])
 	}
 	m.typeRarityTbl.table.SetRows(typeRarityRows)
 
@@ -211,7 +211,7 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	operatorRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenOperatorCount)
 	operatorRarityRows := make([]table.Row, len(operatorRarities))
 	for operatorIdx := range operatorRarities {
-		propertyCountToRow(operatorRarities[operatorIdx])
+		operatorRarityRows[operatorIdx] = propertyCountToRow(operatorRarities[operatorIdx])
 	}
 	m.operatorRarityTbl.table.SetRows(operatorRarityRows)
 
@@ -220,7 +220,7 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	countryRarities := internal.GetSortedCountsForProperty(m.dashboard.SeenCountryCount)
 	countryRarityRows := make([]table.Row, len(countryRarities))
 	for countryIdx := range countryRarities {
-		propertyCountToRow(countryRarities[countryIdx])
+		countryRarityRows[countryIdx] = propertyCountToRow(countryRarities[countryIdx])
 	}
 	m.countryRarityTbl.table.SetRows(countryRarityRows)
 

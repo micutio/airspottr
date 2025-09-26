@@ -202,10 +202,10 @@ func (db *Dashboard) processCivAircraftRecords() {
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
-		newRarities |= rareCountryFlag << 2
+		newRarities |= rareCountryFlag << 2 //nolint:mnd // okay for bit shifting
 
 		if newRarities != NoRarity {
-			rareSightings = append(db.RareSightings, RareSighting{
+			rareSightings = append(rareSightings, RareSighting{
 				Rarities: newRarities,
 				Aircraft: &aircraft,
 				Sighting: &sighting,
@@ -222,7 +222,7 @@ func (db *Dashboard) updateType(
 	sighting *AircraftSighting,
 	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag RarityFlag) {
+) RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
 	isTypeKnown := sighting.TypeDesc != typeUnknown
 	isFlightKnown := !isNewFlight
@@ -272,7 +272,7 @@ func (db *Dashboard) updateOperator(
 	sighting *AircraftSighting,
 	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag RarityFlag) {
+) RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
 	if sighting.Operator != operatorUnknown && !isNewFlight {
 		return 0
@@ -339,7 +339,7 @@ func (db *Dashboard) updateCountry(
 	sighting *AircraftSighting,
 	aircraft *AircraftRecord,
 	isNewFlight bool,
-) (foundRareFlag RarityFlag) {
+) RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
 	if sighting.Country != countryUnknown && !isNewFlight {
 		return 0

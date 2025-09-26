@@ -38,28 +38,30 @@ type tableFormat struct {
 }
 
 func newTableFormat(items ...columnFormat) tableFormat {
-	var totalRelativeWidth float32 = 0.0
+	var totalRelativeWidth float32
 	fixedWidth := 0
 	fillWidthCount := 0
 
 	for _, item := range items {
-		switch {
-		case item.option == relative:
+		switch item.option {
+		case relative:
 			totalRelativeWidth += item.value
 			continue
-		case item.option == fixed:
+		case fixed:
 			fixedWidth += int(item.value)
 			fillWidthCount++
+			continue
+		case fill:
 			continue
 		}
 	}
 
-	tf := tableFormat{
+	return tableFormat{
 		columnSizes:        items,
 		fixedWidth:         fixedWidth,
+		fillWidthCount:     fillWidthCount,
 		totalRelativeWidth: totalRelativeWidth,
 	}
-	return tf
 }
 
 // Integrated Formatted Table Type
@@ -71,12 +73,12 @@ type autoFormatTable struct {
 
 // TODO: Take table padding into account!
 func (aft *autoFormatTable) resize(newWidth int) error {
-	tableCols := len(aft.table.Columns())
-	if tableCols != len(aft.format.columnSizes) {
+	columnCount := len(aft.table.Columns())
+	if columnCount != len(aft.format.columnSizes) {
 		return fmt.Errorf(
 			"table.resize: %w -> %d in table, %d in tableFormat",
 			errColumnMismatch,
-			tableCols,
+			columnCount,
 			len(aft.format.columnSizes))
 	}
 
@@ -85,17 +87,17 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 	totalFillWidth := newWidth - totalRelativeWidth - aft.format.fixedWidth
 	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
 
-	for i := range tableCols {
-		format := aft.format.columnSizes[i]
+	for idx := range columnCount {
+		format := aft.format.columnSizes[idx]
 		switch format.option {
 		case fixed:
-			aft.table.Columns()[i].Width = int(format.value)
+			aft.table.Columns()[idx].Width = int(format.value)
 			continue
 		case relative:
-			aft.table.Columns()[i].Width = int(format.value * float32(newWidth))
+			aft.table.Columns()[idx].Width = int(format.value * float32(newWidth))
 			continue
 		case fill:
-			aft.table.Columns()[i].Width = fillPerColumn
+			aft.table.Columns()[idx].Width = fillPerColumn
 			continue
 		}
 	}
@@ -107,7 +109,7 @@ func (aft *autoFormatTable) SetHeight(height int) {
 	aft.table.SetHeight(height)
 }
 
-func newCurrentAircraftTable(tableStyle table.Styles, maxTypeNameLen int) autoFormatTable {
+func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	dstLen := 7
 	fnoLen := 10
 	spdLen := 5
@@ -127,7 +129,7 @@ func newCurrentAircraftTable(tableStyle table.Styles, maxTypeNameLen int) autoFo
 			[]table.Column{
 				{Title: "DST", Width: dstLen},
 				{Title: "FNO", Width: fnoLen},
-				{Title: "TID", Width: maxTypeNameLen},
+				{Title: "TID", Width: 0},
 				{Title: "ALT", Width: dstLen},
 				{Title: "SPD", Width: spdLen},
 				{Title: "HDG", Width: spdLen},
