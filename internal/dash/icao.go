@@ -104,7 +104,7 @@ type IcaoOperator struct {
 	Country string
 }
 
-// GetIcaoToAircraftMap returns a three-letter code to airline record mapping.
+// GetIcaoToAirlineMap returns a three-letter code to airline record mapping.
 func GetIcaoToAirlineMap() (map[string]IcaoOperator, error) {
 	// Parse the CSV file
 	icaoAirlineMap, err := parseAirlineCsvToMap(airlineListPath)

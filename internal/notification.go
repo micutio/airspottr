@@ -25,15 +25,15 @@ func NewNotify(appName string, consoleOut *io.Writer) *Notify {
 }
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
-func (notify *Notify) PrintSummary(db *Dashboard) {
+func (notify *Notify) PrintSummary(dash *Dashboard) {
 	notify.Stdout.Println("=== Summary ===")
-	notify.listByRarity("aircraft", db.SeenTypeCount)
-	notify.listByRarity("operator", db.SeenOperatorCount)
-	notify.listByRarity("country", db.SeenCountryCount)
+	notify.listByRarity("aircraft", dash.SeenTypeCount)
+	notify.listByRarity("operator", dash.SeenOperatorCount)
+	notify.listByRarity("country", dash.SeenCountryCount)
 	notify.Stdout.Println("Fastest Aircraft:")
-	notify.Stdout.Println(aircraftToString(db.Fastest))
+	notify.Stdout.Println(aircraftToString(dash.Fastest))
 	notify.Stdout.Println("Highest Aircraft:")
-	notify.Stdout.Println(aircraftToString(db.Highest))
+	notify.Stdout.Println(aircraftToString(dash.Highest))
 	notify.Stdout.Println("=== End Summary ===")
 }
 
@@ -53,112 +53,91 @@ func (notify *Notify) EmitRarityNotifications(rareSightings []RareSighting) {
 			return
 		case RareType:
 			notify.Stdout.Printf("found rare type %s\n", aircraftToString(rareSighting.Aircraft))
-			notifyRareType(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareType(rareSighting.Sighting)
 		case RareOperator:
 			notify.Stdout.Printf("found rare operator: %s\n", rareSighting.Sighting.Operator)
-			notifyRareOperator(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareOperator(rareSighting.Sighting)
 		case RareCountry:
 			notify.Stdout.Printf("found rare country: %s\n", rareSighting.Sighting.Country)
-			notifyRareCountry(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareCountry(rareSighting.Sighting)
 		case RareTypeAndOperator:
 			notify.Stdout.Printf(
 				"found rare type and operator: %s run by %s\n",
 				aircraftToString(rareSighting.Aircraft),
 				rareSighting.Sighting.Operator)
-			notifyRareTypeAndOperator(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareTypeAndOperator(rareSighting.Sighting)
 		case RareTypeAndCountry:
 			notify.Stdout.Printf(
 				"found rare type and country: %s -> %s\n",
 				aircraftToString(rareSighting.Aircraft),
 				rareSighting.Sighting.Country)
-			notifyRareTypeAndCountry(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareTypeAndCountry(rareSighting.Sighting)
 		case RareOperatorAndCountry:
 			notify.Stdout.Printf(
 				"found rare operator and country: %s -> %s\n",
 				rareSighting.Sighting.Operator,
 				rareSighting.Sighting.Country)
-			notifyRareOperatorAndCountry(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareOperatorAndCountry(rareSighting.Sighting)
 		case RareTypeOperatorCountry:
 			notify.Stdout.Printf(
 				"found the TRIFECTA: %s -> %s -> %s\n",
 				aircraftToString(rareSighting.Aircraft),
 				rareSighting.Sighting.Operator,
 				rareSighting.Sighting.Country)
-			notifyRareCountry(rareSighting.Aircraft, rareSighting.Sighting)
+			notifyRareTypeOperatorCountry(rareSighting.Aircraft, rareSighting.Sighting)
 		}
 	}
 }
 
-func notifyRareType(aircraft *AircraftRecord, sighting *AircraftSighting) {
-	var aType string
-	// Use the shorter description, if available.
-	if aircraft.Description != "" {
-		aType = aircraft.Description
-	} else {
-		aType = sighting.TypeDesc
-	}
-	msgBody := fmt.Sprintf("%s (%s)", aType, aircraft.Registration)
+func notifyRareType(sighting *AircraftSighting) {
+	msgBody := fmt.Sprintf("%s (%s)", sighting.TypeDesc, sighting.registration)
 	err := beeep.Notify("Rare Aircraft Type Spotted", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func notifyRareOperator(aircraft *AircraftRecord, sighting *AircraftSighting) {
+func notifyRareOperator(sighting *AircraftSighting) {
 	operator := sighting.Operator
 
-	msgBody := fmt.Sprintf("%s flying %s (%s)", operator, aircraft.Description, aircraft.Registration)
+	msgBody := fmt.Sprintf("%s flying %s (%s)", operator, sighting.TypeDesc, sighting.registration)
 	err := beeep.Notify("Rare Operator Spotted", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func notifyRareCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
+func notifyRareCountry(sighting *AircraftSighting) {
 	country := sighting.Country
 
-	msgBody := fmt.Sprintf("%s-based %s (%s)", country, aircraft.Description, aircraft.Registration)
+	msgBody := fmt.Sprintf("%s-based %s (%s)", country, sighting.TypeDesc, sighting.registration)
 	err := beeep.Notify("Rare Country Spotted", msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func notifyRareTypeAndOperator(aircraft *AircraftRecord, sighting *AircraftSighting) {
-	var aType string
-	if aircraft.Description != "" {
-		aType = aircraft.Description
-	} else {
-		aType = sighting.TypeDesc
-	}
-
+func notifyRareTypeAndOperator(sighting *AircraftSighting) {
 	operator := sighting.Operator
 	msgTitle := "Rare Type & Operator Spotted"
-	msgBody := fmt.Sprintf("%s (%s) operated by\n%s", aType, aircraft.Registration, operator)
+	msgBody := fmt.Sprintf("%s (%s) operated by\n%s", sighting.TypeDesc, sighting.registration, operator)
 	err := beeep.Notify(msgTitle, msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func notifyRareTypeAndCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
-	var aType string
-	if aircraft.Description != "" {
-		aType = aircraft.Description
-	} else {
-		aType = sighting.TypeDesc
-	}
-
+func notifyRareTypeAndCountry(sighting *AircraftSighting) {
 	country := sighting.Country
 	msgTitle := "Rare Type & Country Spotted"
-	msgBody := fmt.Sprintf("%s (%s) registered in\n%s", aType, aircraft.Registration, country)
+	msgBody := fmt.Sprintf("%s (%s) registered in\n%s", sighting.TypeDesc, sighting.registration, country)
 	err := beeep.Notify(msgTitle, msgBody, appIconPath)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func notifyRareOperatorAndCountry(aircraft *AircraftRecord, sighting *AircraftSighting) {
+func notifyRareOperatorAndCountry(sighting *AircraftSighting) {
 	operator := sighting.Operator
 	country := sighting.Country
 	msgTitle := "Rare Operator & Country Spotted"

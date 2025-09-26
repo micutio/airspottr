@@ -166,10 +166,15 @@ func (db *Dashboard) processCivAircraftRecords() {
 			sighting = AircraftSighting{
 				lastSeen:     lastSeenTime,
 				lastFlightNo: flightUnknown,
+				registration: aircraft.Registration,
 				TypeDesc:     typeUnknown,
 				Operator:     operatorUnknown,
 				Country:      countryUnknown,
 			}
+		}
+
+		if sighting.registration == "" {
+			sighting.registration = aircraft.Registration
 		}
 
 		// Check whether we've seen this aircraft before by comparing last and current flight number.

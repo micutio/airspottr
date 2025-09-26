@@ -5,6 +5,7 @@ import "time"
 type AircraftSighting struct {
 	lastSeen     time.Time
 	lastFlightNo string
+	registration string
 	TypeDesc     string // TypeDesc is the full name of the aircraft type
 	Operator     string // Operator can be either airline or military organisation
 	Country      string // Country of registration
