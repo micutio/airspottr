@@ -18,6 +18,7 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 
 - [x] show total uptime in summaries
 - [x] show location in TUI and maybe ticker output
+- [ ] TUI checkboxes to toggle notifications for type/operator/country individually
 - [ ] colored console output
 - [ ] graceful shutdown
 - [ ] current aircraft closest to your location

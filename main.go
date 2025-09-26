@@ -13,27 +13,6 @@ const (
 	thisAppName = "airspottr"
 )
 
-// TODO: Predefine some locations to make launching the app less cumbersome:
-// - Singapore, New York, Hamburg, ...
-func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
-	// Whether to launch the Ticker or TUI app.
-	pflag.BoolVarP(
-		argIsUseTicker,
-		"ticker",
-		"t",
-		false,
-		"print plane spotting information on the command line without TUI")
-	pflag.Lookup("ticker").NoOptDefVal = "true"
-
-	// Location to plane spot, provided as lat,lon coordinates
-	pflag.Float32SliceVarP(
-		argLatLon,
-		"latlon",
-		"l",
-		[]float32{0, 0},
-		"define the location where to spot planes")
-}
-
 func main() {
 
 	var argIsUseTicker bool
@@ -55,3 +34,25 @@ func main() {
 		tuiapp.Run(thisAppName, options)
 	}
 }
+
+// TODO: Predefine some locations to make launching the app less cumbersome:
+// - Singapore, New York, Hamburg, ...
+func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32) {
+	// Whether to launch the Ticker or TUI app.
+	pflag.BoolVarP(
+		argIsUseTicker,
+		"ticker",
+		"t",
+		false,
+		"print plane spotting information on the command line without TUI")
+	pflag.Lookup("ticker").NoOptDefVal = "true"
+
+	// Location to plane spot, provided as lat,lon coordinates
+	pflag.Float32SliceVarP(
+		argLatLon,
+		"latlon",
+		"l",
+		[]float32{0, 0},
+		"define the location where to spot planes")
+}
+

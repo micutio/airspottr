@@ -1,14 +1,125 @@
 package tuiapp
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/micutio/airspottr/internal"
 )
 
-func newCurrentAircraftTable(tableStyle table.Styles, maxTypeNameLen int) table.Model {
+// Error types
+
+var errColumnMismatch = errors.New("number of columns does not match number of format columns")
+
+// Automated Table Formatting
+
+type tableColumnSizingOption int
+
+const (
+	// fixed column width, regardless of table width.
+	fixed tableColumnSizingOption = iota
+	// relative column with, given as percentage of the total table width.
+	relative
+	// fill columns receive any remaining table space, evenly distributed.
+	fill
+)
+
+type columnFormat struct {
+	option tableColumnSizingOption
+	value  float32
+}
+
+type tableFormat struct {
+	columnSizes        []columnFormat
+	fixedWidth         int     // fixedWidth is the total space taken up by all fixed-width columns.
+	fillWidthCount     int     // fillWidthCount indicates how many columns have fill width.
+	totalRelativeWidth float32 // how much width is taken by relative columns.
+}
+
+func newTableFormat(items ...columnFormat) tableFormat {
+	var totalRelativeWidth float32 = 0.0
+	fixedWidth := 0
+	fillWidthCount := 0
+
+	for _, item := range items {
+		switch {
+		case item.option == relative:
+			totalRelativeWidth += item.value
+			continue
+		case item.option == fixed:
+			fixedWidth += int(item.value)
+			fillWidthCount++
+			continue
+		}
+	}
+
+	tf := tableFormat{
+		columnSizes:        items,
+		fixedWidth:         fixedWidth,
+		totalRelativeWidth: totalRelativeWidth,
+	}
+	return tf
+}
+
+// Integrated Formatted Table Type
+
+type autoFormatTable struct {
+	table  table.Model
+	format tableFormat
+}
+
+// TODO: Take table padding into account!
+func (aft *autoFormatTable) resize(newWidth int) error {
+	tableCols := len(aft.table.Columns())
+	if tableCols != len(aft.format.columnSizes) {
+		return fmt.Errorf(
+			"table.resize: %w -> %d in table, %d in tableFormat",
+			errColumnMismatch,
+			tableCols,
+			len(aft.format.columnSizes))
+	}
+
+	aft.table.SetWidth(newWidth)
+	totalRelativeWidth := int(float32(newWidth) * aft.format.totalRelativeWidth)
+	totalFillWidth := newWidth - totalRelativeWidth - aft.format.fixedWidth
+	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
+
+	for i := range tableCols {
+		format := aft.format.columnSizes[i]
+		switch format.option {
+		case fixed:
+			aft.table.Columns()[i].Width = int(format.value)
+			continue
+		case relative:
+			aft.table.Columns()[i].Width = int(format.value * float32(newWidth))
+			continue
+		case fill:
+			aft.table.Columns()[i].Width = fillPerColumn
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (aft *autoFormatTable) SetHeight(height int) {
+	aft.table.SetHeight(height)
+}
+
+func newCurrentAircraftTable(tableStyle table.Styles, maxTypeNameLen int) autoFormatTable {
 	dstLen := 7
 	fnoLen := 10
 	spdLen := 5
 	initialTableHeight := 5
+	format := newTableFormat(
+		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fill, 0.0},
+		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fixed, float32(spdLen)},
+		columnFormat{fixed, float32(dstLen)},
+	)
 
 	currentAircraftTbl := table.New(
 		// table header
@@ -28,13 +139,20 @@ func newCurrentAircraftTable(tableStyle table.Styles, maxTypeNameLen int) table.
 		table.WithStyles(tableStyle),
 	)
 
-	return currentAircraftTbl
+	return autoFormatTable{
+		table:  currentAircraftTbl,
+		format: format,
+	}
 }
 
-func newTypeRarityTable(tableStyle table.Styles) table.Model {
+func newTypeRarityTable(tableStyle table.Styles) autoFormatTable {
 	countLen := 6
 	typeNameLen := 12
 	initialTableHeight := 5
+	format := newTableFormat(
+		columnFormat{fixed, float32(countLen)},
+		columnFormat{fill, float32(typeNameLen)},
+	)
 
 	// Create a new table with specified columns and initial empty rows.
 	typeRarityTbl := table.New(
@@ -51,14 +169,20 @@ func newTypeRarityTable(tableStyle table.Styles) table.Model {
 		table.WithStyles(tableStyle),
 	)
 
-	return typeRarityTbl
+	return autoFormatTable{
+		table:  typeRarityTbl,
+		format: format,
+	}
 }
 
-func newOperatorRarityTable(tableStyle table.Styles) table.Model {
+func newOperatorRarityTable(tableStyle table.Styles) autoFormatTable {
 	countLen := 6
 	operatorNameLen := 12
-
 	initialTableHeight := 5
+	format := newTableFormat(
+		columnFormat{fixed, float32(countLen)},
+		columnFormat{fill, float32(operatorNameLen)},
+	)
 
 	// Create a new table with specified columns and initial empty rows.
 	operatorRarityTbl := table.New(
@@ -75,13 +199,20 @@ func newOperatorRarityTable(tableStyle table.Styles) table.Model {
 		table.WithStyles(tableStyle),
 	)
 
-	return operatorRarityTbl
+	return autoFormatTable{
+		table:  operatorRarityTbl,
+		format: format,
+	}
 }
 
-func newCountryRarityTable(tableStyle table.Styles) table.Model {
+func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
 	countLen := 6
 	countryNameLen := 12
 	initialTableHeight := 5
+	format := newTableFormat(
+		columnFormat{fixed, float32(countLen)},
+		columnFormat{fill, float32(countryNameLen)},
+	)
 
 	// Create a new table with specified columns and initial empty rows.
 	countryRarityTbl := table.New(
@@ -98,5 +229,23 @@ func newCountryRarityTable(tableStyle table.Styles) table.Model {
 		table.WithStyles(tableStyle),
 	)
 
-	return countryRarityTbl
+	return autoFormatTable{
+		table:  countryRarityTbl,
+		format: format,
+	}
+}
+
+func aircraftToRow(aircraft *internal.AircraftRecord) table.Row {
+	return table.Row{
+		fmt.Sprintf("%3.0f", aircraft.CachedDist),
+		aircraft.GetFlightNoAsStr(),
+		aircraft.CachedType,
+		aircraft.GetAltitudeAsStr(),
+		fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
+		fmt.Sprintf("%3.0f", aircraft.NavHeading),
+	}
+}
+
+func propertyCountToRow(propCount internal.PropertyCountTuple) table.Row {
+	return table.Row{fmt.Sprintf("%5d", propCount.Count), propCount.Property}
 }
