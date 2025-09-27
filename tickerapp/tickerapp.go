@@ -8,6 +8,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/micutio/airspottr/internal"
@@ -24,7 +26,7 @@ func Run(appName string, options internal.RequestOptions) {
 
 	notify := internal.NewNotify(appName, &stdout)
 
-	flightDash, dashboardErr := internal.NewDashboard(options.Lon, options.Lon, &stderr)
+	flightDash, dashboardErr := internal.NewDashboard(options.Lat, options.Lon, &stderr)
 	if dashboardErr != nil {
 		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
 		os.Exit(1)
@@ -44,7 +46,6 @@ func Run(appName string, options internal.RequestOptions) {
 	defer summaryTicker.Stop()
 
 	// Use a channel to gracefully stop the program if needed.
-	// (Though not strictly necessary for an infinite loop)
 	done := make(chan bool)
 
 	// Start a goroutine to perform the requests
@@ -62,14 +63,16 @@ func Run(appName string, options internal.RequestOptions) {
 				notify.PrintSummary(flightDash)
 			case <-done:
 				// This case allows for graceful shutdown (not used in this example but good practice)
-				logger.Info("Stopping HTTP GET request routine.")
+				slog.Info("Stopping HTTP GET request routine.")
 
 				return
 			}
 		}
 	}()
 
-	// Keep the main goroutine alive indefinitely, or until an interrupt signal is received
-	// In a real application, you might have other logic here or use a wait group.
-	select {} // Block indefinitely
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+	<-sigc
+	slog.Info("Shutdown signal received, stopping...")
+	close(done)
 }
