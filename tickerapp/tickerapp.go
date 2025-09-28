@@ -9,70 +9,100 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/micutio/airspottr/internal"
 )
 
-func Run(appName string, options internal.RequestOptions) {
-	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
+// TickerApp holds the state and dependencies for the ticker application.
+type TickerApp struct {
+	appName    string
+	options    internal.RequestOptions
+	logger     *slog.Logger
+	notify     *internal.Notify
+	flightDash *internal.Dashboard
+	done       chan bool
+	wg         sync.WaitGroup
+}
 
-	// TODO: Replace slog logger!
-	logger := slog.Default()
-
-	stdout := io.Writer(os.Stdout)
-	stderr := io.Writer(os.Stderr)
-
+// New creates and initializes a new TickerApp.
+func New(appName string, options internal.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
+	logger := slog.Default() // Or your custom logger
 	notify := internal.NewNotify(appName, &stdout)
 
-	flightDash, dashboardErr := internal.NewDashboard(options.Lat, options.Lon, &stderr)
-	if dashboardErr != nil {
-		logger.Error("unable to create dashboard, exiting", slog.Any("dashboard error", dashboardErr))
+	flightDash, err := internal.NewDashboard(options.Lat, options.Lon, &stderr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create dashboard: %w", err)
+	}
+
+	return &TickerApp{
+		appName:    appName,
+		options:    options,
+		logger:     logger,
+		notify:     notify,
+		flightDash: flightDash,
+		done:       make(chan bool),
+	}, nil
+}
+
+// Run is the main entry point for the ticker application.
+func Run(appName string, options internal.RequestOptions) {
+	app, err := New(appName, options, os.Stdout, os.Stderr)
+	if err != nil {
+		slog.Error("failed to initialize ticker app", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	// Set a timeout for the warmup period. After that point in time we will show rare aircraft immediately
+	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
+
+	app.start()
+	app.waitForShutdown()
+}
+
+// start begins the application's main event loop in a goroutine.
+func (app *TickerApp) start() {
+	// Set a timeout for the warmup period.
 	time.AfterFunc(internal.DashboardWarmup, func() {
-		flightDash.FinishWarmupPeriod()
+		app.flightDash.FinishWarmupPeriod()
 	})
 
-	// Create an aircraft update ticker that fires in a given interval
 	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
-	defer aircraftUpdateTicker.Stop()
-
-	// Create a summary ticker that fires in a given interval
 	summaryTicker := time.NewTicker(internal.SummaryInterval)
-	defer summaryTicker.Stop()
 
-	// Use a channel to gracefully stop the program if needed.
-	done := make(chan bool)
-
-	// Start a goroutine to perform the requests
+	app.wg.Add(1)
 	go func() {
+		defer app.wg.Done()
+		defer aircraftUpdateTicker.Stop()
+		defer summaryTicker.Stop()
+
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				if body, err := internal.RequestAndProcessCivAircraft(options); err != nil {
-					logger.Error("main: ", slog.Any("error", err))
+				if body, err := internal.RequestAndProcessCivAircraft(app.options); err != nil {
+					app.logger.Error("main: ", slog.Any("error", err))
 				} else {
-					flightDash.ProcessCivAircraftJSON(body)
-					notify.EmitRarityNotifications(flightDash.RareSightings)
+					app.flightDash.ProcessCivAircraftJSON(body)
+					app.notify.EmitRarityNotifications(app.flightDash.RareSightings)
 				}
 			case <-summaryTicker.C:
-				notify.PrintSummary(flightDash)
-			case <-done:
-				// This case allows for graceful shutdown (not used in this example but good practice)
+				app.notify.PrintSummary(app.flightDash)
+			case <-app.done:
 				slog.Info("Stopping HTTP GET request routine.")
-
 				return
 			}
 		}
 	}()
+}
 
+// waitForShutdown blocks until an interrupt or terminate signal is received.
+func (app *TickerApp) waitForShutdown() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	<-sigc
 	slog.Info("Shutdown signal received, stopping...")
-	close(done)
+	close(app.done)
+	// Wait for the main goroutine to finish.
+	app.wg.Wait()
 }
