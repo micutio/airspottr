@@ -86,6 +86,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 	dashboard.FinishWarmupPeriod()
 
 	// STEP 2: Initialise visual styles for tables. //////////////////////////////////////////////
+	// TODO: Move tableStyle into autoFormatTable!
 	tableStyle := table.DefaultStyles()
 	tableStyle.Header.Padding(0)
 	tableStyle.Cell.Padding(0)

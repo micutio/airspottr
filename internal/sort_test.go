@@ -7,30 +7,30 @@ import (
 
 func TestGetSortedCountsForProperty(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      map[string]int
-		expected   []PropertyCountTuple
+		name     string
+		input    map[string]int
+		expected []PropertyCountTuple
 	}{
 		{
-			name: "empty map",
-			input:      map[string]int{},
-			expected:   []PropertyCountTuple{},
+			name:     "empty map",
+			input:    map[string]int{},
+			expected: []PropertyCountTuple{},
 		},
 		{
-			name: "single item",
-			input:      map[string]int{"one": 1},
-			expected:   []PropertyCountTuple{{Property: "one", Count: 1}},
+			name:     "single item",
+			input:    map[string]int{"one": 1},
+			expected: []PropertyCountTuple{{Property: "one", Count: 1}},
 		},
 		{
-			name: "multiple items",
-			input:      map[string]int{"one": 1, "three": 3, "two": 2},
-			expected:   []PropertyCountTuple{{Property: "one", Count: 1}, {Property: "two", Count: 2}, {Property: "three", Count: 3}},
+			name:     "multiple items",
+			input:    map[string]int{"one": 1, "three": 3, "two": 2},
+			expected: []PropertyCountTuple{{Property: "one", Count: 1}, {Property: "two", Count: 2}, {Property: "three", Count: 3}},
 		},
 		{
-			name: "items with same count",
-			input:      map[string]int{"a": 1, "c": 2, "b": 1},
+			name:  "items with same count",
+			input: map[string]int{"a": 1, "c": 2, "b": 1},
 			// The order of items with the same count is not guaranteed, so we accept either
-			expected:   []PropertyCountTuple{{Property: "a", Count: 1}, {Property: "b", Count: 1}, {Property: "c", Count: 2}},
+			expected: []PropertyCountTuple{{Property: "a", Count: 1}, {Property: "b", Count: 1}, {Property: "c", Count: 2}},
 		},
 	}
 

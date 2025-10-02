@@ -121,15 +121,15 @@ func (m *model) resizeTables() {
 	rightSideTableRatio := 1.0 / rightSideTableCount
 	rightSideTableWidth := int(float64(rightSideWidth) * rightSideTableRatio)
 
-	caErr := m.currentAircraftTbl.resize(leftSideWidth - 2 - len(m.currentAircraftTbl.table.Columns()))
+	caErr := m.currentAircraftTbl.resize(leftSideWidth)
 	if caErr != nil {
 		m.notify.Stdout.Panicf("%s", caErr)
 	}
-	trErr := m.typeRarityTbl.resize(rightSideTableWidth - 2 - len(m.typeRarityTbl.table.Columns()))
+	trErr := m.typeRarityTbl.resize(rightSideTableWidth)
 	if trErr != nil {
 		m.notify.Stdout.Panicf("%s", trErr)
 	}
-	orErr := m.operatorRarityTbl.resize(rightSideTableWidth - 2 - len(m.operatorRarityTbl.table.Columns()))
+	orErr := m.operatorRarityTbl.resize(rightSideTableWidth)
 	if orErr != nil {
 		m.notify.Stdout.Panicf("%s", orErr)
 	}

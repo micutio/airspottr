@@ -82,9 +82,10 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 			len(aft.format.columnSizes))
 	}
 
-	aft.table.SetWidth(newWidth)
-	totalRelativeWidth := int(float32(newWidth) * aft.format.totalRelativeWidth)
-	totalFillWidth := newWidth - totalRelativeWidth - aft.format.fixedWidth
+	adjustedWidth := newWidth - 1 - columnCount
+	aft.table.SetWidth(adjustedWidth)
+	totalRelativeWidth := int(float32(adjustedWidth) * aft.format.totalRelativeWidth)
+	totalFillWidth := adjustedWidth - totalRelativeWidth - aft.format.fixedWidth
 	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
 
 	for idx := range columnCount {
