@@ -49,9 +49,9 @@ func newTableFormat(items ...columnFormat) tableFormat {
 			continue
 		case fixed:
 			fixedWidth += int(item.value)
-			fillWidthCount++
 			continue
 		case fill:
+			fillWidthCount++
 			continue
 		}
 	}

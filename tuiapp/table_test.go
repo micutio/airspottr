@@ -6,6 +6,73 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
+func TestTableFormat(t *testing.T) {
+	tests := []struct {
+		name                       string
+		format                     tableFormat
+		expectedFixedWidth         int
+		expectedFillWidthCount     int
+		expectedTotalRelativeWidth float32
+	}{
+		{
+			name:                       "singleFixed",
+			format:                     newTableFormat(columnFormat{fixed, 10.0}),
+			expectedFixedWidth:         10,
+			expectedFillWidthCount:     0,
+			expectedTotalRelativeWidth: 0.0,
+		},
+		{
+			name:                       "singleRelative",
+			format:                     newTableFormat(columnFormat{relative, 0.254}),
+			expectedFixedWidth:         0,
+			expectedFillWidthCount:     0,
+			expectedTotalRelativeWidth: 0.254,
+		},
+		{
+			name:                       "singleFill",
+			format:                     newTableFormat(columnFormat{fill, 0.0}),
+			expectedFixedWidth:         0,
+			expectedFillWidthCount:     1,
+			expectedTotalRelativeWidth: 0.0,
+		},
+		{
+			name: "fixedAndRelative",
+			format: newTableFormat(
+				columnFormat{fixed, 90},
+				columnFormat{relative, 0.67},
+			),
+			expectedFixedWidth:         90,
+			expectedFillWidthCount:     1,
+			expectedTotalRelativeWidth: 0.67,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.expectedFixedWidth != test.format.fixedWidth {
+				t.Errorf(
+					"Expected fixedWidth %d, got %d",
+					test.expectedFixedWidth,
+					test.format.fixedWidth)
+			}
+
+			if test.expectedFillWidthCount != test.format.fillWidthCount {
+				t.Errorf(
+					"Expected fillWidthCount %d, got %d",
+					test.expectedFillWidthCount,
+					test.format.fillWidthCount)
+			}
+
+			if test.expectedTotalRelativeWidth != test.format.totalRelativeWidth {
+				t.Errorf(
+					"Expected totalRelativeWidth %f, got %f",
+					test.expectedTotalRelativeWidth,
+					test.format.totalRelativeWidth)
+			}
+		})
+	}
+}
+
 func TestAutoFormatTableInit(t *testing.T) {
 	tests := []struct {
 		name                            string
