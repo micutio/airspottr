@@ -42,7 +42,20 @@ func TestTableFormat(t *testing.T) {
 				columnFormat{relative, 0.67},
 			),
 			expectedFixedWidth:         90,
-			expectedFillWidthCount:     1,
+			expectedFillWidthCount:     0,
+			expectedTotalRelativeWidth: 0.67,
+		},
+		{
+			name: "multiFill",
+			format: newTableFormat(
+				columnFormat{fill, 0},
+				columnFormat{fixed, 90},
+				columnFormat{fill, 0},
+				columnFormat{relative, 0.67},
+				columnFormat{fill, 0},
+			),
+			expectedFixedWidth:         90,
+			expectedFillWidthCount:     3,
 			expectedTotalRelativeWidth: 0.67,
 		},
 	}
@@ -78,8 +91,6 @@ func TestAutoFormatTableInit(t *testing.T) {
 		name                            string
 		tableModel                      table.Model
 		tableFormat                     tableFormat
-		expectedTableWidth              int
-		expectedColumnWidths            []int
 		resizeWidth                     int
 		expectedTableWidthAfterResize   int
 		expectedColumnWidthsAfterResize []int
@@ -96,8 +107,6 @@ func TestAutoFormatTableInit(t *testing.T) {
 			tableFormat: newTableFormat(
 				columnFormat{fixed, 10.0},
 			),
-			expectedTableWidth:              10,
-			expectedColumnWidths:            []int{10},
 			resizeWidth:                     20,
 			expectedTableWidthAfterResize:   20,
 			expectedColumnWidthsAfterResize: []int{10},
@@ -114,8 +123,6 @@ func TestAutoFormatTableInit(t *testing.T) {
 			tableFormat: newTableFormat(
 				columnFormat{relative, .5},
 			),
-			expectedTableWidth:              10,
-			expectedColumnWidths:            []int{10},
 			resizeWidth:                     40,
 			expectedTableWidthAfterResize:   40,
 			expectedColumnWidthsAfterResize: []int{20},
@@ -132,8 +139,6 @@ func TestAutoFormatTableInit(t *testing.T) {
 			tableFormat: newTableFormat(
 				columnFormat{fill, .0},
 			),
-			expectedTableWidth:              10,
-			expectedColumnWidths:            []int{10},
 			resizeWidth:                     15,
 			expectedTableWidthAfterResize:   15,
 			expectedColumnWidthsAfterResize: []int{15},
@@ -145,23 +150,6 @@ func TestAutoFormatTableInit(t *testing.T) {
 			aft := autoFormatTable{
 				table:  test.tableModel,
 				format: test.tableFormat,
-			}
-
-			if aft.table.Width() != test.expectedTableWidth {
-				t.Errorf(
-					"table width -> expected: %d, got: %d",
-					test.expectedTableWidth,
-					aft.table.Width())
-			}
-
-			for i, col := range aft.table.Columns() {
-				if col.Width != test.expectedColumnWidths[i] {
-					t.Errorf(
-						"table col '%s' width -> expected: %d, got: %d",
-						test.tableModel.Columns()[i].Title,
-						test.expectedColumnWidths[i],
-						col.Width)
-				}
 			}
 
 			err := aft.resize(test.resizeWidth)

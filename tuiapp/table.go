@@ -83,7 +83,6 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 	}
 
 	adjustedWidth := newWidth - 1 - columnCount
-	aft.table.SetWidth(adjustedWidth)
 	totalRelativeWidth := int(float32(adjustedWidth) * aft.format.totalRelativeWidth)
 	totalFillWidth := adjustedWidth - totalRelativeWidth - aft.format.fixedWidth
 	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
@@ -95,13 +94,14 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 			aft.table.Columns()[idx].Width = int(format.value)
 			continue
 		case relative:
-			aft.table.Columns()[idx].Width = int(format.value * float32(newWidth))
+			aft.table.Columns()[idx].Width = int(format.value * float32(adjustedWidth))
 			continue
 		case fill:
 			aft.table.Columns()[idx].Width = fillPerColumn
 			continue
 		}
 	}
+	aft.table.SetWidth(adjustedWidth)
 
 	return nil
 }
