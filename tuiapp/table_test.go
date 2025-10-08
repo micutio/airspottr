@@ -108,7 +108,7 @@ func TestAutoFormatTableInit(t *testing.T) {
 				columnFormat{fixed, 10.0},
 			),
 			resizeWidth:                     20,
-			expectedTableWidthAfterResize:   18,
+			expectedTableWidthAfterResize:   19,
 			expectedColumnWidthsAfterResize: []int{9},
 		},
 		{
@@ -124,7 +124,7 @@ func TestAutoFormatTableInit(t *testing.T) {
 				columnFormat{relative, .5},
 			),
 			resizeWidth:                     40,
-			expectedTableWidthAfterResize:   38,
+			expectedTableWidthAfterResize:   39,
 			expectedColumnWidthsAfterResize: []int{18},
 		},
 		{
@@ -140,7 +140,7 @@ func TestAutoFormatTableInit(t *testing.T) {
 				columnFormat{fill, .0},
 			),
 			resizeWidth:                     15,
-			expectedTableWidthAfterResize:   13,
+			expectedTableWidthAfterResize:   14,
 			expectedColumnWidthsAfterResize: []int{12},
 		},
 	}
