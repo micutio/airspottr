@@ -25,6 +25,7 @@ const (
 	fill
 )
 
+// TODO: Add header name (string) to the format.
 type columnFormat struct {
 	option tableColumnSizingOption
 	value  float32
@@ -66,6 +67,7 @@ func newTableFormat(items ...columnFormat) tableFormat {
 
 // Integrated Formatted Table Type
 
+// TODO: Create constructor that initializes the table columns completely from format.
 type autoFormatTable struct {
 	table  table.Model
 	format tableFormat
@@ -82,25 +84,28 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 			len(aft.format.columnSizes))
 	}
 
-	adjustedWidth := newWidth - 1 - columnCount
-	aft.table.SetWidth(adjustedWidth)
+	adjustedWidth := newWidth - columnCount
+	aft.table.SetWidth(newWidth - 1)
 
 	totalRelativeWidth := int(float32(adjustedWidth) * aft.format.totalRelativeWidth)
 	totalFillWidth := adjustedWidth - totalRelativeWidth - aft.format.fixedWidth
 	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
+
+	fillPerColumnOffset := 2 // TODO: figure out why 2 works.
+	oneOffset := 1
 
 	// TODO: Find a better way to subtract 1 everywhere to factor in padding.
 	for idx := range columnCount {
 		format := aft.format.columnSizes[idx]
 		switch format.option {
 		case fixed:
-			aft.table.Columns()[idx].Width = int(format.value) - 1
+			aft.table.Columns()[idx].Width = int(format.value) - oneOffset
 			continue
 		case relative:
-			aft.table.Columns()[idx].Width = int(format.value*float32(adjustedWidth)) - 1
+			aft.table.Columns()[idx].Width = int(format.value*float32(adjustedWidth)) - oneOffset
 			continue
 		case fill:
-			aft.table.Columns()[idx].Width = fillPerColumn - 1
+			aft.table.Columns()[idx].Width = fillPerColumn - fillPerColumnOffset
 			continue
 		}
 	}
@@ -115,16 +120,17 @@ func (aft *autoFormatTable) SetHeight(height int) {
 func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	dstLen := 4
 	fnoLen := 9
-	altLen := 6
+	altLen := 8
 	spdLen := 5
+	hdgLen := 4
 	initialTableHeight := 5
 	format := newTableFormat(
 		columnFormat{fixed, float32(dstLen)},
 		columnFormat{fixed, float32(fnoLen)},
 		columnFormat{fill, 0.0},
-		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fixed, float32(altLen)},
 		columnFormat{fixed, float32(spdLen)},
-		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fixed, float32(hdgLen)},
 	)
 
 	currentAircraftTbl := table.New(
@@ -136,7 +142,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 				{Title: "TID", Width: 100},
 				{Title: "ALT", Width: altLen},
 				{Title: "SPD", Width: spdLen},
-				{Title: "HDG", Width: spdLen},
+				{Title: "HDG", Width: hdgLen},
 			},
 		),
 		table.WithRows([]table.Row{}),

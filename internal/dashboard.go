@@ -156,7 +156,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 
 	for idx := range len(db.CurrentAircraft) {
 		// Step 1: Get aircraft and time of sighting
-		aircraft := (db.CurrentAircraft)[idx]
+		aircraft := &(db.CurrentAircraft)[idx]
 		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
@@ -197,13 +197,13 @@ func (db *Dashboard) processCivAircraftRecords() {
 		aircraft.CachedDist = dash.Distance(thisPos, acPos).Kilometers()
 
 		// Step 3: Update all aircraft, type, operator and country statistics
-		db.updateHighest(&aircraft)
-		db.updateFastest(&aircraft)
+		db.updateHighest(aircraft)
+		db.updateFastest(aircraft)
 
 		newRarities := NoRarity
-		rareTypeFlag := db.updateType(&sighting, &aircraft, isNewFlight)
-		rareOperatorFlag := db.updateOperator(&sighting, &aircraft, isNewFlight)
-		rareCountryFlag := db.updateCountry(&sighting, &aircraft, isNewFlight)
+		rareTypeFlag := db.updateType(&sighting, aircraft, isNewFlight)
+		rareOperatorFlag := db.updateOperator(&sighting, aircraft, isNewFlight)
+		rareCountryFlag := db.updateCountry(&sighting, aircraft, isNewFlight)
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
@@ -212,7 +212,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 		if newRarities != NoRarity {
 			rareSightings = append(rareSightings, RareSighting{
 				Rarities: newRarities,
-				Aircraft: &aircraft,
+				Aircraft: aircraft,
 				Sighting: &sighting,
 			})
 		}
@@ -232,6 +232,7 @@ func (db *Dashboard) updateType(
 	isTypeKnown := sighting.TypeDesc != typeUnknown
 	isFlightKnown := !isNewFlight
 	if isTypeKnown && isFlightKnown {
+		aircraft.CachedType = sighting.TypeDesc
 		return 0
 	}
 
