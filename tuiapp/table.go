@@ -83,25 +83,27 @@ func (aft *autoFormatTable) resize(newWidth int) error {
 	}
 
 	adjustedWidth := newWidth - 1 - columnCount
+	aft.table.SetWidth(adjustedWidth)
+
 	totalRelativeWidth := int(float32(adjustedWidth) * aft.format.totalRelativeWidth)
 	totalFillWidth := adjustedWidth - totalRelativeWidth - aft.format.fixedWidth
 	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
 
+	// TODO: Find a better way to subtract 1 everywhere to factor in padding.
 	for idx := range columnCount {
 		format := aft.format.columnSizes[idx]
 		switch format.option {
 		case fixed:
-			aft.table.Columns()[idx].Width = int(format.value)
+			aft.table.Columns()[idx].Width = int(format.value) - 1
 			continue
 		case relative:
-			aft.table.Columns()[idx].Width = int(format.value * float32(adjustedWidth))
+			aft.table.Columns()[idx].Width = int(format.value*float32(adjustedWidth)) - 1
 			continue
 		case fill:
-			aft.table.Columns()[idx].Width = fillPerColumn
+			aft.table.Columns()[idx].Width = fillPerColumn - 1
 			continue
 		}
 	}
-	aft.table.SetWidth(adjustedWidth)
 
 	return nil
 }
@@ -111,13 +113,14 @@ func (aft *autoFormatTable) SetHeight(height int) {
 }
 
 func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
-	dstLen := 7
-	fnoLen := 10
+	dstLen := 4
+	fnoLen := 9
+	altLen := 6
 	spdLen := 5
 	initialTableHeight := 5
 	format := newTableFormat(
 		columnFormat{fixed, float32(dstLen)},
-		columnFormat{fixed, float32(dstLen)},
+		columnFormat{fixed, float32(fnoLen)},
 		columnFormat{fill, 0.0},
 		columnFormat{fixed, float32(dstLen)},
 		columnFormat{fixed, float32(spdLen)},
@@ -130,8 +133,8 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 			[]table.Column{
 				{Title: "DST", Width: dstLen},
 				{Title: "FNO", Width: fnoLen},
-				{Title: "TID", Width: 0},
-				{Title: "ALT", Width: dstLen},
+				{Title: "TID", Width: 100},
+				{Title: "ALT", Width: altLen},
 				{Title: "SPD", Width: spdLen},
 				{Title: "HDG", Width: spdLen},
 			},
