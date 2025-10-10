@@ -104,7 +104,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 }
 
 func (m *model) resizeTables() {
-	headerHeight := 10 // TODO: Make this cleaner and clearer.
+	headerHeight := 8 // TODO: Make this cleaner and clearer.
 
 	m.currentAircraftTbl.SetHeight(m.height - headerHeight)
 	m.typeRarityTbl.SetHeight(m.height - headerHeight)
@@ -269,6 +269,8 @@ func (m *model) viewHeader() string {
 		Height(1).
 		Padding(0, 0)
 
+	keyStyle := m.baseStyle.Foreground(lipgloss.AdaptiveColor{Light: "#383838", Dark: "#F988F9"})
+
 	// Applies bold styling to the text.
 	listHeader := m.baseStyle.Bold(true).Render
 
@@ -278,10 +280,10 @@ func (m *model) viewHeader() string {
 		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(value)
 
 		listItemKey := func(key string) string {
-			return m.baseStyle.Render(key + ":")
+			return keyStyle.Render(key + ":")
 		}
 
-		return fmt.Sprintf("%s %s", listItemKey(key), listItemValue)
+		return fmt.Sprintf("%s %s ", listItemKey(key), listItemValue)
 	}
 
 	highest := m.dashboard.Highest
@@ -302,9 +304,9 @@ func (m *model) viewHeader() string {
 		lipgloss.JoinHorizontal(lipgloss.Top,
 			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					fmt.Sprintf("Location   : %6.3f, %6.3f", m.dashboard.Lat, m.dashboard.Lon),
-					fmt.Sprintf("UpTime     : %.0f Hr %2.0f Min %2.0f Sec", hours, mins, secs),
-					fmt.Sprintf("Last Update: %2.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
+					fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Lat, m.dashboard.Lon),
+					fmt.Sprintf("     UpTime %.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
+					fmt.Sprintf("Last Update %02.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
 			),
 			list.Border(lipgloss.RoundedBorder()).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
@@ -313,16 +315,16 @@ func (m *model) viewHeader() string {
 						lipgloss.Left,
 						listItem("ALT", highest.GetAltitudeAsStr()),
 						listItem("FNO", highest.GetFlightNoAsStr()),
-						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
 						listItem("REG", highest.Registration),
+						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
 					),
 					listHeader("Fastest"),
 					lipgloss.JoinHorizontal(
 						lipgloss.Left,
-						listItem("SPD", fmt.Sprintf("%3.0f", fastest.GroundSpeed)),
+						listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
 						listItem("FNO", fastest.GetFlightNoAsStr()),
-						listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
 						listItem("REG", fastest.Registration),
+						listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
 					),
 				),
 			),
