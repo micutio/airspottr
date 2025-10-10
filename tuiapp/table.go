@@ -67,7 +67,6 @@ func newTableFormat(items ...columnFormat) tableFormat {
 
 // Integrated Formatted Table Type
 
-// TODO: Create constructor that initializes the table columns completely from format.
 type autoFormatTable struct {
 	table  table.Model
 	format tableFormat
@@ -120,6 +119,7 @@ func (aft *autoFormatTable) SetHeight(height int) {
 func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	dstLen := 4
 	fnoLen := 9
+	tidLen := 0
 	altLen := 8
 	spdLen := 5
 	hdgLen := 4
@@ -127,7 +127,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	format := newTableFormat(
 		columnFormat{fixed, float32(dstLen)},
 		columnFormat{fixed, float32(fnoLen)},
-		columnFormat{fill, 0.0},
+		columnFormat{fill, float32(tidLen)},
 		columnFormat{fixed, float32(altLen)},
 		columnFormat{fixed, float32(spdLen)},
 		columnFormat{fixed, float32(hdgLen)},
@@ -139,7 +139,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 			[]table.Column{
 				{Title: "DST", Width: dstLen},
 				{Title: "FNO", Width: fnoLen},
-				{Title: "TID", Width: 100},
+				{Title: "TID", Width: tidLen},
 				{Title: "ALT", Width: altLen},
 				{Title: "SPD", Width: spdLen},
 				{Title: "HDG", Width: hdgLen},
