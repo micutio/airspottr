@@ -37,7 +37,7 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 		return nil, fmt.Errorf("unable to create dashboard: %w", err)
 	}
 
-	return &TickerApp{
+	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
 		appName:    appName,
 		options:    options,
 		logger:     logger,
@@ -51,7 +51,7 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 func Run(appName string, options internal.RequestOptions) {
 	app, err := New(appName, options, os.Stdout, os.Stderr)
 	if err != nil {
-		slog.Error("failed to initialize ticker app", slog.Any("error", err))
+		slog.Default().Error("failed to initialize ticker app", slog.Any("error", err))
 		os.Exit(1)
 	}
 
@@ -71,9 +71,7 @@ func (app *TickerApp) start() {
 	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
 	summaryTicker := time.NewTicker(internal.SummaryInterval)
 
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
+	app.wg.Go(func() {
 		defer aircraftUpdateTicker.Stop()
 		defer summaryTicker.Stop()
 
@@ -93,7 +91,8 @@ func (app *TickerApp) start() {
 				return
 			}
 		}
-	}()
+	})
+	// WaitGroup.Wait() is called in waitForShutdown() below
 }
 
 // waitForShutdown blocks until an interrupt or terminate signal is received.
@@ -101,7 +100,7 @@ func (app *TickerApp) waitForShutdown() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	<-sigc
-	slog.Info("Shutdown signal received, stopping...")
+	app.logger.Info("Shutdown signal received, stopping...")
 	close(app.done)
 	// Wait for the main goroutine to finish.
 	app.wg.Wait()
