@@ -14,7 +14,7 @@ const (
 )
 
 func main() {
-	var predefinedLocations = map[string][]float32{
+	predefinedLocations := map[string][]float32{
 		"hamburg":   {53.5511, 9.9937},
 		"new-york":  {40.7128, -74.0060},
 		"singapore": {1.3521, 103.8198},

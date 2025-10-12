@@ -1,4 +1,4 @@
-﻿package tuiapp
+package tuiapp
 
 import (
 	"testing"
