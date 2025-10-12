@@ -21,7 +21,7 @@ package tuiapp
 import (
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
+	"log"
 	"os"
 	"time"
 
@@ -35,91 +35,96 @@ const (
 	errLogFilePath = "./airspottr.log"
 )
 
-func Run(appName string, requestOptions internal.RequestOptions) {
-	theme := getDefaultTheme()
-
-	// STEP 1: Create logs and dashboard. ////////////////////////////////////////////////////////
-	// Open os.DevNull for writing
-	nullFile, nullFileErr := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	if nullFileErr != nil {
-		fmt.Printf("Error opening os.DevNull: %v\n", nullFileErr)
-		return
+// setupLogger creates and configures the error log file
+func setupLogger() (*os.File, error) {
+	errLogFile, err := os.OpenFile(errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %w", err)
 	}
-	defer func() {
-		closeErr := nullFile.Close()
-		if closeErr != nil {
-			closeErr = fmt.Errorf(
-				"tuiApp.Run(): error while closing file %s: %w",
-				errLogFilePath,
-				closeErr)
-			log.Fatal(closeErr)
-		}
-	}()
+	return errLogFile, nil
+}
 
-	var devNullWriter io.Writer = nullFile
+// setupDashboardAndNotifier initializes the dashboard and notification system
+func setupDashboardAndNotifier(appName string, requestOptions internal.RequestOptions, errWriter io.Writer) (*internal.Dashboard, *internal.Notify, error) {
+	// Using io.Discard for notifications as we don't need to close it
+	var devNullWriter io.Writer = io.Discard
 	notify := internal.NewNotify(appName, &devNullWriter)
 
-	errLogFile, errFileErr := os.OpenFile(
-		errLogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // 0o666
-	if errFileErr != nil {
-		log.Printf("Failed to open log file: %v\n", errFileErr)
+	dashboard, err := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dashboard: %w", err)
+	}
+
+	return dashboard, notify, nil
+}
+
+// initTables creates and configures all tables used in the TUI
+func initTables(theme Theme) (tables struct {
+	current  autoFormatTable
+	typ      autoFormatTable
+	operator autoFormatTable
+	country  autoFormatTable
+	style    table.Styles
+}) {
+	tables.style = table.DefaultStyles()
+	tables.style.Header.Padding(0)
+	tables.style.Cell.Padding(0)
+	tables.style.Selected = lipgloss.NewStyle().Background(theme.Highlight)
+
+	tables.current = newCurrentAircraftTable(tables.style)
+	tables.typ = newTypeRarityTable(tables.style)
+	tables.operator = newOperatorRarityTable(tables.style)
+	tables.country = newCountryRarityTable(tables.style)
+	return tables
+}
+
+func Run(appName string, requestOptions internal.RequestOptions) {
+	// Set up logging
+	errLogFile, err := setupLogger()
+	if err != nil {
+		log.Fatalf("failed to set up logging: %v", err)
 	}
 	defer func() {
-		closeErr := errLogFile.Close()
-		if closeErr != nil {
-			errFileErr = fmt.Errorf(
-				"tuiApp.Run(): error while closing file %s: %w",
-				errLogFilePath,
-				closeErr)
-			log.Fatal(closeErr)
+		if err := errLogFile.Close(); err != nil {
+			log.Printf("error closing log file: %v", err)
 		}
 	}()
 
-	var errFileWriter io.Writer = errLogFile
-	dashboard, dashErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errFileWriter)
-	if dashErr != nil {
-		log.Println(fmt.Errorf("tuiapp.Run: %w", dashErr))
-		return
+	// Initialize dashboard and notification system
+	dashboard, notify, err := setupDashboardAndNotifier(appName, requestOptions, errLogFile)
+	if err != nil {
+		log.Fatalf("failed to set up dashboard and notifier: %v", err)
 	}
 
 	// TODO: Introduce extra command and message to finish warmup period.
 	dashboard.FinishWarmupPeriod()
 
-	// STEP 2: Initialise visual styles for tables. //////////////////////////////////////////////
-	// TODO: Move tableStyle into autoFormatTable!
-	tableStyle := table.DefaultStyles()
-	tableStyle.Header.Padding(0)
-	tableStyle.Cell.Padding(0)
-	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
+	// Initialize tables and theme
+	theme := getDefaultTheme()
+	tables := initTables(theme)
 
-	currentAircraftTbl := newCurrentAircraftTable(tableStyle)
-	typeRarityTbl := newTypeRarityTable(tableStyle)
-	operatorRarityTbl := newOperatorRarityTable(tableStyle)
-	countryRarityTbl := newCountryRarityTable(tableStyle)
-
-	// STEP 3: Initialise model and run the application. /////////////////////////////////////////
+	// Initialize and run the application model
 	appModel := model{
 		width:              0,
 		height:             0,
 		baseStyle:          lipgloss.NewStyle(),
 		viewStyle:          lipgloss.NewStyle(),
-		theme:              getDefaultTheme(),
-		currentAircraftTbl: currentAircraftTbl,
-		typeRarityTbl:      typeRarityTbl,
-		operatorRarityTbl:  operatorRarityTbl,
-		countryRarityTbl:   countryRarityTbl,
-		tableStyle:         tableStyle,
+		theme:              theme,
+		currentAircraftTbl: tables.current,
+		typeRarityTbl:      tables.typ,
+		operatorRarityTbl:  tables.operator,
+		countryRarityTbl:   tables.country,
+		tableStyle:         tables.style,
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
 		dashboard:          dashboard,
 		notify:             notify,
 		options:            requestOptions,
 	}
-	// Create a new Bubble Tea program with the appModel and enable alternate screen
-	p := tea.NewProgram(&appModel, tea.WithAltScreen())
 
-	// Run the program and handle any errors
-	if _, progErr := p.Run(); progErr != nil {
-		log.Println(fmt.Errorf("error running program: %w", progErr))
+	// Create and run Bubble Tea program with alternate screen
+	p := tea.NewProgram(&appModel, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		log.Printf("error running program: %v", err)
 	}
 }
