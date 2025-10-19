@@ -45,8 +45,6 @@ func main() {
 	}
 }
 
-// TODO: Predefine some locations to make launching the app less cumbersome:
-// - Singapore, New York, Hamburg, ...
 func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32, argLocation *string) {
 	// Whether to launch the Ticker or TUI app.
 	pflag.BoolVarP(
