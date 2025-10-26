@@ -51,7 +51,6 @@ func requestADSBDataCmd(opts internal.RequestOptions) tea.Cmd {
 // - Update(Msg) (Model, Cmd)
 // - View() string
 // This forms the base for the TUI app.
-// TODO: Consider wrapper struct Table {table, tableFormat, style}.
 type model struct {
 	width              int
 	height             int
@@ -177,7 +176,8 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-// processADSBResponse processes new data from the ADS-B data source and updates the tables accordingly.
+// processADSBResponse processes new data from the ADS-B data source and
+// updates the tables accordingly.
 func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	m.lastUpdate = time.Now()
 	responseBody := []byte(msg)
@@ -230,6 +230,9 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	// since we've already scheduled the next request, there is nothing to return now.
 }
 
+// TODO: Create a state machine with UI layouts+style (e.g.: selected) as
+// states and key input as transitions.
+
 func (m *model) View() string {
 	// Sets the width of the column to the width of the terminal (m.width) and adds padding of 1 unit
 	// on the top.
@@ -241,7 +244,6 @@ func (m *model) View() string {
 		Width(m.width).
 		Height(m.height).
 		Render(
-			// Vertically join multiple elements aligned to the left.
 			lipgloss.JoinVertical(lipgloss.Left,
 				column(m.viewHeader()),
 				column(

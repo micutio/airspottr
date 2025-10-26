@@ -104,7 +104,6 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 		log.Printf("failed to set up dashboard and notifier: %v", err)
 	}
 
-	// TODO: Introduce extra command and message to finish warmup period.
 	dashboard.FinishWarmupPeriod()
 
 	// Initialize tables and theme
