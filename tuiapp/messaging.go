@@ -1,9 +1,9 @@
-﻿package tuiapp
+package tuiapp
 
 import (
 	"time"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/micutio/airspottr/internal"
 )
 

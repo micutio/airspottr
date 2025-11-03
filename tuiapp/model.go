@@ -83,8 +83,8 @@ func (m *model) resizeTables() {
 	// TODO: Set type column width of current aircraft table to variable size.
 
 	// Adjust widths of all tables
-	//leftSideWidthRatio := 0.5
-	//leftSideWidth := int(float64(m.width) * leftSideWidthRatio)
+	// leftSideWidthRatio := 0.5
+	// leftSideWidth := int(float64(m.width) * leftSideWidthRatio)
 	leftSideWidth := m.width - 1
 	rightSideWidth := m.width // - leftSideWidth
 	rightSideTableCount := 3.0
@@ -138,12 +138,15 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 		}
 	// Switch between main and global view
 	case " ": // space
-		if m.uiState == mainPage {
+		switch m.uiState {
+		case mainPage:
 			m.uiState = globalStats
-		} else if m.uiState == globalStats {
+		case globalStats:
 			m.uiState = mainPage
+		case aircraftDetails:
+		default:
 		}
-
+	// Show help view
 	case "h":
 		if m.currentAircraftTbl.table.Focused() {
 			m.currentAircraftTbl.table.HelpView()
@@ -220,15 +223,17 @@ func (m *model) View() string {
 	column := m.baseStyle.Width(m.width).Padding(0, 0, 0, 0).Render
 	// Set the content to match the terminal dimensions (m.width and m.height).
 	var tableContent string
-	if m.uiState == mainPage {
+	switch m.uiState {
+	case mainPage:
 		tableContent = m.viewAircraft()
-	} else if m.uiState == globalStats {
+	case globalStats:
 		tableContent = lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			m.viewTypeRarity(),
 			m.viewOperatorRarity(),
 			m.viewCountryRarity(),
 		)
+	case aircraftDetails:
 	}
 	content := m.baseStyle.
 		Width(m.width).
