@@ -11,62 +11,32 @@ import (
 	"github.com/micutio/airspottr/internal"
 )
 
-type UpdateTickMsg time.Time
-
-func updateTick() tea.Cmd {
-	return tea.Every(
-		time.Second,
-		func(t time.Time) tea.Msg {
-			return UpdateTickMsg(t)
-		},
-	)
-}
-
-type AircraftQueryTickMsg time.Time
-
-func aircraftQueryTick() tea.Cmd {
-	return tea.Every(
-		internal.AircraftUpdateInterval,
-		func(t time.Time) tea.Msg {
-			return AircraftQueryTickMsg(t)
-		},
-	)
-}
-
-type ADSBResponseMsg []byte
-
-func requestADSBDataCmd(opts internal.RequestOptions) tea.Cmd {
-	return func() tea.Msg {
-		body, err := internal.RequestAndProcessCivAircraft(opts)
-		if err != nil {
-			// TODO: Log error
-			return nil
-		}
-		return ADSBResponseMsg(body)
-	}
-}
-
 // Model implements the bubbletea.Model interface, which requires three methods:
 // - Init() Cmd
 // - Update(Msg) (Model, Cmd)
 // - View() string
 // This forms the base for the TUI app.
 type model struct {
-	width              int
-	height             int
-	baseStyle          lipgloss.Style
-	viewStyle          lipgloss.Style
-	theme              Theme
+	// Size
+	width  int
+	height int
+	// Theming and style
+	baseStyle  lipgloss.Style
+	viewStyle  lipgloss.Style
+	tableStyle table.Styles
+	theme      Theme
+	// Ui Elements
 	currentAircraftTbl autoFormatTable
 	typeRarityTbl      autoFormatTable
 	operatorRarityTbl  autoFormatTable
 	countryRarityTbl   autoFormatTable
-	tableStyle         table.Styles
-	startTime          time.Time
-	lastUpdate         time.Time
-	dashboard          *internal.Dashboard
-	notify             *internal.Notify
-	options            internal.RequestOptions
+	// Data
+	uiState    uiState
+	startTime  time.Time
+	lastUpdate time.Time
+	dashboard  *internal.Dashboard
+	notify     *internal.Notify
+	options    internal.RequestOptions
 }
 
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.
@@ -113,9 +83,10 @@ func (m *model) resizeTables() {
 	// TODO: Set type column width of current aircraft table to variable size.
 
 	// Adjust widths of all tables
-	leftSideWidthRatio := 0.5
-	leftSideWidth := int(float64(m.width) * leftSideWidthRatio)
-	rightSideWidth := m.width - leftSideWidth
+	//leftSideWidthRatio := 0.5
+	//leftSideWidth := int(float64(m.width) * leftSideWidthRatio)
+	leftSideWidth := m.width - 1
+	rightSideWidth := m.width // - leftSideWidth
 	rightSideTableCount := 3.0
 	rightSideTableRatio := 1.0 / rightSideTableCount
 	rightSideTableWidth := int(float64(rightSideWidth) * rightSideTableRatio)
@@ -157,14 +128,22 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 		}
 	// Moves the focus up in the aircraft table if the table is focused.
 	case "up", "k":
-		if m.currentAircraftTbl.table.Focused() {
+		if m.uiState == mainPage && m.currentAircraftTbl.table.Focused() {
 			m.currentAircraftTbl.table.MoveUp(1)
 		}
 	// Moves the focus down in the aircraft table if the table is focused.
 	case "down", "j":
-		if m.currentAircraftTbl.table.Focused() {
+		if m.uiState == mainPage && m.currentAircraftTbl.table.Focused() {
 			m.currentAircraftTbl.table.MoveDown(1)
 		}
+	// Switch between main and global view
+	case " ": // space
+		if m.uiState == mainPage {
+			m.uiState = globalStats
+		} else if m.uiState == globalStats {
+			m.uiState = mainPage
+		}
+
 	case "h":
 		if m.currentAircraftTbl.table.Focused() {
 			m.currentAircraftTbl.table.HelpView()
@@ -240,21 +219,24 @@ func (m *model) View() string {
 	// a function that can render styled content.
 	column := m.baseStyle.Width(m.width).Padding(0, 0, 0, 0).Render
 	// Set the content to match the terminal dimensions (m.width and m.height).
+	var tableContent string
+	if m.uiState == mainPage {
+		tableContent = m.viewAircraft()
+	} else if m.uiState == globalStats {
+		tableContent = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			m.viewTypeRarity(),
+			m.viewOperatorRarity(),
+			m.viewCountryRarity(),
+		)
+	}
 	content := m.baseStyle.
 		Width(m.width).
 		Height(m.height).
 		Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				column(m.viewHeader()),
-				column(
-					lipgloss.JoinHorizontal(
-						lipgloss.Top,
-						m.viewAircraft(),
-						m.viewTypeRarity(),
-						m.viewOperatorRarity(),
-						m.viewCountryRarity(),
-					),
-				),
+				column(tableContent),
 			),
 		)
 
