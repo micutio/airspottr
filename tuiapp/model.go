@@ -42,6 +42,7 @@ type model struct {
 // Init calls the tickEvery function to set up a command that sends a TickMsg every second.
 // This command will be executed immediately when the program starts, initiating the periodic updates.
 func (m *model) Init() tea.Cmd {
+	tea.SetWindowTitle("airspottr")
 	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd(m.options))
 }
 
