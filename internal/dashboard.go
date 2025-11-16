@@ -155,12 +155,12 @@ func (db *Dashboard) processCivAircraftRecords() {
 	var rareSightings []RareSighting
 
 	for idx := range len(db.CurrentAircraft) {
-		// Step 1: Get aircraft and time of sighting
+		// Get aircraft and time of sighting
 		aircraft := &(db.CurrentAircraft)[idx]
 		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
-		// Step 2: Retrieve previous sighting or create new one.
+		// Retrieve previous sighting or create new one.
 		sighting, exists := db.aircraftSightings[aircraft.Hex]
 		if !exists {
 			sighting = AircraftSighting{
@@ -191,12 +191,12 @@ func (db *Dashboard) processCivAircraftRecords() {
 			sighting.lastFlightNo = thisFlightNo
 		}
 
-		// Step 3: Update distance
+		// Update distance
 		acPos := dash.NewCoordinates(aircraft.Lat, aircraft.Lon)
 		(db.CurrentAircraft)[idx].CachedDist = dash.Distance(thisPos, acPos).Kilometers()
 		aircraft.CachedDist = dash.Distance(thisPos, acPos).Kilometers()
 
-		// Step 3: Update all aircraft, type, operator and country statistics
+		// Update all aircraft, type, operator and country statistics
 		db.updateHighest(aircraft)
 		db.updateFastest(aircraft)
 
