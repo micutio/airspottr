@@ -1,14 +1,5 @@
 package internal
 
-const (
-	// typeRarityThreshold denotes the maximum rate an aircraft type is seen to be considered rare.
-	typeRarityThreshold = 0.001
-	// operatorRarityThreshold denotes the maximum rate an operator is seen to be considered rare.
-	operatorRarityThreshold = 0.001
-	// countryRarityThreshold denotes the maximum rate a country is seen to be considered rare.
-	countryRarityThreshold = 0.001
-)
-
 type RarityFlag int
 
 const (

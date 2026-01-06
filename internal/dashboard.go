@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -249,7 +250,7 @@ func (db *Dashboard) updateType(
 	thisTypeCountNew := db.SeenTypeCount[aType] + 1
 	db.SeenTypeCount[aType] = thisTypeCountNew
 	db.totalTypeCount++
-	typeRarity := float32(thisTypeCountNew) / float32(db.totalTypeCount)
+	isRareType := float64(thisTypeCountNew) < math.Log2(float64(db.totalTypeCount))
 
 	// db.logger.Debug(
 	//	"type rarity calculation: ",
@@ -260,7 +261,7 @@ func (db *Dashboard) updateType(
 	//	"typeRarity", typeRarity,
 	//	"typeRarityThreshold", typeRarityThreshold)
 
-	if typeRarity > typeRarityThreshold {
+	if !isRareType {
 		return 0
 	}
 
@@ -317,7 +318,7 @@ func (db *Dashboard) updateOperator(
 	thisOperatorCountNew := db.SeenOperatorCount[sighting.Operator] + 1
 	db.SeenOperatorCount[sighting.Operator] = thisOperatorCountNew
 	db.totalOperatorCount++
-	operatorRarity := float32(thisOperatorCountNew) / float32(db.totalOperatorCount)
+	isRareOperator := float64(thisOperatorCountNew) < math.Log2(float64(db.totalOperatorCount))
 
 	// db.logger.Debug(
 	//	"operator rarity calculation:",
@@ -327,7 +328,7 @@ func (db *Dashboard) updateOperator(
 	//	"operatorRarity", operatorRarity,
 	//	"operatorRarityThreshold", operatorRarityThreshold)
 
-	if operatorRarity > operatorRarityThreshold {
+	if !isRareOperator {
 		return 0
 	}
 
@@ -384,7 +385,7 @@ func (db *Dashboard) updateCountry(
 	thisCountryCountNew := db.SeenCountryCount[sighting.Country] + 1
 	db.SeenCountryCount[sighting.Country] = thisCountryCountNew
 	db.totalCountryCount++
-	countryRarity := float32(thisCountryCountNew) / float32(db.totalCountryCount)
+	isRareCountry := float64(thisCountryCountNew) < math.Log2(float64(db.totalCountryCount))
 
 	// db.logger.Debug(
 	//	"country rarity calculation:",
@@ -394,7 +395,7 @@ func (db *Dashboard) updateCountry(
 	//	"countryRarity", countryRarity,
 	//	"countryRarityThreshold", countryRarityThreshold)
 
-	if countryRarity > countryRarityThreshold {
+	if !isRareCountry {
 		return 0
 	}
 
