@@ -36,8 +36,8 @@ var (
 )
 
 type RequestOptions struct {
-	Lat float32
-	Lon float32
+	Lat float64
+	Lon float64
 }
 
 func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {

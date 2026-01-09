@@ -202,7 +202,7 @@ func newOperatorRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithColumns(
 			[]table.Column{
 				{Title: "Count", Width: countLen},
-				{Title: "Operator", Width: operatorNameLen},
+				{Title: "operator", Width: operatorNameLen},
 			},
 		),
 		table.WithRows([]table.Row{}),
@@ -232,7 +232,7 @@ func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithColumns(
 			[]table.Column{
 				{Title: "Count", Width: countLen},
-				{Title: "Country", Width: countryNameLen},
+				{Title: "country", Width: countryNameLen},
 			},
 		),
 		table.WithRows([]table.Row{}),

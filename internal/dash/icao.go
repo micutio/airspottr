@@ -138,7 +138,7 @@ func parseAirlineCsvToMap(filePath string) (map[string]IcaoOperator, error) {
 		return nil, fmt.Errorf("parseAirlineCsvToMap: failed to read header: %w", headerErr)
 	}
 
-	// icaoOperator Headers = Company,Country,Telephony,3Ltr
+	// icaoOperator Headers = Company,country,Telephony,3Ltr
 	lenIcaoAirlineHeaders := 4
 	if len(headers) != lenIcaoAirlineHeaders {
 		return nil, fmt.Errorf("parseAirlineCsvMap: %w", errHeaderLen)
