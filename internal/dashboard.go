@@ -235,8 +235,8 @@ func (db *Dashboard) updateType(
 	aircraft *AircraftRecord,
 	isNewFlight bool,
 ) RarityFlag {
-	if sighting.typeShort == "" && aircraft.OwnOp != "" {
-		sighting.typeShort = aircraft.OwnOp
+	if sighting.typeShort == "" && aircraft.Description != "" {
+		sighting.typeShort = aircraft.Description
 	}
 
 	// We already know the type or just saw this one recently, no need to update again.

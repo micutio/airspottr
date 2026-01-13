@@ -195,7 +195,7 @@ func notifyRareTypeOperatorCountry(sighting *AircraftSighting) {
 	country := sighting.country
 	msgTitle := "TRIFECTA Spotted!"
 	msgBody := fmt.Sprintf(
-		"%s (%s),\nrunby %s,\nregistered in%s\n%3.0f %s",
+		"%s (%s),\nrun by %s,\nregistered in\n%s\n%3.0f %s",
 		aType,
 		sighting.registration,
 		operator,
