@@ -276,15 +276,15 @@ func (db *Dashboard) updateType(
 		return 0
 	}
 
-	fmt.Println(
-		"type rarity calculation: ",
-		" aircraft flight", aircraft.Flight,
-		"type", sighting.typeDesc,
-		"typeShort", sighting.typeShort,
-		"thisTypeCountNew", thisTypeCountNew,
-		"totalTypeCount", db.totalTypeCount,
-		"typeRarity", rarityThreshold,
-		"isRareType", isRareType)
+	//fmt.Println(
+	//	"type rarity calculation: ",
+	//	" aircraft flight", aircraft.Flight,
+	//	"type", sighting.typeDesc,
+	//	"typeShort", sighting.typeShort,
+	//	"thisTypeCountNew", thisTypeCountNew,
+	//	"totalTypeCount", db.totalTypeCount,
+	//	"typeRarity", rarityThreshold,
+	//	"isRareType", isRareType)
 
 	// db.logger.info(
 	//	"type rarity calculation: ",
@@ -354,12 +354,12 @@ func (db *Dashboard) updateOperator(
 		return 0
 	}
 
-	fmt.Println(
-		"operator rarity calculation: ",
-		"thisOperatorCountNew", thisOperatorCountNew,
-		"totalOperatorCount", db.totalOperatorCount,
-		"operatorRarity", rarityThreshold,
-		"isRareOperator", isRareOperator)
+	//fmt.Println(
+	//	"operator rarity calculation: ",
+	//	"thisOperatorCountNew", thisOperatorCountNew,
+	//	"totalOperatorCount", db.totalOperatorCount,
+	//	"operatorRarity", rarityThreshold,
+	//	"isRareOperator", isRareOperator)
 
 	return 1
 }
@@ -422,12 +422,13 @@ func (db *Dashboard) updateCountry(
 		return 0
 	}
 
-	fmt.Println(
-		"country rarity calculation: ",
-		"thisCountryCountNew", thisCountryCountNew,
-		"totalCountryCount", db.totalCountryCount,
-		"countryRarity", rarityThreshold,
-		"isRareCountry", isRareCountry)
+	//fmt.Println(
+	//	"country rarity calculation: ",
+	//	"thisCountryCountNew", thisCountryCountNew,
+	//	"totalCountryCount", db.totalCountryCount,
+	//	"countryRarity", rarityThreshold,
+	//	"isRareCountry", isRareCountry)
+
 	return 1
 }
 

@@ -214,7 +214,7 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 }
 
 // TODO: Create a state machine with UI layouts+style (e.g.: selected) as
-// states and key input as transitions.
+//       states and key input as transitions.
 
 func (m *model) View() string {
 	// Sets the width of the column to the width of the terminal (m.width) and adds padding of 1 unit
