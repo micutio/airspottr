@@ -30,6 +30,8 @@ type model struct {
 	typeRarityTbl      autoFormatTable
 	operatorRarityTbl  autoFormatTable
 	countryRarityTbl   autoFormatTable
+	// Pointer to active UI Element
+	selectedTable *autoFormatTable
 	// Data
 	uiState    uiState
 	startTime  time.Time
@@ -43,7 +45,26 @@ type model struct {
 // This command will be executed immediately when the program starts, initiating the periodic updates.
 func (m *model) Init() tea.Cmd {
 	tea.SetWindowTitle("airspottr")
+	m.selectedTable = &m.currentAircraftTbl
+	m.FocusSelectedTable()
+	m.tableStyle.Selected = m.baseStyle
+	m.countryRarityTbl.table.SetStyles(m.tableStyle)
+	m.countryRarityTbl.table.Blur()
+	m.operatorRarityTbl.table.SetStyles(m.tableStyle)
+	m.operatorRarityTbl.table.Blur()
 	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd(m.options))
+}
+
+func (m *model) UnfocusSelectedTable() {
+	m.tableStyle.Selected = m.baseStyle
+	m.selectedTable.table.SetStyles(m.tableStyle)
+	m.selectedTable.table.Blur()
+}
+
+func (m *model) FocusSelectedTable() {
+	m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
+	m.selectedTable.table.SetStyles(m.tableStyle)
+	m.selectedTable.table.Focus()
 }
 
 // Update takes a tea.Msg as input and uses a type switch to handle different types of messages.
@@ -118,40 +139,36 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	// Toggles the focus state of the aircraft table
 	case "esc":
-		if m.currentAircraftTbl.table.Focused() {
-			m.tableStyle.Selected = m.baseStyle
-			m.currentAircraftTbl.table.SetStyles(m.tableStyle)
-			m.currentAircraftTbl.table.Blur()
+		if m.selectedTable.table.Focused() {
+			m.UnfocusSelectedTable()
 		} else {
-			m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
-			m.currentAircraftTbl.table.SetStyles(m.tableStyle)
-			m.currentAircraftTbl.table.Focus()
+			m.FocusSelectedTable()
 		}
 	// Moves the focus up in the aircraft table if the table is focused.
 	case "up", "k":
-		if m.uiState == mainPage && m.currentAircraftTbl.table.Focused() {
-			m.currentAircraftTbl.table.MoveUp(1)
+		if m.selectedTable.table.Focused() {
+			m.selectedTable.table.MoveUp(1)
+		}
+	case "pgup":
+		if m.selectedTable.table.Focused() {
+			m.selectedTable.table.MoveUp(m.selectedTable.table.Height() - 1)
 		}
 	// Moves the focus down in the aircraft table if the table is focused.
 	case "down", "j":
-		if m.uiState == mainPage && m.currentAircraftTbl.table.Focused() {
-			m.currentAircraftTbl.table.MoveDown(1)
+		if m.selectedTable.table.Focused() {
+			m.selectedTable.table.MoveDown(1)
 		}
+	case "pgdown":
+		if m.selectedTable.table.Focused() {
+			m.selectedTable.table.MoveDown(m.selectedTable.table.Height() - 1)
+		}
+	case "left", "h":
+		m.selectTableToTheLeft()
+	case "right", "l":
+		m.selectTableToTheRight()
 	// Switch between main and global view
 	case " ": // space
-		switch m.uiState {
-		case mainPage:
-			m.uiState = globalStats
-		case globalStats:
-			m.uiState = mainPage
-		case aircraftDetails:
-		default:
-		}
-	// Show help view
-	case "h":
-		if m.currentAircraftTbl.table.Focused() {
-			m.currentAircraftTbl.table.HelpView()
-		}
+		m.toggleGlobalView()
 	// Quits the program by returning the tea.Quit command.
 	case "q", "ctrl+c":
 		return tea.Quit
@@ -213,8 +230,58 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 	// since we've already scheduled the next request, there is nothing to return now.
 }
 
-// TODO: Create a state machine with UI layouts+style (e.g.: selected) as
-//       states and key input as transitions.
+func (m *model) selectTableToTheLeft() {
+	if !m.selectedTable.table.Focused() {
+		return
+	}
+	if m.selectedTable == &m.currentAircraftTbl {
+		return
+	}
+	m.UnfocusSelectedTable()
+	if m.selectedTable == &m.typeRarityTbl {
+		m.selectedTable = &m.countryRarityTbl
+	} else if m.selectedTable == &m.operatorRarityTbl {
+		m.selectedTable = &m.typeRarityTbl
+	} else if m.selectedTable == &m.countryRarityTbl {
+		m.selectedTable = &m.operatorRarityTbl
+	}
+	m.FocusSelectedTable()
+}
+
+func (m *model) selectTableToTheRight() {
+	if !m.selectedTable.table.Focused() {
+		return
+	}
+	if m.selectedTable == &m.currentAircraftTbl {
+		return
+	}
+	m.UnfocusSelectedTable()
+	if m.selectedTable == &m.typeRarityTbl {
+		m.selectedTable = &m.operatorRarityTbl
+	} else if m.selectedTable == &m.operatorRarityTbl {
+		m.selectedTable = &m.countryRarityTbl
+	} else if m.selectedTable == &m.countryRarityTbl {
+		m.selectedTable = &m.typeRarityTbl
+	}
+	m.FocusSelectedTable()
+}
+
+func (m *model) toggleGlobalView() {
+	switch m.uiState {
+	case mainPage:
+		m.uiState = globalStats
+		m.selectedTable.table.Blur()
+		m.selectedTable = &m.typeRarityTbl
+		m.selectedTable.table.Focus()
+	case globalStats:
+		m.uiState = mainPage
+		m.selectedTable.table.Blur()
+		m.selectedTable = &m.currentAircraftTbl
+		m.selectedTable.table.Focus()
+	case aircraftDetails:
+	default:
+	}
+}
 
 func (m *model) View() string {
 	// Sets the width of the column to the width of the terminal (m.width) and adds padding of 1 unit

@@ -122,6 +122,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 		typeRarityTbl:      tables.types,
 		operatorRarityTbl:  tables.operators,
 		countryRarityTbl:   tables.countries,
+		selectedTable:      &tables.current,
 		uiState:            mainPage,
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
