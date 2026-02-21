@@ -5,9 +5,9 @@ name: Go
 
 on:
   push:
-    branches: [ "main", "feature/**", "bugfix/**" ]
+    branches: ["main", "feature/**", "bugfix/**"]
   pull_request:
-    branches: [ "main", "feature/**", "bugfix/**" ]
+    branches: ["main", "feature/**", "bugfix/**"]
 
 permissions:
   contents: read
@@ -15,13 +15,25 @@ permissions:
   # pull-requests: read
 
 jobs:
-
-  golangci:
+  govulncheck:
     strategy:
       matrix:
-        go: [ stable ]
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        go: [stable]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: imjasonh/govulncheck-action@v0.1
+
+  golangci:
     name: lint
+    strategy:
+      matrix:
+        go: [stable]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -31,22 +43,22 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.5
+          go-version: ${{ matrix.go }}
 
   build:
-    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         go: [stable]
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go }}
-    - name: Build
-      run: go build -v 
-    - name: Test
-      run: go test -v ./...
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Build
+        run: go build -v
+      - name: Test
+        run: go test -v ./...
