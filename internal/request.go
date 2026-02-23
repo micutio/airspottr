@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,7 +20,7 @@ const (
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
 	DashboardWarmup = 1 * time.Hour
 
-	URLAdsbOpenData = "https://opendata.adsb.fi/api/v2/lat/%.6f/lon/%.6f/dist/250"
+	allowedRequestHost = "opendata.adsb.fi"
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
 	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
 )
@@ -35,29 +37,31 @@ type RequestOptions struct {
 }
 
 func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
-	// Define the URL for the HTTP GET request
-	targetURL := fmt.Sprintf(URLAdsbOpenData, opts.Lat, opts.Lon)
-
-	// This case is executed every time the ticker "ticks"
-	body, requestErr := sendRequest(targetURL)
+	body, requestErr := sendRequest(opts)
 	if requestErr != nil {
 		return nil, fmt.Errorf("requestAndProcessCivAircraft: error during request: %w", requestErr)
 	}
-
 	return body, nil
 }
 
-// sendRequest sends an HTTP GET request and returns a valid byte slice of the response body.
-func sendRequest(url string) ([]byte, error) {
+// sendRequest builds the API URL from opts, sends an HTTP GET request, and returns the response body.
+// The URL is constructed only from the fixed host and opts (lat/lon); no user-controlled URL input.
+func sendRequest(opts RequestOptions) ([]byte, error) {
+	latStr := strconv.FormatFloat(float64(opts.Lat), 'f', 6, 32)
+	lonStr := strconv.FormatFloat(float64(opts.Lon), 'f', 6, 32)
+	baseURL := &url.URL{Scheme: "https", Host: allowedRequestHost}
+	fullURL := baseURL.JoinPath("api", "v2", "lat", latStr, "lon", lonStr, "dist", "250")
+	targetURL := fullURL.String()
+
 	ctx := context.Background()
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if reqErr != nil {
-		return nil, fmt.Errorf("sendRequest: invalid request error: %s : %w", url, reqErr)
+		return nil, fmt.Errorf("sendRequest: invalid request error: %s : %w", targetURL, reqErr)
 	}
 
 	resp, respErr := http.DefaultClient.Do(req)
 	if respErr != nil {
-		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", url, respErr)
+		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", targetURL, respErr)
 	}
 	defer func() {
 		closeErr := resp.Body.Close()
@@ -83,7 +87,7 @@ func sendRequest(url string) ([]byte, error) {
 
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") {
-		return nil, fmt.Errorf("senRequest: %w, %s", ErrNonJSONContent, contentType)
+		return nil, fmt.Errorf("sendRequest: %w, %s", ErrNonJSONContent, contentType)
 	}
 
 	return body, nil
