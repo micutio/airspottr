@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
-      - uses: imjasonh/govulncheck-action@v0.1
+      - uses: imjasonh/govulncheck-action@v01
 
   golangci:
     name: lint
