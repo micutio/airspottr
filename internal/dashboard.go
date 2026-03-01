@@ -171,6 +171,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 				latitude:     aircraft.Lat,
 				longitude:    aircraft.Lon,
 				direction:    getDirection(db.Lat, db.Lon, aircraft.Lat, aircraft.Lon),
+				distance:     math.MaxInt,
 				typeShort:    "",
 				typeDesc:     typeUnknown,
 				operator:     operatorUnknown,
@@ -276,7 +277,7 @@ func (db *Dashboard) updateType(
 		return 0
 	}
 
-	//fmt.Println(
+	// fmt.Println(
 	//	"type rarity calculation: ",
 	//	" aircraft flight", aircraft.Flight,
 	//	"type", sighting.typeDesc,
@@ -354,7 +355,7 @@ func (db *Dashboard) updateOperator(
 		return 0
 	}
 
-	//fmt.Println(
+	// fmt.Println(
 	//	"operator rarity calculation: ",
 	//	"thisOperatorCountNew", thisOperatorCountNew,
 	//	"totalOperatorCount", db.totalOperatorCount,
@@ -422,7 +423,7 @@ func (db *Dashboard) updateCountry(
 		return 0
 	}
 
-	//fmt.Println(
+	// fmt.Println(
 	//	"country rarity calculation: ",
 	//	"thisCountryCountNew", thisCountryCountNew,
 	//	"totalCountryCount", db.totalCountryCount,

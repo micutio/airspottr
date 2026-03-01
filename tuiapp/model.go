@@ -238,11 +238,12 @@ func (m *model) selectTableToTheLeft() {
 		return
 	}
 	m.UnfocusSelectedTable()
-	if m.selectedTable == &m.typeRarityTbl {
+	switch m.selectedTable {
+	case &m.typeRarityTbl:
 		m.selectedTable = &m.countryRarityTbl
-	} else if m.selectedTable == &m.operatorRarityTbl {
+	case &m.operatorRarityTbl:
 		m.selectedTable = &m.typeRarityTbl
-	} else if m.selectedTable == &m.countryRarityTbl {
+	case &m.countryRarityTbl:
 		m.selectedTable = &m.operatorRarityTbl
 	}
 	m.FocusSelectedTable()
@@ -256,11 +257,12 @@ func (m *model) selectTableToTheRight() {
 		return
 	}
 	m.UnfocusSelectedTable()
-	if m.selectedTable == &m.typeRarityTbl {
+	switch m.selectedTable {
+	case &m.typeRarityTbl:
 		m.selectedTable = &m.operatorRarityTbl
-	} else if m.selectedTable == &m.operatorRarityTbl {
+	case &m.operatorRarityTbl:
 		m.selectedTable = &m.countryRarityTbl
-	} else if m.selectedTable == &m.countryRarityTbl {
+	case &m.countryRarityTbl:
 		m.selectedTable = &m.typeRarityTbl
 	}
 	m.FocusSelectedTable()

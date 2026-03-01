@@ -41,7 +41,7 @@ const (
 	dirNbW     string = "north by west"
 )
 
-var directions = []string{
+var directions = []string{ //nolint: gochecknoglobals // Can't be bothered to fix for now
 	dirN,
 	dirNbE,
 	dirNNE,
@@ -127,17 +127,17 @@ func getDirection(originLat, originLon, destLat, destLon float64) string {
 	return dirUnknown
 }
 
-// toRadians converts degrees to radians
+// toRadians converts degrees to radians.
 func toRadians(deg float64) float64 {
-	return deg * math.Pi / 180.0
+	return deg * math.Pi / 180.0 //nolint: mnd // readability
 }
 
-// toDegrees converts radians to degrees
+// toDegrees converts radians to degrees.
 func toDegrees(rad float64) float64 {
 	return rad * 180.0 / math.Pi
 }
 
-// calculateBearing calculates the initial bearing (forward azimuth) from point 1 to point 2
+// calculateBearing calculates the initial bearing (forward azimuth) from point 1 to point 2.
 func calculateBearing(lat1, lon1, lat2, lon2 float64) float64 {
 	// Convert degrees to radians
 	fLat := toRadians(lat1)
@@ -158,7 +158,7 @@ func calculateBearing(lat1, lon1, lat2, lon2 float64) float64 {
 
 	// Normalize the bearing to a value between 0 and 360 degrees
 	// The result from Atan2 ranges from -180 to +180
-	normalizedBearing := math.Mod(brngDeg+360.0, 360.0)
+	normalizedBearing := math.Mod(brngDeg+360.0, 360.0) //nolint: mnd // readability
 
 	return normalizedBearing
 }

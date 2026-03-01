@@ -77,7 +77,8 @@ func sendRequest(opts RequestOptions) ([]byte, error) {
 		},
 	}
 
-	resp, respErr := apiClient.Do(req)
+	// TODO: Remove once fixed linter version is public
+	resp, respErr := apiClient.Do(req) //nolint:gosec // linter bug
 	if respErr != nil {
 		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", targetURL, respErr)
 	}
