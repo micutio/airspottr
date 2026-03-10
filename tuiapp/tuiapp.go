@@ -51,8 +51,7 @@ func setupDashboardAndNotifier(
 	errWriter io.Writer,
 ) (*internal.Dashboard, *internal.Notify, error) {
 	// Using io.Discard for notifications as we don't need to close it
-	devNullWriter := io.Discard
-	notify := internal.NewNotify(appName, &devNullWriter)
+	notify := internal.NewNotify(appName, new(io.Discard))
 
 	dashboard, err := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
 	if err != nil {

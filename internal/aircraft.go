@@ -9,8 +9,8 @@ import (
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-// civAircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.
-type civAircraftResult struct {
+// aircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.
+type aircraftResult struct {
 	Now         float64          `json:"now"`         // time this file was generated in [ms]
 	ResultCount int              `json:"resultCount"` // total count of aircraft returned
 	Ptime       float64          `json:"ptime"`       // server processing time required in [ms]

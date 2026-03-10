@@ -93,16 +93,14 @@ type AircraftSighting struct {
 	latitude     float64
 	longitude    float64
 	direction    string
-	distance     float64 // distance is the current distance of the aircraft to our location [m]
-	typeShort    string  // typeShort is a shorter name of the type, directly from the record
-	typeDesc     string  // typeDesc is the full name of the aircraft type
-	operator     string  // operator can be either airline or military organisation
-	country      string  // country of registration
-	info         string  // info contains the aircraft information represented as string
-	// TODO: Think about adding a short type description, for when the _desc_ field in Aircraft is set.
+	distance     float64            // distance is the distance of the aircraft to our location [m]
+	typeShort    string             // typeShort is a short type name, directly from the record
+	typeDesc     string             // typeDesc is the full name of the aircraft type
+	operator     string             // operator can be either airline or military organization
+	country      string             // country of registration
+	info         string             // info contains the aircraft information represented as string
+	flightroute  *FlightRouteRecord // flightroute contains airline, origin and destination
 }
-
-// TODO: Try to remove *AircraftRecord from this by caching required fields in the sighting instead!
 
 // RareSighting combines an aircraft sighting with a rarity flag.
 type RareSighting struct {

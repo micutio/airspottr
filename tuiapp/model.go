@@ -36,6 +36,7 @@ type model struct {
 	uiState    uiState
 	startTime  time.Time
 	lastUpdate time.Time
+	request    *internal.Request
 	dashboard  *internal.Dashboard
 	notify     *internal.Notify
 	options    internal.RequestOptions
@@ -52,7 +53,7 @@ func (m *model) Init() tea.Cmd {
 	m.countryRarityTbl.table.Blur()
 	m.operatorRarityTbl.table.SetStyles(m.tableStyle)
 	m.operatorRarityTbl.table.Blur()
-	return tea.Batch(updateTick(), aircraftQueryTick(), requestADSBDataCmd(m.options))
+	return tea.Batch(updateTick(), aircraftQueryTick(), requestAircraftDataCmd(m.request))
 }
 
 func (m *model) UnfocusSelectedTable() {
@@ -83,9 +84,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	case UpdateTickMsg:
 		return m, updateTick()
 	case AircraftQueryTickMsg:
-		return m, tea.Batch(requestADSBDataCmd(m.options), aircraftQueryTick())
-	case ADSBResponseMsg:
-		m.processADSBResponse(thisMsg)
+		return m, tea.Batch(requestAircraftDataCmd(m.request), aircraftQueryTick())
+	case AircraftResponseMsg:
+		m.processAircraftResponse(thisMsg)
+		return m, nil
+	case FlightRoutesResponseMsg:
+		m.processFlightRouteResponse(thisMsg)
 		return m, nil
 	}
 
@@ -176,24 +180,51 @@ func (m *model) processKeyMsg(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-// processADSBResponse processes new data from the ADS-B data source and
+// processAircraftResponse processes new data from the ADS-B data source and
 // updates the tables accordingly.
-func (m *model) processADSBResponse(msg ADSBResponseMsg) {
+func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
-	responseBody := []byte(msg)
-	m.dashboard.ProcessCivAircraftJSON(responseBody)
+	aircraftRecords := []internal.AircraftRecord(msg)
+	m.dashboard.ProcessAircraftRecords(aircraftRecords)
+	// Send out notifications for any rare sightings that occurred.
+	m.notify.EmitRarityNotifications(m.dashboard.RareSightings)
 
+	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
+	if callsignsWithoutRoute != nil {
+		// Get route data for new or previously unknown flights.
+		// This returns early and delays the table update until the route data is available.
+		return requestFlightRouteDataCmd(m.request, callsignsWithoutRoute)
+	}
+
+	// Update all tables with the new information.
+	m.updateAllTables()
+
+	// Since the aircraft requests come on a regular schedule, there is nothing to return now.
+	return nil
+}
+
+func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) {
+	flightRoutes := []internal.FlightRouteRecord(msg)
+	m.dashboard.AssignFlightRoutes(flightRoutes)
+	m.updateAllTables()
+}
+
+func (m *model) updateAllTables() {
 	// Update current aircraft table.
 	currentAircraftRows := make([]table.Row, len(m.dashboard.CurrentAircraft))
 	for idx, aircraft := range m.dashboard.CurrentAircraft {
 		aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
+		flightRoute, ok := m.dashboard.CachedFlightRoutes[aircraft.Flight]
+		if !ok {
+			flightRoute = internal.GetDefaultFlightrouteRecord()
+		}
 
 		// Filter out aircraft where both flight number and type are unknown.
 		if aircraft.Flight == "" && aircraftType == "" {
 			continue
 		}
 
-		currentAircraftRows[idx] = aircraftToRow(&aircraft)
+		currentAircraftRows[idx] = aircraftToRow(&aircraft, flightRoute)
 	}
 	m.currentAircraftTbl.table.SetRows(currentAircraftRows)
 
@@ -223,11 +254,6 @@ func (m *model) processADSBResponse(msg ADSBResponseMsg) {
 		countryRarityRows[countryIdx] = propertyCountToRow(countryRarities[countryIdx])
 	}
 	m.countryRarityTbl.table.SetRows(countryRarityRows)
-
-	// finally send out notifications for any rare sightings that occurred
-	m.notify.EmitRarityNotifications(m.dashboard.RareSightings)
-
-	// since we've already scheduled the next request, there is nothing to return now.
 }
 
 func (m *model) selectTableToTheLeft() {

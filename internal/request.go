@@ -3,13 +3,16 @@ package internal
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,8 +24,10 @@ const (
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
 	DashboardWarmup = 1 * time.Hour
 
-	allowedRequestHost = "opendata.adsb.fi"
-	requestTimeout     = 25 * time.Second
+	aircraftReqHost    = "opendata.adsb.fi"
+	flightrouteReqHost = "adsbdb.com"
+
+	requestTimeout = 25 * time.Second
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
 	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
 )
@@ -40,34 +45,21 @@ type RequestOptions struct {
 	Lon float64
 }
 
-func RequestAndProcessCivAircraft(opts RequestOptions) ([]byte, error) {
-	body, requestErr := sendRequest(opts)
-	if requestErr != nil {
-		return nil, fmt.Errorf("requestAndProcessCivAircraft: error during request: %w", requestErr)
-	}
-	return body, nil
+// Request handles http request commands.
+type Request struct {
+	aircraftReqURL string
+	apiClient      *http.Client
+	waitGroup      sync.WaitGroup
+	errOut         log.Logger
 }
 
-// sendRequest builds the API URL from opts, sends an HTTP GET request, and returns the response body.
-// The URL is constructed only from the fixed host and opts (lat/lon); no user-controlled URL input.
-func sendRequest(opts RequestOptions) ([]byte, error) {
-	latStr := strconv.FormatFloat(float64(opts.Lat), 'f', 6, 32)
-	lonStr := strconv.FormatFloat(float64(opts.Lon), 'f', 6, 32)
-	baseURL := &url.URL{Scheme: "https", Host: allowedRequestHost}
-	fullURL := baseURL.JoinPath("api", "v2", "lat", latStr, "lon", lonStr, "dist", "250")
-	targetURL := fullURL.String()
-	validatedURL, valErr := validateURL(targetURL)
-	if valErr != nil {
-		return nil, fmt.Errorf("sendRequest: error validating URL: %w", valErr)
+func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
+	aircraftReqURL, urlErr := createAircraftReqURL(opts)
+	if urlErr != nil {
+		return nil, fmt.Errorf("NewRequest: %w", urlErr)
 	}
 
-	ctx := context.Background()
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, validatedURL, nil)
-	if reqErr != nil {
-		return nil, fmt.Errorf("sendRequest: invalid request error: %s : %w", targetURL, reqErr)
-	}
-
-	apiClient := &http.Client{
+	client := &http.Client{
 		Timeout: requestTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{ //nolint:exhaustruct // too large
@@ -77,8 +69,159 @@ func sendRequest(opts RequestOptions) ([]byte, error) {
 		},
 	}
 
+	request := &Request{
+		aircraftReqURL: aircraftReqURL,
+		apiClient:      client,
+		waitGroup:      sync.WaitGroup{},
+		errOut:         *log.New(*stderr, "request", log.LstdFlags),
+	}
+
+	request.errOut.Println("Request init")
+
+	return request, nil
+}
+
+func createAircraftReqURL(opts RequestOptions) (string, error) {
+	latStr := strconv.FormatFloat(opts.Lat, 'f', 6, 32)
+	lonStr := strconv.FormatFloat(opts.Lon, 'f', 6, 32)
+	baseURL := &url.URL{Scheme: "https", Host: aircraftReqHost}
+	fullURL := baseURL.JoinPath("api", "v2", "lat", latStr, "lon", lonStr, "dist", "250")
+	targetURL := fullURL.String()
+	validatedURL, valErr := validateURL(targetURL)
+	if valErr != nil {
+		return "", fmt.Errorf("sendRequest: error validating URL: %w", valErr)
+	}
+	return validatedURL, nil
+}
+
+func validateURL(targetURL string) (string, error) {
+	parsed, err := url.Parse(targetURL)
+	if err != nil || parsed.Scheme != "https" {
+		return "", ErrInvalidURL
+	}
+
+	if parsed.Host != aircraftReqHost {
+		return "", ErrUnauthorizedHost
+	}
+
+	return targetURL, nil
+}
+
+func (r *Request) RequestAircraft() []AircraftRecord {
+	body, requestErr := r.sendRequest(r.aircraftReqURL)
+	if requestErr != nil {
+		r.errOut.Println(fmt.Errorf("RequestAircraft: error during request: %w", requestErr))
+		return []AircraftRecord{}
+	}
+
+	var data aircraftResult
+	if err := json.Unmarshal(body, &data); err != nil {
+		r.errOut.Println(fmt.Errorf("RequestAircraft: failed to unmarshal Json: %w", err))
+		return []AircraftRecord{}
+	}
+
+	foundAircraftCount := len(data.Aircraft)
+	if foundAircraftCount == 0 {
+		return []AircraftRecord{} // Valid outcome, no need to log an error.
+	}
+
+	return data.Aircraft
+}
+
+func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRouteRecord {
+	// 1. Build input urls
+	urlCount := len(callsigns)
+	urls := make([]string, urlCount)
+	for i, callsign := range callsigns {
+		callsignURL, urlErr := createFlightRouteReqURL(callsign)
+		if urlErr != nil {
+			// Skip invalid urls.
+			r.errOut.Println(
+				fmt.Errorf(
+					"RequestFLightRoutesForCallsigns: error constructing url: %w",
+					urlErr))
+			continue
+		}
+		urls[i] = callsignURL
+	}
+
+	results := make(chan []byte, urlCount)
+	var wg sync.WaitGroup
+
+	// 2. Fan-out: Launch a goroutine for each URL
+	for _, reqURL := range urls {
+		wg.Add(1)
+		go func(urlStr string) {
+			defer wg.Done()
+
+			body, reqErr := r.sendRequest(urlStr)
+			// Only send body to results if there is no error.
+			r.errOut.Println(
+				fmt.Errorf("RequestFlightRoutesForCallsigns: error constructing url: %w",
+					reqErr))
+			if reqErr == nil {
+				results <- body
+			}
+		}(reqURL)
+	}
+
+	// 3. Wait and Close: Close the channel once all goroutines finish
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// 4. Fan-in: Collect and process results
+	var flightrouteRecords []FlightRouteRecord
+	for result := range results {
+		flightrouteRecord, err := r.FlightRouteJSONToRecord(result)
+		if err != nil {
+			r.errOut.Println(
+				fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
+					err))
+			continue
+		}
+		flightrouteRecords = append(flightrouteRecords, flightrouteRecord)
+	}
+	return flightrouteRecords
+}
+
+func createFlightRouteReqURL(callsign string) (string, error) {
+	baseURL := &url.URL{Scheme: "https", Host: flightrouteReqHost}
+	fullURL := baseURL.JoinPath("v0", "callsign", callsign)
+	targetURL := fullURL.String()
+	validatedURL, valErr := validateURL(targetURL)
+	if valErr != nil {
+		return "", fmt.Errorf("sendRequest: error validating URL: %w", valErr)
+	}
+	return validatedURL, nil
+}
+
+// FlightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
+// FlightRouteRecord.
+// It is then assigned to all flights matching the callsign.
+func (r *Request) FlightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
+	var data FlightrouteResponse
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		r.errOut.Println(
+			fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
+				err))
+		return data.Response.Flightroute, err
+	}
+	return data.Response.Flightroute, nil
+}
+
+// sendRequest builds the API URL from opts, sends an HTTP GET request, and returns the response body.
+// The URL is constructed only from the fixed host and opts (lat/lon); no user-controlled URL input.
+func (r *Request) sendRequest(targetURL string) ([]byte, error) {
+	ctx := context.Background()
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if reqErr != nil {
+		return nil, fmt.Errorf("sendRequest: invalid request error: %s : %w", targetURL, reqErr)
+	}
+
 	// TODO: Remove once fixed linter version is public
-	resp, respErr := apiClient.Do(req) //nolint:gosec // linter bug
+	resp, respErr := r.apiClient.Do(req) //nolint:gosec // linter bug
 	if respErr != nil {
 		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", targetURL, respErr)
 	}
@@ -110,17 +253,4 @@ func sendRequest(opts RequestOptions) ([]byte, error) {
 	}
 
 	return body, nil
-}
-
-func validateURL(targetURL string) (string, error) {
-	parsed, err := url.Parse(targetURL)
-	if err != nil || parsed.Scheme != "https" {
-		return "", ErrInvalidURL
-	}
-
-	if parsed.Host != allowedRequestHost {
-		return "", ErrUnauthorizedHost
-	}
-
-	return targetURL, nil
 }
