@@ -203,8 +203,7 @@ func createFlightRouteReqURL(callsign string) (string, error) {
 func (r *Request) FlightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
 	var data FlightrouteResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-
-		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w")
+		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
 		r.errOut.Println(jsonErr)
 		return data.Response.Flightroute, jsonErr
 	}
