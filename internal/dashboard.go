@@ -161,6 +161,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
 				operator:     operatorUnknown,
 				country:      countryUnknown,
 				info:         "",
+				flightroute:  nil,
 			}
 		}
 

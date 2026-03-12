@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log" //nolint:depguard // Don't feel like using slog
 	"net/http"
 	"net/url"
 	"strconv"
@@ -132,7 +132,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	// 1. Build input urls
 	urlCount := len(callsigns)
 	urls := make([]string, urlCount)
-	for i, callsign := range callsigns {
+	for idx, callsign := range callsigns {
 		callsignURL, urlErr := createFlightRouteReqURL(callsign)
 		if urlErr != nil {
 			// Skip invalid urls.
@@ -142,17 +142,17 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 					urlErr))
 			continue
 		}
-		urls[i] = callsignURL
+		urls[idx] = callsignURL
 	}
 
 	results := make(chan []byte, urlCount)
-	var wg sync.WaitGroup
+	var waitGroup sync.WaitGroup
 
 	// 2. Fan-out: Launch a goroutine for each URL
 	for _, reqURL := range urls {
-		wg.Add(1)
+		waitGroup.Add(1)
 		go func(urlStr string) {
-			defer wg.Done()
+			defer waitGroup.Done()
 
 			body, reqErr := r.sendRequest(urlStr)
 			// Only send body to results if there is no error.
@@ -167,7 +167,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 
 	// 3. Wait and Close: Close the channel once all goroutines finish
 	go func() {
-		wg.Wait()
+		waitGroup.Wait()
 		close(results)
 	}()
 
@@ -203,10 +203,10 @@ func createFlightRouteReqURL(callsign string) (string, error) {
 func (r *Request) FlightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
 	var data FlightrouteResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-		r.errOut.Println(
-			fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
-				err))
-		return data.Response.Flightroute, err
+
+		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w")
+		r.errOut.Println(jsonErr)
+		return data.Response.Flightroute, jsonErr
 	}
 	return data.Response.Flightroute, nil
 }
