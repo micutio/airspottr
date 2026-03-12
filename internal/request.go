@@ -25,7 +25,7 @@ const (
 	DashboardWarmup = 1 * time.Hour
 
 	aircraftReqHost    = "opendata.adsb.fi"
-	flightrouteReqHost = "adsbdb.com"
+	flightrouteReqHost = "api.adsbdb.com"
 
 	requestTimeout = 25 * time.Second
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
@@ -100,7 +100,7 @@ func validateURL(targetURL string) (string, error) {
 		return "", ErrInvalidURL
 	}
 
-	if parsed.Host != aircraftReqHost {
+	if parsed.Host != aircraftReqHost && parsed.Host != flightrouteReqHost {
 		return "", ErrUnauthorizedHost
 	}
 
@@ -156,10 +156,12 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 
 			body, reqErr := r.sendRequest(urlStr)
 			// Only send body to results if there is no error.
-			r.errOut.Println(
-				fmt.Errorf("RequestFlightRoutesForCallsigns: error constructing url: %w",
-					reqErr))
-			if reqErr == nil {
+			if reqErr != nil {
+				r.errOut.Println(
+					fmt.Errorf("RequestFlightRoutesForCallsigns: error requesting url: %s: %w",
+						urlStr,
+						reqErr))
+			} else {
 				results <- body
 			}
 		}(reqURL)
@@ -188,7 +190,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 
 func createFlightRouteReqURL(callsign string) (string, error) {
 	baseURL := &url.URL{Scheme: "https", Host: flightrouteReqHost}
-	fullURL := baseURL.JoinPath("v0", "callsign", callsign)
+	fullURL := baseURL.JoinPath("v0", "callsign", strings.TrimSpace(callsign))
 	targetURL := fullURL.String()
 	validatedURL, valErr := validateURL(targetURL)
 	if valErr != nil {

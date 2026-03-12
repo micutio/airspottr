@@ -86,8 +86,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // r
 	case AircraftQueryTickMsg:
 		return m, tea.Batch(requestAircraftDataCmd(m.request), aircraftQueryTick())
 	case AircraftResponseMsg:
-		m.processAircraftResponse(thisMsg)
-		return m, nil
+		return m, m.processAircraftResponse(thisMsg)
 	case FlightRoutesResponseMsg:
 		m.processFlightRouteResponse(thisMsg)
 		return m, nil
@@ -214,13 +213,13 @@ func (m *model) updateAllTables() {
 	currentAircraftRows := make([]table.Row, len(m.dashboard.CurrentAircraft))
 	for idx, aircraft := range m.dashboard.CurrentAircraft {
 		aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
-		flightRoute, ok := m.dashboard.CachedFlightRoutes[aircraft.Flight]
+		flightRoute, ok := m.dashboard.CachedFlightRoutes[aircraft.GetFlightNoAsStr()]
 		if !ok {
 			flightRoute = internal.GetDefaultFlightrouteRecord()
 		}
 
 		// Filter out aircraft where both flight number and type are unknown.
-		if aircraft.Flight == "" && aircraftType == "" {
+		if aircraft.GetFlightNoAsStr() == "" && aircraftType == "" {
 			continue
 		}
 

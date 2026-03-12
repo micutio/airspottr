@@ -76,16 +76,16 @@ var directions = []string{ //nolint: gochecknoglobals // Can't be bothered to fi
 	dirNbW,
 }
 
-// AircraftSighting represents signals received from an aircraft in flight.
-// This includes aircraft on the ground as long as a valid flight number is
+// AircraftSighting represents signals received from an aircraft in Flight.
+// This includes aircraft on the ground as long as a valid Flight number is
 // being broadcast.
-// All signals received from an aircraft during the same flight (number) will
+// All signals received from an aircraft during the same Flight (number) will
 // be treated as one singular sighting.
-// Once the aircraft lands and departs again with a new flight number, this
+// Once the aircraft lands and departs again with a new Flight number, this
 // will be considered a _new_ sighting.
 // Since individual ADS-B messages may contain incomplete data, we are
 // continuously updating the AircraftSighting struct fields with data received
-// from an ongoing flight.
+// from an ongoing Flight.
 type AircraftSighting struct {
 	lastSeen     time.Time
 	lastFlightNo string

@@ -19,13 +19,13 @@ type aircraftResult struct {
 
 // AircraftRecord is used by both civilian and military aircraft queries.
 type AircraftRecord struct {
-	Alert           int      `json:"alert"`            // flight status alert bit
+	Alert           int      `json:"alert"`            // Flight status alert bit
 	AltBaro         any      `json:"alt_baro"`         // altitude in [feet] or string "ground"
 	AltGeom         int      `json:"alt_geom"`         // altitude in [feet]
 	BaroRate        float64  `json:"baro_rate"`        // rate of change of baro alt in [feet/minute]
 	EmitterCategory string   `json:"category"`         // emitter category to identify aircraft or vehicle classes (A0-D7)
 	Emergency       string   `json:"emergency"`        // emergency/priority status, 7X00
-	Flight          string   `json:"flight"`           // Flight number
+	Flight          string   `json:"Flight"`           // Flight number, a.k.a. callsign
 	GroundSpeed     float64  `json:"gs"`               // ground speed in [knots]
 	Gva             float64  `json:"gva"`              // geometric vertical accuracy
 	Hex             string   `json:"hex"`              // hex code ID for aircraft, assumed to be unique
@@ -35,7 +35,7 @@ type AircraftRecord struct {
 	Mlat            []string `json:"mlat"`             // position calculation arrival time diffs
 	NacP            float64  `json:"nac_p"`            // navigation accuracy for position
 	NacV            float64  `json:"nac_v"`            // navigation accuracy for velocity
-	NavAltitudeMcp  int      `json:"nav_altitude_mcp"` // selected from mode or flight control panel (MCP)/(FCP) or other
+	NavAltitudeMcp  int      `json:"nav_altitude_mcp"` // selected from mode or Flight control panel (MCP)/(FCP) or other
 	NavHeading      float64  `json:"nav_heading"`      // selected heading (True/Magnetic), magnetic is de-facto standard
 	NavQNH          float64  `json:"nav_qnh"`          // altimeter setting (QFE  or QNH/QNE) in [hPa]
 	Nic             int      `json:"nic"`              // Navigation Integrity Category
@@ -48,7 +48,7 @@ type AircraftRecord struct {
 	SeenPos         float64  `json:"seen_pos"`         // last update of position from aircraft in [seconds] from 'now'
 	Sil             int      `json:"sil"`              // Source integrity level
 	SilType         string   `json:"sil_type"`         // Source integrity level type
-	Spi             int      `json:"spi"`              // flight status special position identification bit
+	Spi             int      `json:"spi"`              // Flight status special position identification bit
 	Squawk          string   `json:"squawk"`           // Mode A code (Squawk) encoded as 4 octal digits
 	IcaoType        string   `json:"t"`                // aircraft ICAO type pulled from database
 	Tisb            []string `json:"tisb"`             // list of fields derived from TIS-B data
@@ -76,7 +76,7 @@ type AircraftRecord struct {
 	RrLat           float64  `json:"rr_lat"`           // rough estimated latitude if no ADS-B or MLAT available
 	RrLon           float64  `json:"rr_lon"`           // rough estimated longitude if no ADS-B or MLAT available
 	CalcTrack       any      `json:"calc_track"`       // ? TODO
-	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the flight management system (FMS)
+	NavAltitudeFMS  float64  `json:"nav_altitude_fms"` // selected altitude from the Flight management system (FMS)
 	// found by my own investigation
 	OwnOp       string `json:"ownOp"` // owner or operator, only rarely set
 	Description string `json:"desc"`  // aircraft type description
@@ -102,17 +102,17 @@ func (ac *AircraftRecord) GetAltitudeAsStr() string {
 	return altitudeUnknown
 }
 
-// GetFlightNoAsStr converts the flight number to a unified string of length 8.
-// Returns either the full flight number or 'unknown ' if it was not transmitted.
+// GetFlightNoAsStr converts the Flight number to a string.
+// Returns either the full Flight number or 'unknown ' if it was not transmitted.
 func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	if ac.Flight == "" {
 		return flightUnknown
 	}
 
-	return ac.Flight
+	return strings.TrimSpace(ac.Flight)
 }
 
-// GetFlightNoAsIcaoCode trims whitespaces and digits from the flight number,
+// GetFlightNoAsIcaoCode trims whitespaces and digits from the Flight number,
 // resulting in the three-digit icao code for civilian flights and arbitrary length codes
 // for military, government and private flights.
 func (ac *AircraftRecord) GetFlightNoAsIcaoCode() string {
@@ -144,7 +144,7 @@ func stripDigits(str string) string {
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
-// by flight.
+// by Flight.
 type ByFlight []AircraftRecord
 
 func (a ByFlight) Len() int           { return len(a) }

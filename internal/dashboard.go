@@ -22,10 +22,10 @@ const (
 	// Lon float64 = 103.989348
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
-	// flightUnknown is what we use for aircraft with missing flight number.
+	// flightUnknown is what we use for aircraft with missing Flight number.
 	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
 	flightUnknown = "unknown "
-	// flightUnknownCode is a sentinel code we use for aircraft with missing flight number.
+	// flightUnknownCode is a sentinel code we use for aircraft with missing Flight number.
 	flightUnknownCode = "n/a"
 	// typeUnknown is what we use for aircraft with a type that's either empty or can't be found.
 	typeUnknown = "unknown"
@@ -169,7 +169,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
 			sighting.registration = aircraft.Registration
 		}
 
-		// Check whether we've seen this aircraft before by comparing last and current flight number.
+		// Check whether we've seen this aircraft before by comparing last and current Flight number.
 		// If they differ, then we allow recording in the statistics again.
 		thisFlightNo := aircraft.GetFlightNoAsStr()
 		isFlightIdentified := sighting.lastFlightNo == flightUnknown && thisFlightNo != flightUnknown
@@ -251,7 +251,7 @@ func (db *Dashboard) updateType(
 
 	// fmt.Println(
 	//	"type rarity calculation: ",
-	//	" aircraft flight", aircraft.Flight,
+	//	" aircraft Flight", aircraft.Flight,
 	//	"type", sighting.typeDesc,
 	//	"thisTypeCountNew", thisTypeCountNew,
 	//	"totalTypeCount", db.totalTypeCount,
@@ -264,7 +264,7 @@ func (db *Dashboard) updateType(
 
 	// fmt.Println(
 	//	"type rarity calculation: ",
-	//	" aircraft flight", aircraft.Flight,
+	//	" aircraft Flight", aircraft.Flight,
 	//	"type", sighting.typeDesc,
 	//	"typeShort", sighting.typeShort,
 	//	"thisTypeCountNew", thisTypeCountNew,
@@ -292,7 +292,7 @@ func (db *Dashboard) updateOperator(
 		return 0
 	}
 
-	flightNo := aircraft.Flight
+	flightNo := aircraft.GetFlightNoAsStr()
 	if flightNo == "" {
 		return 0
 	}
@@ -360,7 +360,7 @@ func (db *Dashboard) updateCountry(
 		return 0
 	}
 
-	flightNo := aircraft.Flight
+	flightNo := aircraft.GetFlightNoAsStr()
 	if flightNo == "" {
 		return 0
 	}
@@ -479,17 +479,17 @@ func (db *Dashboard) AssignRouteToCallsigns() []string {
 	var callsignsWithoutRoute []string
 	for _, sighting := range db.aircraftSightings {
 		if sighting.lastFlightNo == flightUnknown {
-			// Can't get flight routes for unknown flight.
+			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
 		if sighting.flightroute != nil {
-			// A flight route is already set.
+			// A Flight route is already set.
 			continue
 		}
 
 		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
-			// Found a cached route for this flight, reuse it!
+			// Found a cached route for this Flight, reuse it!
 			sighting.flightroute = flightRoute
 			continue
 		}
@@ -500,7 +500,7 @@ func (db *Dashboard) AssignRouteToCallsigns() []string {
 	return callsignsWithoutRoute
 }
 
-// AssignFlightRoutes assigns the given flight routes to all flights matching the callsign.
+// AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
 func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []FlightRouteRecord) {
 	for _, flightrouteRecord := range flightRouteRecords {
 		callsign := flightrouteRecord.Callsign
@@ -508,20 +508,24 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []FlightRouteRecord) 
 	}
 	for _, sighting := range db.aircraftSightings {
 		if sighting.lastFlightNo == flightUnknown {
-			// Can't get flight routes for unknown flight.
+			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
 		if sighting.flightroute != nil {
-			// A flight route is already set.
+			// A Flight route is already set.
 			continue
 		}
 
 		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
-			// Found a cached route for this flight, reuse it!
+			// Found a cached route for this Flight, reuse it!
 			sighting.flightroute = flightRoute
 			continue
 		}
+
+		// Route cannot be found: use a dummy and also cache a dummy to prevent unnecessary requests
+		// for the same callsign again.
 		sighting.flightroute = GetDefaultFlightrouteRecord()
+		db.CachedFlightRoutes[sighting.lastFlightNo] = GetDefaultFlightrouteRecord()
 	}
 }

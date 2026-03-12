@@ -1,6 +1,6 @@
 ﻿package internal
 
-// See https://www.adsbdb.com for flight route data definition.
+// See https://www.adsbdb.com for Flight route data definition.
 
 const (
 	NotAvailable string = "N/A"
@@ -36,7 +36,7 @@ type AirlineRecord struct {
 	Callsign   string `json:"callsign"`
 }
 
-// LocationRecord is used to store data for flight origin and destination.
+// LocationRecord is used to store data for Flight origin and destination.
 type LocationRecord struct {
 	CountryIsoName string  `json:"country_iso_name"`
 	CountryName    string  `json:"country_name"`
