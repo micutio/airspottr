@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          version: ${{ matrix.go }}
       - uses: imjasonh/govulncheck-action@v01
 
   golangci:
@@ -39,11 +39,11 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          version: ${{ matrix.go }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          go-version: ${{ matrix.go }}
+          version: ${{ matrix.go }}
 
   build:
     strategy:
@@ -57,7 +57,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          version: ${{ matrix.go }}
       - name: Build
         run: go build -v
       - name: Test
