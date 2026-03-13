@@ -129,11 +129,12 @@ func (r *Request) RequestAircraft() []AircraftRecord {
 }
 
 func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRouteRecord {
+	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns requested\n", len(callsigns))
 	// 1. Build input urls
 	urlCount := len(callsigns)
 	urls := make([]string, urlCount)
 	for idx, callsign := range callsigns {
-		callsignURL, urlErr := createFlightRouteReqURL(callsign)
+		callsignURL, urlErr := createFlightRouteRequestURL(callsign)
 		if urlErr != nil {
 			// Skip invalid urls.
 			r.errOut.Println(
@@ -176,7 +177,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	// 4. Fan-in: Collect and process results
 	var flightrouteRecords []FlightRouteRecord
 	for result := range results {
-		flightrouteRecord, err := r.FlightRouteJSONToRecord(result)
+		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
 		if err != nil {
 			r.errOut.Println(
 				fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
@@ -185,10 +186,11 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 		}
 		flightrouteRecords = append(flightrouteRecords, flightrouteRecord)
 	}
+	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns found\n", len(callsigns))
 	return flightrouteRecords
 }
 
-func createFlightRouteReqURL(callsign string) (string, error) {
+func createFlightRouteRequestURL(callsign string) (string, error) {
 	baseURL := &url.URL{Scheme: "https", Host: flightrouteReqHost}
 	fullURL := baseURL.JoinPath("v0", "callsign", strings.TrimSpace(callsign))
 	targetURL := fullURL.String()
@@ -199,10 +201,10 @@ func createFlightRouteReqURL(callsign string) (string, error) {
 	return validatedURL, nil
 }
 
-// FlightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
+// flightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
 // FlightRouteRecord.
 // It is then assigned to all flights matching the callsign.
-func (r *Request) FlightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
+func (r *Request) flightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
 	var data FlightrouteResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
@@ -221,7 +223,6 @@ func (r *Request) sendRequest(targetURL string) ([]byte, error) {
 		return nil, fmt.Errorf("sendRequest: invalid request error: %s : %w", targetURL, reqErr)
 	}
 
-	// TODO: Remove once fixed linter version is public
 	resp, respErr := r.apiClient.Do(req)
 	if respErr != nil {
 		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", targetURL, respErr)

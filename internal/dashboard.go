@@ -464,17 +464,6 @@ func (db *Dashboard) updateFastest(aircraft *AircraftRecord) {
 	db.Fastest = aircraft
 }
 
-func (db *Dashboard) GetMaxTypeNameLength() int {
-	// Create a new table with specified columns and initial empty rows.
-	maxTypeLen := 0
-	for _, value := range db.IcaoToAircraft {
-		if len(value.Make) > maxTypeLen {
-			maxTypeLen = len(value.Make)
-		}
-	}
-	return maxTypeLen
-}
-
 func (db *Dashboard) AssignRouteToCallsigns() []string {
 	var callsignsWithoutRoute []string
 	for _, sighting := range db.aircraftSightings {
