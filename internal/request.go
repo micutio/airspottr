@@ -186,7 +186,9 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 		}
 		flightrouteRecords = append(flightrouteRecords, flightrouteRecord)
 	}
-	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns found\n", len(callsigns))
+	r.errOut.Printf(
+		"RequestFlightRoutesForCallsigns: %d callsigns found\n",
+		len(flightrouteRecords))
 	return flightrouteRecords
 }
 
