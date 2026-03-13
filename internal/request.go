@@ -73,7 +73,7 @@ func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
 		aircraftReqURL: aircraftReqURL,
 		apiClient:      client,
 		waitGroup:      sync.WaitGroup{},
-		errOut:         *log.New(*stderr, "request", log.LstdFlags),
+		errOut:         *log.New(*stderr, "request ", log.LstdFlags),
 	}
 
 	request.errOut.Println("Request init")
