@@ -14,14 +14,14 @@ const (
 )
 
 func main() {
-	predefinedLocations := map[string][]float32{
+	predefinedLocations := map[string][]float64{
 		"hamburg":   {53.5511, 9.9937},
 		"new-york":  {40.7128, -74.0060},
 		"singapore": {1.3521, 103.8198},
 	}
 
 	var argIsUseTicker bool
-	var argLatLon []float32
+	var argLatLon []float64
 	var argLocation string
 
 	setupCommandLineFlags(&argIsUseTicker, &argLatLon, &argLocation)
@@ -45,7 +45,7 @@ func main() {
 	}
 }
 
-func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32, argLocation *string) {
+func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float64, argLocation *string) {
 	// Whether to launch the Ticker or TUI app.
 	pflag.BoolVarP(
 		argIsUseTicker,
@@ -56,11 +56,11 @@ func setupCommandLineFlags(argIsUseTicker *bool, argLatLon *[]float32, argLocati
 	pflag.Lookup("ticker").NoOptDefVal = "true"
 
 	// Location to plane spot, provided as lat,lon coordinates
-	pflag.Float32SliceVarP(
+	pflag.Float64SliceVarP(
 		argLatLon,
 		"latlon",
 		"l",
-		[]float32{0, 0},
+		[]float64{0, 0},
 		"define the location where to spot planes")
 
 	pflag.StringVarP(

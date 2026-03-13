@@ -150,6 +150,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
+	currentAircraftTbl.Blur()
 
 	return autoFormatTable{
 		table:  currentAircraftTbl,
@@ -176,10 +177,11 @@ func newTypeRarityTable(tableStyle table.Styles) autoFormatTable {
 			},
 		),
 		table.WithRows([]table.Row{}),
-		table.WithFocused(false),
+		table.WithFocused(true),
 		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
+	typeRarityTbl.Blur()
 
 	return autoFormatTable{
 		table:  typeRarityTbl,
@@ -202,7 +204,7 @@ func newOperatorRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithColumns(
 			[]table.Column{
 				{Title: "Count", Width: countLen},
-				{Title: "Operator", Width: operatorNameLen},
+				{Title: "operator", Width: operatorNameLen},
 			},
 		),
 		table.WithRows([]table.Row{}),
@@ -210,6 +212,7 @@ func newOperatorRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
+	operatorRarityTbl.Blur()
 
 	return autoFormatTable{
 		table:  operatorRarityTbl,
@@ -232,7 +235,7 @@ func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithColumns(
 			[]table.Column{
 				{Title: "Count", Width: countLen},
-				{Title: "Country", Width: countryNameLen},
+				{Title: "country", Width: countryNameLen},
 			},
 		),
 		table.WithRows([]table.Row{}),
@@ -240,6 +243,7 @@ func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
 		table.WithHeight(initialTableHeight),
 		table.WithStyles(tableStyle),
 	)
+	countryRarityTbl.Blur()
 
 	return autoFormatTable{
 		table:  countryRarityTbl,

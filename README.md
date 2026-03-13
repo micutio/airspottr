@@ -16,12 +16,13 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 
 ## TODO
 
+- [ ] allow tracking individual aircraft
 - [x] show total uptime in summaries
 - [x] show location in TUI and maybe ticker output
 - [ ] TUI checkboxes to toggle notifications for type/operator/country individually
-- [ ] colored console output
+- [x] colored console output
 - [ ] graceful shutdown
-- [ ] current aircraft closest to your location
+- [x] current aircraft closest to your location
 - [ ] graphs for aircraft type count over time
 - [ ] radar-like visual for nearby aircraft (look up APIs for geographic data)
 - [ ] more flight information, e.g.: origin, destination, flight time remaining
