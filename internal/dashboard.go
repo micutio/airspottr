@@ -2,7 +2,6 @@
 package internal
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,10 +22,10 @@ const (
 	// Lon float64 = 103.989348
 	// altitudeUnknown is what we use for aircraft without a given altitude.
 	altitudeUnknown = "  n/a"
-	// flightUnknown is what we use for aircraft with missing flight number.
+	// flightUnknown is what we use for aircraft with missing Flight number.
 	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
 	flightUnknown = "unknown "
-	// flightUnknownCode is a sentinel code we use for aircraft with missing flight number.
+	// flightUnknownCode is a sentinel code we use for aircraft with missing Flight number.
 	flightUnknownCode = "n/a"
 	// typeUnknown is what we use for aircraft with a type that's either empty or can't be found.
 	typeUnknown = "unknown"
@@ -53,6 +52,7 @@ type Dashboard struct {
 	Highest            *AircraftRecord
 	CurrentAircraft    []AircraftRecord
 	RareSightings      []RareSighting
+	CachedFlightRoutes map[string]*FlightRouteRecord
 	aircraftSightings  map[string]AircraftSighting // set of all seen aircraft, maps hex to last seen time
 	totalTypeCount     int
 	totalOperatorCount int
@@ -104,6 +104,7 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		Highest:            nil,
 		CurrentAircraft:    nil,
 		RareSightings:      nil,
+		CachedFlightRoutes: make(map[string]*FlightRouteRecord),
 		aircraftSightings:  make(map[string]AircraftSighting),
 		totalTypeCount:     0,
 		totalOperatorCount: 0,
@@ -116,7 +117,7 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		regPrefixToCountry: regPrefixToCountryMap,
 		hexRangeToCountry:  hexRangeToCountryMap,
 		milCodeToOperator:  milCodeToOperatorMap,
-		errOut:             *log.New(*stderr, "dashboard", log.LstdFlags),
+		errOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
 
 	dashboard.errOut.Println("Dashboard init")
@@ -132,27 +133,10 @@ func (db *Dashboard) FinishWarmupPeriod() {
 /// Processing of all aircraft: civilian, military, government, private.    //
 //////////////////////////////////////////////////////////////////////////////
 
-// ProcessCivAircraftJSON takes a json record in form of a byte array, transforms it into a list
-// of aircraft and performs some processing thereafter.
-func (db *Dashboard) ProcessCivAircraftJSON(jsonBytes []byte) {
-	var data civAircraftResult
-	if err := json.Unmarshal(jsonBytes, &data); err != nil {
-		db.errOut.Println(fmt.Errorf("failed to unmarshal Json: %w", err))
-		return
-	}
-
-	foundAircraftCount := len(data.Aircraft)
-	if foundAircraftCount == 0 {
-		return // Valid outcome, no need to log an error.
-	}
-
-	db.CurrentAircraft = data.Aircraft
-	db.processCivAircraftRecords()
-}
-
-func (db *Dashboard) processCivAircraftRecords() {
+func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
+	db.CurrentAircraft = aircraftRecords
 	sort.Sort(ByFlight(db.CurrentAircraft))
-	thisPos := dash.NewCoordinates(float64(db.Lat), float64(db.Lon))
+	thisPos := dash.NewCoordinates(db.Lat, db.Lon)
 	var rareSightings []RareSighting
 
 	for idx := range len(db.CurrentAircraft) {
@@ -177,6 +161,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 				operator:     operatorUnknown,
 				country:      countryUnknown,
 				info:         "",
+				flightroute:  nil,
 			}
 		}
 
@@ -184,7 +169,7 @@ func (db *Dashboard) processCivAircraftRecords() {
 			sighting.registration = aircraft.Registration
 		}
 
-		// Check whether we've seen this aircraft before by comparing last and current flight number.
+		// Check whether we've seen this aircraft before by comparing last and current Flight number.
 		// If they differ, then we allow recording in the statistics again.
 		thisFlightNo := aircraft.GetFlightNoAsStr()
 		isFlightIdentified := sighting.lastFlightNo == flightUnknown && thisFlightNo != flightUnknown
@@ -266,7 +251,7 @@ func (db *Dashboard) updateType(
 
 	// fmt.Println(
 	//	"type rarity calculation: ",
-	//	" aircraft flight", aircraft.Flight,
+	//	" aircraft Flight", aircraft.Flight,
 	//	"type", sighting.typeDesc,
 	//	"thisTypeCountNew", thisTypeCountNew,
 	//	"totalTypeCount", db.totalTypeCount,
@@ -279,7 +264,7 @@ func (db *Dashboard) updateType(
 
 	// fmt.Println(
 	//	"type rarity calculation: ",
-	//	" aircraft flight", aircraft.Flight,
+	//	" aircraft Flight", aircraft.Flight,
 	//	"type", sighting.typeDesc,
 	//	"typeShort", sighting.typeShort,
 	//	"thisTypeCountNew", thisTypeCountNew,
@@ -307,7 +292,7 @@ func (db *Dashboard) updateOperator(
 		return 0
 	}
 
-	flightNo := aircraft.Flight
+	flightNo := aircraft.GetFlightNoAsStr()
 	if flightNo == "" {
 		return 0
 	}
@@ -375,7 +360,7 @@ func (db *Dashboard) updateCountry(
 		return 0
 	}
 
-	flightNo := aircraft.Flight
+	flightNo := aircraft.GetFlightNoAsStr()
 	if flightNo == "" {
 		return 0
 	}
@@ -479,13 +464,57 @@ func (db *Dashboard) updateFastest(aircraft *AircraftRecord) {
 	db.Fastest = aircraft
 }
 
-func (db *Dashboard) GetMaxTypeNameLength() int {
-	// Create a new table with specified columns and initial empty rows.
-	maxTypeLen := 0
-	for _, value := range db.IcaoToAircraft {
-		if len(value.Make) > maxTypeLen {
-			maxTypeLen = len(value.Make)
+func (db *Dashboard) AssignRouteToCallsigns() []string {
+	var callsignsWithoutRoute []string
+	for _, sighting := range db.aircraftSightings {
+		if sighting.lastFlightNo == flightUnknown {
+			// Can't get Flight routes for unknown Flight.
+			continue
 		}
+
+		if sighting.flightroute != nil {
+			// A Flight route is already set.
+			continue
+		}
+
+		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
+			// Found a cached route for this Flight, reuse it!
+			sighting.flightroute = flightRoute
+			continue
+		}
+
+		// No routes found, record this callsign to request route from adsbdb
+		callsignsWithoutRoute = append(callsignsWithoutRoute, sighting.lastFlightNo)
 	}
-	return maxTypeLen
+	return callsignsWithoutRoute
+}
+
+// AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
+func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []FlightRouteRecord) {
+	for _, flightrouteRecord := range flightRouteRecords {
+		callsign := flightrouteRecord.Callsign
+		db.CachedFlightRoutes[callsign] = &flightrouteRecord
+	}
+	for _, sighting := range db.aircraftSightings {
+		if sighting.lastFlightNo == flightUnknown {
+			// Can't get Flight routes for unknown Flight.
+			continue
+		}
+
+		if sighting.flightroute != nil {
+			// A Flight route is already set.
+			continue
+		}
+
+		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
+			// Found a cached route for this Flight, reuse it!
+			sighting.flightroute = flightRoute
+			continue
+		}
+
+		// Route cannot be found: use a dummy and also cache a dummy to prevent unnecessary requests
+		// for the same callsign again.
+		sighting.flightroute = GetDefaultFlightrouteRecord()
+		db.CachedFlightRoutes[sighting.lastFlightNo] = GetDefaultFlightrouteRecord()
+	}
 }

@@ -18,32 +18,39 @@ import (
 
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
-	appName    string
-	options    internal.RequestOptions
-	logger     *slog.Logger
-	notify     *internal.Notify
-	flightDash *internal.Dashboard
-	done       chan bool
-	wg         sync.WaitGroup
+	appName   string
+	options   internal.RequestOptions
+	logger    *slog.Logger
+	request   *internal.Request
+	dashboard *internal.Dashboard
+	notify    *internal.Notify
+	done      chan bool
+	wg        sync.WaitGroup
 }
 
 // New creates and initializes a new TickerApp.
 func New(appName string, options internal.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
-	logger := slog.Default() // Or your custom logger
+	logger := slog.Default() // Or a custom logger
 	notify := internal.NewNotify(appName, &stdout)
 
-	flightDash, err := internal.NewDashboard(options.Lat, options.Lon, &stderr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create dashboard: %w", err)
+	dashboard, dashboardErr := internal.NewDashboard(options.Lat, options.Lon, &stderr)
+	if dashboardErr != nil {
+		return nil, fmt.Errorf("unable to create dashboard: %w", dashboardErr)
+	}
+
+	request, requestErr := internal.NewRequest(options, &stderr)
+	if requestErr != nil {
+		return nil, fmt.Errorf("unable to create request: %w", requestErr)
 	}
 
 	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
-		appName:    appName,
-		options:    options,
-		logger:     logger,
-		notify:     notify,
-		flightDash: flightDash,
-		done:       make(chan bool),
+		appName:   appName,
+		options:   options,
+		logger:    logger,
+		request:   request,
+		dashboard: dashboard,
+		notify:    notify,
+		done:      make(chan bool),
 	}, nil
 }
 
@@ -65,7 +72,7 @@ func Run(appName string, options internal.RequestOptions) {
 func (app *TickerApp) start() {
 	// Set a timeout for the warmup period.
 	time.AfterFunc(internal.DashboardWarmup, func() {
-		app.flightDash.FinishWarmupPeriod()
+		app.dashboard.FinishWarmupPeriod()
 	})
 
 	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
@@ -78,14 +85,19 @@ func (app *TickerApp) start() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				if body, err := internal.RequestAndProcessCivAircraft(app.options); err != nil {
-					app.logger.Error("main: ", slog.Any("error", err))
-				} else {
-					app.flightDash.ProcessCivAircraftJSON(body)
-					app.notify.EmitRarityNotifications(app.flightDash.RareSightings)
+				aircraftRecords := app.request.RequestAircraft()
+				app.dashboard.ProcessAircraftRecords(aircraftRecords)
+				app.notify.EmitRarityNotifications(app.dashboard.RareSightings)
+
+				// This method checks whether we have flight routes in the cache for all sightings.
+				callsignsWithoutRoute := app.dashboard.AssignRouteToCallsigns()
+				if len(callsignsWithoutRoute) > 0 {
+					// For flights without known route we query data from adsbdb.com.
+					routes := app.request.RequestFlightRoutesForCallsigns(callsignsWithoutRoute)
+					app.dashboard.AssignFlightRoutes(routes)
 				}
 			case <-summaryTicker.C:
-				app.notify.PrintSummary(app.flightDash)
+				app.notify.PrintSummary(app.dashboard)
 			case <-app.done:
 				slog.Info("Stopping HTTP GET request routine.")
 				return

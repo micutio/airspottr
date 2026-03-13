@@ -120,6 +120,8 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	dstLen := 4
 	fnoLen := 9
 	tidLen := 0
+	depLen := 4
+	arrLen := 4
 	altLen := 8
 	spdLen := 5
 	hdgLen := 4
@@ -128,6 +130,8 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 		columnFormat{fixed, float32(dstLen)},
 		columnFormat{fixed, float32(fnoLen)},
 		columnFormat{fill, float32(tidLen)},
+		columnFormat{fixed, float32(depLen)},
+		columnFormat{fixed, float32(arrLen)},
 		columnFormat{fixed, float32(altLen)},
 		columnFormat{fixed, float32(spdLen)},
 		columnFormat{fixed, float32(hdgLen)},
@@ -140,6 +144,8 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 				{Title: "DST", Width: dstLen},
 				{Title: "FNO", Width: fnoLen},
 				{Title: "TID", Width: tidLen},
+				{Title: "DEP", Width: tidLen},
+				{Title: "ARR", Width: tidLen},
 				{Title: "ALT", Width: altLen},
 				{Title: "SPD", Width: spdLen},
 				{Title: "HDG", Width: hdgLen},
@@ -251,11 +257,13 @@ func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
 	}
 }
 
-func aircraftToRow(aircraft *internal.AircraftRecord) table.Row {
+func aircraftToRow(aircraft *internal.AircraftRecord, route *internal.FlightRouteRecord) table.Row {
 	return table.Row{
 		fmt.Sprintf("%3.0f", aircraft.CachedDist),
 		aircraft.GetFlightNoAsStr(),
 		aircraft.CachedType,
+		route.Origin.IataCode,
+		route.Destination.IataCode,
 		aircraft.GetAltitudeAsStr(),
 		fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
 		fmt.Sprintf("%3.0f", aircraft.NavHeading),

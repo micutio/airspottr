@@ -44,22 +44,22 @@ func setupLogger() (*os.File, error) {
 	return errLogFile, nil
 }
 
-// setupDashboardAndNotifier initializes the dashboard and notification system.
-func setupDashboardAndNotifier(
-	appName string,
+// setupRequestAndDashboard initializes the dashboard and notification system.
+func setupRequestAndDashboard(
 	requestOptions internal.RequestOptions,
 	errWriter io.Writer,
-) (*internal.Dashboard, *internal.Notify, error) {
-	// Using io.Discard for notifications as we don't need to close it
-	devNullWriter := io.Discard
-	notify := internal.NewNotify(appName, &devNullWriter)
-
-	dashboard, err := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create dashboard: %w", err)
+) (*internal.Request, *internal.Dashboard, error) {
+	request, reqErr := internal.NewRequest(requestOptions, &errWriter)
+	if reqErr != nil {
+		return nil, nil, fmt.Errorf("failed to create request: %w", reqErr)
 	}
 
-	return dashboard, notify, nil
+	dashboard, dbErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
+	if dbErr != nil {
+		return nil, nil, fmt.Errorf("failed to create dashboard: %w", dbErr)
+	}
+
+	return request, dashboard, nil
 }
 
 type tableSetup struct {
@@ -98,19 +98,22 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 		}
 	}()
 
-	// Initialize dashboard and notification system
-	dashboard, notify, err := setupDashboardAndNotifier(appName, requestOptions, errLogFile)
+	// Using io.Discard for notifications as we don't need to close it
+	notify := internal.NewNotify(appName, new(io.Discard))
+
+	// Initialise dashboard and notification system
+	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
 	if err != nil {
 		log.Printf("failed to set up dashboard and notifier: %v", err)
 	}
 
 	dashboard.FinishWarmupPeriod()
 
-	// Initialize tables and theme
+	// Initialise tables and theme
 	theme := getDefaultTheme()
 	tables := initTables(theme)
 
-	// Initialize and run the application model
+	// Initialise and run the application model
 	appModel := model{
 		width:              0,
 		height:             0,
@@ -126,6 +129,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 		uiState:            mainPage,
 		startTime:          time.Now(),
 		lastUpdate:         time.Unix(0, 0),
+		request:            request,
 		dashboard:          dashboard,
 		notify:             notify,
 		options:            requestOptions,

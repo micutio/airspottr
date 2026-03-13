@@ -29,15 +29,20 @@ func aircraftQueryTick() tea.Cmd {
 	)
 }
 
-type ADSBResponseMsg []byte
+type AircraftResponseMsg []internal.AircraftRecord
 
-func requestADSBDataCmd(opts internal.RequestOptions) tea.Cmd {
+func requestAircraftDataCmd(request *internal.Request) tea.Cmd {
 	return func() tea.Msg {
-		body, err := internal.RequestAndProcessCivAircraft(opts)
-		if err != nil {
-			// TODO: Log error
-			return nil
-		}
-		return ADSBResponseMsg(body)
+		aircraftData := request.RequestAircraft()
+		return AircraftResponseMsg(aircraftData)
+	}
+}
+
+type FlightRoutesResponseMsg []internal.FlightRouteRecord
+
+func requestFlightRouteDataCmd(request *internal.Request, callsigns []string) tea.Cmd {
+	return func() tea.Msg {
+		flightRoutes := request.RequestFlightRoutesForCallsigns(callsigns)
+		return FlightRoutesResponseMsg(flightRoutes)
 	}
 }
