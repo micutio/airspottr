@@ -222,7 +222,7 @@ func (r *Request) sendRequest(targetURL string) ([]byte, error) {
 	}
 
 	// TODO: Remove once fixed linter version is public
-	resp, respErr := r.apiClient.Do(req) //nolint:gosec // linter bug
+	resp, respErr := r.apiClient.Do(req)
 	if respErr != nil {
 		return nil, fmt.Errorf("sendRequest: failed to send GET request: %s: %w", targetURL, respErr)
 	}
