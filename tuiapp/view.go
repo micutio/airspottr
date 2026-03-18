@@ -13,14 +13,13 @@ func (m *model) View() string {
 	var tableContent string
 	switch m.uiState {
 	case mainPage:
-		tableContent = m.viewAircraft()
+		tableContent = m.viewBorderedTable(&m.tables.aircraft)
 	case globalStats:
-		tableContent = lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			m.viewTypeRarity(),
-			m.viewOperatorRarity(),
-			m.viewCountryRarity(),
-		)
+		parts := make([]string, rarityTableCount)
+		for i := range m.tables.rarities {
+			parts[i] = m.viewBorderedTable(&m.tables.rarities[i])
+		}
+		tableContent = lipgloss.JoinHorizontal(lipgloss.Top, parts[0], parts[1], parts[2])
 	case aircraftDetails:
 	}
 	return m.baseStyle.
@@ -32,6 +31,10 @@ func (m *model) View() string {
 				column(tableContent),
 			),
 		)
+}
+
+func (m *model) viewBorderedTable(tbl *autoFormatTable) string {
+	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(tbl.table.View())
 }
 
 func (m *model) viewHeader() string {
@@ -95,20 +98,4 @@ func (m *model) viewHeader() string {
 			),
 		),
 	)
-}
-
-func (m *model) viewAircraft() string {
-	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.currentAircraftTbl.table.View())
-}
-
-func (m *model) viewTypeRarity() string {
-	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.typeRarityTbl.table.View())
-}
-
-func (m *model) viewOperatorRarity() string {
-	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.operatorRarityTbl.table.View())
-}
-
-func (m *model) viewCountryRarity() string {
-	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(m.countryRarityTbl.table.View())
 }

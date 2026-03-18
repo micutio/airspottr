@@ -40,11 +40,8 @@ func setupRequestAndDashboard(
 }
 
 type tableSetup struct {
-	current   autoFormatTable
-	types     autoFormatTable
-	operators autoFormatTable
-	countries autoFormatTable
-	style     table.Styles
+	tables tuiTables
+	style  table.Styles
 }
 
 // initTables creates and configures all tables used in the TUI.
@@ -55,10 +52,7 @@ func initTables(theme Theme) tableSetup {
 	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
 
 	return tableSetup{
-		current:   newCurrentAircraftTable(tableStyle),
-		types:     newTypeRarityTable(tableStyle),
-		operators: newOperatorRarityTable(tableStyle),
-		countries: newCountryRarityTable(tableStyle),
-		style:     tableStyle,
+		tables: newTuiTables(tableStyle),
+		style:  tableStyle,
 	}
 }

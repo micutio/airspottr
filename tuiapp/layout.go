@@ -15,33 +15,10 @@ const globalStatsTableCount = 3
 const layoutGlobalStatsInterTableGap = 2
 
 func (m *model) resizeTables() {
-	tableHeight := m.height - layoutHeaderReservedRows
-	m.currentAircraftTbl.SetHeight(tableHeight)
-	m.typeRarityTbl.SetHeight(tableHeight)
-	m.operatorRarityTbl.SetHeight(tableHeight)
-	m.countryRarityTbl.SetHeight(tableHeight)
-
-	leftSideWidth := m.width - 1
-	rightSideWidth := m.width
-	third := 1.0 / float64(globalStatsTableCount)
-	rightSideTableWidth := int(float64(rightSideWidth) * third)
-
-	if caErr := m.currentAircraftTbl.resize(leftSideWidth); caErr != nil {
-		m.notify.Stdout.Panicf("%s", caErr)
-	}
-	if trErr := m.typeRarityTbl.resize(rightSideTableWidth); trErr != nil {
-		m.notify.Stdout.Panicf("%s", trErr)
-	}
-	if orErr := m.operatorRarityTbl.resize(rightSideTableWidth); orErr != nil {
-		m.notify.Stdout.Panicf("%s", orErr)
-	}
-	countryWidth := rightSideWidth -
-		2*rightSideTableWidth -
-		layoutGlobalStatsInterTableGap -
-		len(m.countryRarityTbl.table.Columns())
-	if crErr := m.countryRarityTbl.resize(countryWidth); crErr != nil {
-		m.notify.Stdout.Panicf("%s", crErr)
-	}
+	m.tables.setAllHeights(m.height - layoutHeaderReservedRows)
+	m.tables.resizeForTerminal(m.width, func(err error) {
+		m.notify.Stdout.Panicf("%s", err)
+	})
 }
 
 func setRarityRows(tbl *autoFormatTable, counts map[string]int) {
@@ -66,47 +43,27 @@ func (m *model) updateAllTables() {
 		}
 		currentAircraftRows = append(currentAircraftRows, aircraftToRow(&aircraft, flightRoute))
 	}
-	m.currentAircraftTbl.table.SetRows(currentAircraftRows)
+	m.tables.aircraft.table.SetRows(currentAircraftRows)
 
-	setRarityRows(&m.typeRarityTbl, m.dashboard.SeenTypeCount)
-	setRarityRows(&m.operatorRarityTbl, m.dashboard.SeenOperatorCount)
-	setRarityRows(&m.countryRarityTbl, m.dashboard.SeenCountryCount)
+	raritySources := [rarityTableCount]map[string]int{
+		m.dashboard.SeenTypeCount,
+		m.dashboard.SeenOperatorCount,
+		m.dashboard.SeenCountryCount,
+	}
+	for i := range m.tables.rarities {
+		setRarityRows(&m.tables.rarities[i], raritySources[i])
+	}
 }
 
-func (m *model) selectTableToTheLeft() {
-	if !m.selectedTable.table.Focused() {
-		return
-	}
-	if m.selectedTable == &m.currentAircraftTbl {
+func (m *model) selectRarityNeighbour(direction int) {
+	if m.uiState != globalStats || !m.activeTable().table.Focused() {
 		return
 	}
 	m.UnfocusSelectedTable()
-	switch m.selectedTable {
-	case &m.typeRarityTbl:
-		m.selectedTable = &m.countryRarityTbl
-	case &m.operatorRarityTbl:
-		m.selectedTable = &m.typeRarityTbl
-	case &m.countryRarityTbl:
-		m.selectedTable = &m.operatorRarityTbl
-	}
-	m.FocusSelectedTable()
-}
-
-func (m *model) selectTableToTheRight() {
-	if !m.selectedTable.table.Focused() {
-		return
-	}
-	if m.selectedTable == &m.currentAircraftTbl {
-		return
-	}
-	m.UnfocusSelectedTable()
-	switch m.selectedTable {
-	case &m.typeRarityTbl:
-		m.selectedTable = &m.operatorRarityTbl
-	case &m.operatorRarityTbl:
-		m.selectedTable = &m.countryRarityTbl
-	case &m.countryRarityTbl:
-		m.selectedTable = &m.typeRarityTbl
+	if direction < 0 {
+		m.selectedRarityIdx = rarityNavLeft[m.selectedRarityIdx]
+	} else {
+		m.selectedRarityIdx = rarityNavRight[m.selectedRarityIdx]
 	}
 	m.FocusSelectedTable()
 }
@@ -114,15 +71,14 @@ func (m *model) selectTableToTheRight() {
 func (m *model) toggleGlobalView() {
 	switch m.uiState {
 	case mainPage:
+		m.UnfocusSelectedTable()
 		m.uiState = globalStats
-		m.selectedTable.table.Blur()
-		m.selectedTable = &m.typeRarityTbl
-		m.selectedTable.table.Focus()
+		m.selectedRarityIdx = rarityByType
+		m.FocusSelectedTable()
 	case globalStats:
+		m.UnfocusSelectedTable()
 		m.uiState = mainPage
-		m.selectedTable.table.Blur()
-		m.selectedTable = &m.currentAircraftTbl
-		m.selectedTable.table.Focus()
+		m.FocusSelectedTable()
 	case aircraftDetails:
 	default:
 	}

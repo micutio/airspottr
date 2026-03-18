@@ -164,97 +164,29 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 	}
 }
 
-func newTypeRarityTable(tableStyle table.Styles) autoFormatTable {
-	countLen := 6
-	typeNameLen := 12
-	initialTableHeight := 5
+// newRarityTable builds a Count + value-column table (type / operator / country).
+func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormatTable {
+	const (
+		countLen  = 6
+		nameLen   = 12
+		initHeight = 5
+	)
 	format := newTableFormat(
 		columnFormat{fixed, float32(countLen)},
-		columnFormat{fill, float32(typeNameLen)},
+		columnFormat{fill, float32(nameLen)},
 	)
-
-	// Create a new table with specified columns and initial empty rows.
-	typeRarityTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "Count", Width: countLen},
-				{Title: "Type", Width: typeNameLen},
-			},
-		),
-		table.WithRows([]table.Row{}),
-		table.WithFocused(true),
-		table.WithHeight(initialTableHeight),
-		table.WithStyles(tableStyle),
-	)
-	typeRarityTbl.Blur()
-
-	return autoFormatTable{
-		table:  typeRarityTbl,
-		format: format,
-	}
-}
-
-func newOperatorRarityTable(tableStyle table.Styles) autoFormatTable {
-	countLen := 6
-	operatorNameLen := 12
-	initialTableHeight := 5
-	format := newTableFormat(
-		columnFormat{fixed, float32(countLen)},
-		columnFormat{fill, float32(operatorNameLen)},
-	)
-
-	// Create a new table with specified columns and initial empty rows.
-	operatorRarityTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "Count", Width: countLen},
-				{Title: "operator", Width: operatorNameLen},
-			},
-		),
+	tbl := table.New(
+		table.WithColumns([]table.Column{
+			{Title: "Count", Width: countLen},
+			{Title: valueColumnTitle, Width: nameLen},
+		}),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
-		table.WithHeight(initialTableHeight),
+		table.WithHeight(initHeight),
 		table.WithStyles(tableStyle),
 	)
-	operatorRarityTbl.Blur()
-
-	return autoFormatTable{
-		table:  operatorRarityTbl,
-		format: format,
-	}
-}
-
-func newCountryRarityTable(tableStyle table.Styles) autoFormatTable {
-	countLen := 6
-	countryNameLen := 12
-	initialTableHeight := 5
-	format := newTableFormat(
-		columnFormat{fixed, float32(countLen)},
-		columnFormat{fill, float32(countryNameLen)},
-	)
-
-	// Create a new table with specified columns and initial empty rows.
-	countryRarityTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "Count", Width: countLen},
-				{Title: "country", Width: countryNameLen},
-			},
-		),
-		table.WithRows([]table.Row{}),
-		table.WithFocused(false),
-		table.WithHeight(initialTableHeight),
-		table.WithStyles(tableStyle),
-	)
-	countryRarityTbl.Blur()
-
-	return autoFormatTable{
-		table:  countryRarityTbl,
-		format: format,
-	}
+	tbl.Blur()
+	return autoFormatTable{table: tbl, format: format}
 }
 
 func aircraftToRow(aircraft *internal.AircraftRecord, route *internal.FlightRouteRecord) table.Row {

@@ -19,11 +19,8 @@ type model struct {
 	tableStyle table.Styles
 	theme      Theme
 
-	currentAircraftTbl autoFormatTable
-	typeRarityTbl      autoFormatTable
-	operatorRarityTbl  autoFormatTable
-	countryRarityTbl   autoFormatTable
-	selectedTable      *autoFormatTable
+	tables            tuiTables
+	selectedRarityIdx int // rarityBy*; only used when uiState == globalStats
 
 	uiState    uiState
 	startTime  time.Time
@@ -34,27 +31,38 @@ type model struct {
 	options    internal.RequestOptions
 }
 
+// activeTable is the table that receives focus and keyboard navigation for the current view.
+func (m *model) activeTable() *autoFormatTable {
+	if m.uiState == globalStats {
+		return &m.tables.rarities[m.selectedRarityIdx]
+	}
+	return &m.tables.aircraft
+}
+
 // Init schedules ticks and the first aircraft fetch.
 func (m *model) Init() tea.Cmd {
 	tea.SetWindowTitle("airspottr")
-	m.selectedTable = &m.currentAircraftTbl
+	m.uiState = mainPage
+	m.selectedRarityIdx = rarityByType
 	m.FocusSelectedTable()
 	m.tableStyle.Selected = m.baseStyle
-	m.countryRarityTbl.table.SetStyles(m.tableStyle)
-	m.countryRarityTbl.table.Blur()
-	m.operatorRarityTbl.table.SetStyles(m.tableStyle)
-	m.operatorRarityTbl.table.Blur()
+	for i := rarityByOperator; i < rarityTableCount; i++ {
+		m.tables.rarities[i].table.SetStyles(m.tableStyle)
+		m.tables.rarities[i].table.Blur()
+	}
 	return tea.Batch(updateTick(), aircraftQueryTick(), requestAircraftDataCmd(m.request))
 }
 
 func (m *model) UnfocusSelectedTable() {
 	m.tableStyle.Selected = m.baseStyle
-	m.selectedTable.table.SetStyles(m.tableStyle)
-	m.selectedTable.table.Blur()
+	at := m.activeTable()
+	at.table.SetStyles(m.tableStyle)
+	at.table.Blur()
 }
 
 func (m *model) FocusSelectedTable() {
 	m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
-	m.selectedTable.table.SetStyles(m.tableStyle)
-	m.selectedTable.table.Focus()
+	at := m.activeTable()
+	at.table.SetStyles(m.tableStyle)
+	at.table.Focus()
 }
