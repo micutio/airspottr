@@ -22,6 +22,11 @@ type model struct {
 	tables            tuiTables
 	selectedRarityIdx int // rarityBy*; only used when uiState == globalStats
 
+	aircraftSortCol  int  // 0–7: DST, FNO, TID, DEP, ARR, ALT, SPD, HDG
+	aircraftSortDesc bool // false = ascending
+	raritySortCol    [rarityTableCount]int
+	raritySortDesc   [rarityTableCount]bool
+
 	uiState    uiState
 	startTime  time.Time
 	lastUpdate time.Time

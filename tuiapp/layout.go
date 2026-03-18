@@ -1,12 +1,12 @@
 package tuiapp
 
-import (
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/micutio/airspottr/internal"
-)
+import "github.com/charmbracelet/bubbles/table"
 
 // Vertical space reserved above tables (header + stats blocks).
 const layoutHeaderReservedRows = 8
+
+// Row for sort hotkey hint below tables.
+const layoutSortHintRows = 1
 
 // Rarity tables on the global stats view share width in thirds.
 const globalStatsTableCount = 3
@@ -15,35 +15,31 @@ const globalStatsTableCount = 3
 const layoutGlobalStatsInterTableGap = 2
 
 func (m *model) resizeTables() {
-	m.tables.setAllHeights(m.height - layoutHeaderReservedRows)
+	m.tables.setAllHeights(m.height - layoutHeaderReservedRows - layoutSortHintRows)
 	m.tables.resizeForTerminal(m.width, func(err error) {
 		m.notify.Stdout.Panicf("%s", err)
 	})
+	m.applySortHeadersAfterResize()
 }
 
-func setRarityRows(tbl *autoFormatTable, counts map[string]int) {
-	rarities := internal.GetSortedCountsForProperty(counts)
-	rows := make([]table.Row, len(rarities))
-	for i := range rarities {
-		rows[i] = propertyCountToRow(rarities[i])
+// applySortHeadersAfterResize restores ▲/▼ titles; resize only touches widths.
+func (m *model) applySortHeadersAfterResize() {
+	applyAircraftSortHeaders(&m.tables.aircraft.table, m.aircraftSortCol, m.aircraftSortDesc)
+	for i := range m.tables.rarities {
+		applyRaritySortHeaders(
+			&m.tables.rarities[i].table,
+			i,
+			m.raritySortCol[i],
+			m.raritySortDesc[i],
+		)
 	}
-	tbl.table.SetRows(rows)
 }
 
 func (m *model) updateAllTables() {
-	var currentAircraftRows []table.Row
-	for _, aircraft := range m.dashboard.CurrentAircraft {
-		aircraftType := m.dashboard.IcaoToAircraft[aircraft.IcaoType].Make
-		flightRoute, ok := m.dashboard.CachedFlightRoutes[aircraft.GetFlightNoAsStr()]
-		if !ok {
-			flightRoute = internal.GetDefaultFlightrouteRecord()
-		}
-		if aircraft.GetFlightNoAsStr() == "" && aircraftType == "" {
-			continue
-		}
-		currentAircraftRows = append(currentAircraftRows, aircraftToRow(&aircraft, flightRoute))
-	}
-	m.tables.aircraft.table.SetRows(currentAircraftRows)
+	records := filteredSortedAircraft(m.dashboard, m.aircraftSortCol, m.aircraftSortDesc)
+	rows := buildAircraftRows(m.dashboard, records)
+	m.tables.aircraft.table.SetRows(rows)
+	applyAircraftSortHeaders(&m.tables.aircraft.table, m.aircraftSortCol, m.aircraftSortDesc)
 
 	raritySources := [rarityTableCount]map[string]int{
 		m.dashboard.SeenTypeCount,
@@ -51,7 +47,14 @@ func (m *model) updateAllTables() {
 		m.dashboard.SeenCountryCount,
 	}
 	for i := range m.tables.rarities {
-		setRarityRows(&m.tables.rarities[i], raritySources[i])
+		byProperty := m.raritySortCol[i] == 1
+		tuples := sortedPropertyCounts(raritySources[i], byProperty, m.raritySortDesc[i])
+		rarityRows := make([]table.Row, len(tuples))
+		for j := range tuples {
+			rarityRows[j] = propertyCountToRow(tuples[j])
+		}
+		m.tables.rarities[i].table.SetRows(rarityRows)
+		applyRaritySortHeaders(&m.tables.rarities[i].table, i, m.raritySortCol[i], m.raritySortDesc[i])
 	}
 }
 

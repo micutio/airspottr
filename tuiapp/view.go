@@ -22,15 +22,14 @@ func (m *model) View() string {
 		tableContent = lipgloss.JoinHorizontal(lipgloss.Top, parts[0], parts[1], parts[2])
 	case aircraftDetails:
 	}
+	body := []string{column(m.viewHeader()), column(tableContent)}
+	if m.uiState == mainPage || m.uiState == globalStats {
+		body = append(body, m.viewSortHotkeyHint())
+	}
 	return m.baseStyle.
 		Width(m.width).
 		Height(m.height).
-		Render(
-			lipgloss.JoinVertical(lipgloss.Left,
-				column(m.viewHeader()),
-				column(tableContent),
-			),
-		)
+		Render(lipgloss.JoinVertical(lipgloss.Left, body...))
 }
 
 func (m *model) viewBorderedTable(tbl *autoFormatTable) string {
@@ -98,4 +97,12 @@ func (m *model) viewHeader() string {
 			),
 		),
 	)
+}
+
+func (m *model) viewSortHotkeyHint() string {
+	msg := "Sort (table focused): [ ] column · r reverse · 1–8 aircraft cols · rarity 1=count 2=name"
+	return m.baseStyle.
+		Width(m.width).
+		Foreground(m.theme.Secondary).
+		Render(msg)
 }

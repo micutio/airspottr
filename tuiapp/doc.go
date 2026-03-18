@@ -17,4 +17,10 @@
 //	| | entry N                |     | entry M      | |
 //	|  ------------------------       --------------  |
 //	+-------------------------------------------------+
+//
+// Table sort (while the table is focused):
+//   [ / ]     previous / next sort column
+//   r         reverse ascending/descending
+//   1–8       aircraft table: sort by column (1=DST … 8=HDG)
+//   1 / 2     rarity tables: sort by count / by name (Type, operator, country)
 package tuiapp

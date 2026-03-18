@@ -117,14 +117,14 @@ func (aft *autoFormatTable) SetHeight(height int) {
 }
 
 func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
-	dstLen := 4
+	dstLen := 5 // space for the label + 1 for sorting arrow display.
 	fnoLen := 9
 	tidLen := 0
-	depLen := 4
-	arrLen := 4
+	depLen := 5 // space for the label + 1 for sorting arrow display.
+	arrLen := 5 // space for the label + 1 for sorting arrow display.
 	altLen := 8
-	spdLen := 5
-	hdgLen := 4
+	spdLen := 5 // space for the label + 1 for sorting arrow display.
+	hdgLen := 5
 	initialTableHeight := 5
 	format := newTableFormat(
 		columnFormat{fixed, float32(dstLen)},
@@ -167,7 +167,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 // newRarityTable builds a Count + value-column table (type / operator / country).
 func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormatTable {
 	const (
-		countLen  = 6
+		countLen  = 7
 		nameLen   = 12
 		initHeight = 5
 	)
