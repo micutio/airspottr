@@ -87,7 +87,10 @@ func (app *TickerApp) start() {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.request.RequestAircraft()
 				app.dashboard.ProcessAircraftRecords(aircraftRecords)
-				app.notify.EmitRarityNotifications(app.dashboard.RareSightings)
+				app.notify.EmitRarityNotifications(
+					app.dashboard.RareSightings,
+					internal.DefaultRarityNotifyToggles(),
+				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.
 				callsignsWithoutRoute := app.dashboard.AssignRouteToCallsigns()

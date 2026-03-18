@@ -46,46 +46,77 @@ func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[str
 	}
 }
 
-func (notify *Notify) EmitRarityNotifications(rareSightings []RareSighting) {
-	for _, rareSighting := range rareSightings {
-		switch rareSighting.Rarities {
-		case NoRarity:
-			return
-		case RareType:
-			notify.Stdout.Printf("found rare type %s\n", rareSighting.Sighting.info)
-			notifyRareType(rareSighting.Sighting)
-		case RareOperator:
-			notify.Stdout.Printf("found rare operator: %s\n", rareSighting.Sighting.operator)
-			notifyRareOperator(rareSighting.Sighting)
-		case RareCountry:
-			notify.Stdout.Printf("found rare country: %s\n", rareSighting.Sighting.country)
-			notifyRareCountry(rareSighting.Sighting)
-		case RareTypeAndOperator:
-			notify.Stdout.Printf(
-				"found rare type and operator: %s run by %s\n",
-				rareSighting.Sighting.info,
-				rareSighting.Sighting.operator)
-			notifyRareTypeAndOperator(rareSighting.Sighting)
-		case RareTypeAndCountry:
-			notify.Stdout.Printf(
-				"found rare type and country: %s -> %s\n",
-				rareSighting.Sighting.info,
-				rareSighting.Sighting.country)
-			notifyRareTypeAndCountry(rareSighting.Sighting)
-		case RareOperatorAndCountry:
-			notify.Stdout.Printf(
-				"found rare operator and country: %s -> %s\n",
-				rareSighting.Sighting.operator,
-				rareSighting.Sighting.country)
-			notifyRareOperatorAndCountry(rareSighting.Sighting)
-		case RareTypeOperatorCountry:
-			notify.Stdout.Printf(
-				"found the TRIFECTA: %s -> %s -> %s\n",
-				rareSighting.Sighting.info,
-				rareSighting.Sighting.operator,
-				rareSighting.Sighting.country)
-			notifyRareTypeOperatorCountry(rareSighting.Sighting)
-		}
+// RarityNotifyToggles selects which rarity dimensions may trigger desktop notifications.
+type RarityNotifyToggles struct {
+	Type, Operator, Country bool
+}
+
+// DefaultRarityNotifyToggles enables notifications for all rarity kinds.
+func DefaultRarityNotifyToggles() RarityNotifyToggles {
+	return RarityNotifyToggles{Type: true, Operator: true, Country: true}
+}
+
+// EmitRarityNotifications sends desktop notifications for sightings, respecting toggles.
+// Combined rarities (e.g. type+operator) degrade to the best matching template for the enabled subset.
+func (notify *Notify) EmitRarityNotifications(sightings []RareSighting, toggles RarityNotifyToggles) {
+	for i := range sightings {
+		notify.emitRarityWithToggles(&sightings[i], toggles)
+	}
+}
+
+func (notify *Notify) emitRarityWithToggles(rs *RareSighting, t RarityNotifyToggles) {
+	if rs.Rarities == NoRarity || rs.Sighting == nil {
+		return
+	}
+	f := rs.Rarities
+	hasT := f&RareType != 0
+	hasO := f&RareOperator != 0
+	hasC := f&RareCountry != 0
+
+	wt := t.Type && hasT
+	wo := t.Operator && hasO
+	wc := t.Country && hasC
+
+	eff := RarityFlag(0)
+	if wt {
+		eff |= RareType
+	}
+	if wo {
+		eff |= RareOperator
+	}
+	if wc {
+		eff |= RareCountry
+	}
+	if eff == NoRarity {
+		return
+	}
+
+	s := rs.Sighting
+	switch eff {
+	case RareType:
+		notify.Stdout.Printf("found rare type %s\n", s.info)
+		notifyRareType(s)
+	case RareOperator:
+		notify.Stdout.Printf("found rare operator: %s\n", s.operator)
+		notifyRareOperator(s)
+	case RareType | RareOperator:
+		notify.Stdout.Printf(
+			"found rare type and operator: %s run by %s\n", s.info, s.operator)
+		notifyRareTypeAndOperator(s)
+	case RareCountry:
+		notify.Stdout.Printf("found rare country: %s\n", s.country)
+		notifyRareCountry(s)
+	case RareType | RareCountry:
+		notify.Stdout.Printf("found rare type and country: %s -> %s\n", s.info, s.country)
+		notifyRareTypeAndCountry(s)
+	case RareOperator | RareCountry:
+		notify.Stdout.Printf(
+			"found rare operator and country: %s -> %s\n", s.operator, s.country)
+		notifyRareOperatorAndCountry(s)
+	case RareType | RareOperator | RareCountry:
+		notify.Stdout.Printf(
+			"found the TRIFECTA: %s -> %s -> %s\n", s.info, s.operator, s.country)
+		notifyRareTypeOperatorCountry(s)
 	}
 }
 

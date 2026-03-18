@@ -5,8 +5,8 @@ import "github.com/charmbracelet/bubbles/table"
 // Vertical space reserved above tables (header + stats blocks).
 const layoutHeaderReservedRows = 8
 
-// Row for sort hotkey hint below tables.
-const layoutSortHintRows = 1
+// Row below tables (sort hotkeys only; notify lives in header).
+const layoutFooterRows = 1
 
 // Rarity tables on the global stats view share width in thirds.
 const globalStatsTableCount = 3
@@ -15,7 +15,7 @@ const globalStatsTableCount = 3
 const layoutGlobalStatsInterTableGap = 2
 
 func (m *model) resizeTables() {
-	m.tables.setAllHeights(m.height - layoutHeaderReservedRows - layoutSortHintRows)
+	m.tables.setAllHeights(m.height - layoutHeaderReservedRows - layoutFooterRows)
 	m.tables.resizeForTerminal(m.width, func(err error) {
 		m.notify.Stdout.Panicf("%s", err)
 	})
@@ -72,6 +72,9 @@ func (m *model) selectRarityNeighbour(direction int) {
 }
 
 func (m *model) toggleGlobalView() {
+	if m.inputFocus == focusNotifyStrip {
+		return
+	}
 	switch m.uiState {
 	case mainPage:
 		m.UnfocusSelectedTable()

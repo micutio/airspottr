@@ -4,9 +4,37 @@ import tea "github.com/charmbracelet/bubbletea"
 
 // handleKey processes keyboard input for the TUI.
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
-	at := m.activeTable()
 	key := msg.String()
 
+	switch key {
+	case "q", "ctrl+c":
+		return tea.Quit
+	case "t":
+		m.notifyOnType = !m.notifyOnType
+		return nil
+	case "o":
+		m.notifyOnOp = !m.notifyOnOp
+		return nil
+	case "c":
+		m.notifyOnCountry = !m.notifyOnCountry
+		return nil
+	}
+
+	if m.inputFocus == focusNotifyStrip {
+		switch key {
+		case "tab", "shift+tab", "esc":
+			m.leaveNotifyStrip()
+		case "left", "h", "up", "k":
+			m.notifyStripIdx = (m.notifyStripIdx + 2) % 3
+		case "right", "l", "down", "j":
+			m.notifyStripIdx = (m.notifyStripIdx + 1) % 3
+		case " ":
+			m.toggleNotifyAt(m.notifyStripIdx)
+		}
+		return nil
+	}
+
+	at := m.activeTable()
 	switch key {
 	case "esc":
 		if at.table.Focused() {
@@ -40,8 +68,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case " ":
 		m.toggleGlobalView()
-	case "q", "ctrl+c":
-		return tea.Quit
+	case "tab", "shift+tab":
+		m.enterNotifyStrip()
 	case "[", "]":
 		if at.table.Focused() {
 			if key == "[" {

@@ -3,6 +3,7 @@ package tuiapp
 import (
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -54,12 +55,6 @@ func (m *model) viewHeader() string {
 		return fmt.Sprintf("%s %s ", listItemKey(key), listItemValue)
 	}
 
-	highest := m.dashboard.Highest
-	fastest := m.dashboard.Fastest
-	if highest == nil || fastest == nil {
-		return ""
-	}
-
 	const minutesInHour = 60.0
 	const secsInMinute = 60.0
 	tSince := time.Since(m.startTime)
@@ -67,40 +62,89 @@ func (m *model) viewHeader() string {
 	mins := math.Mod(math.Floor(tSince.Minutes()), minutesInHour)
 	secs := math.Mod(math.Floor(tSince.Seconds()), secsInMinute)
 
-	return m.viewStyle.Render(
-		lipgloss.JoinHorizontal(lipgloss.Top,
-			list.Border(lipgloss.RoundedBorder()).Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Lat, m.dashboard.Lon),
-					fmt.Sprintf("     UpTime %.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
-					fmt.Sprintf("Last Update %02.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
-			),
-			list.Border(lipgloss.RoundedBorder()).Render(
-				lipgloss.JoinVertical(lipgloss.Left,
-					listHeader("Highest"),
-					lipgloss.JoinHorizontal(
-						lipgloss.Left,
-						listItem("ALT", highest.GetAltitudeAsStr()),
-						listItem("FNO", highest.GetFlightNoAsStr()),
-						listItem("REG", highest.Registration),
-						listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
-					),
-					listHeader("Fastest"),
-					lipgloss.JoinHorizontal(
-						lipgloss.Left,
-						listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
-						listItem("FNO", fastest.GetFlightNoAsStr()),
-						listItem("REG", fastest.Registration),
-						listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
-					),
+	leftPanel := list.Border(lipgloss.RoundedBorder()).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Lat, m.dashboard.Lon),
+			fmt.Sprintf("     UpTime %.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
+			fmt.Sprintf("Last Update %02.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
+	)
+
+	notifyPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewNotifyListContent())
+
+	var rightPanel string
+	highest := m.dashboard.Highest
+	fastest := m.dashboard.Fastest
+	if highest != nil && fastest != nil {
+		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				listHeader("Highest"),
+				lipgloss.JoinHorizontal(
+					lipgloss.Left,
+					listItem("ALT", highest.GetAltitudeAsStr()),
+					listItem("FNO", highest.GetFlightNoAsStr()),
+					listItem("REG", highest.Registration),
+					listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
+				),
+				listHeader("Fastest"),
+				lipgloss.JoinHorizontal(
+					lipgloss.Left,
+					listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
+					listItem("FNO", fastest.GetFlightNoAsStr()),
+					listItem("REG", fastest.Registration),
+					listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
 				),
 			),
-		),
+		)
+	} else {
+		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
+			m.baseStyle.Foreground(m.theme.Secondary).Render(
+				"  Awaiting\n  aircraft\n  data…",
+			),
+		)
+	}
+
+	return m.viewStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, notifyPanel, rightPanel),
 	)
 }
 
+// viewNotifyListContent is the third header column: Notify list (Type / Op / Country).
+func (m *model) viewNotifyListContent() string {
+	check := func(on bool) string {
+		if on {
+			return "[x]"
+		}
+		return "[ ]"
+	}
+	rows := []string{m.baseStyle.Bold(true).Render("Notify")}
+	items := []struct {
+		label string
+		on    bool
+		idx   int
+	}{
+		{"Type", m.notifyOnType, 0},
+		{"Op", m.notifyOnOp, 1},
+		{"Country", m.notifyOnCountry, 2},
+	}
+	for _, it := range items {
+		text := fmt.Sprintf("%s %s", check(it.on), it.label)
+		st := m.baseStyle.Foreground(m.theme.Secondary)
+		var line string
+		if m.inputFocus == focusNotifyStrip && m.notifyStripIdx == it.idx {
+			line = st.Border(lipgloss.NormalBorder()).
+				BorderForeground(m.theme.Highlight).
+				Padding(0, 1).
+				Render(text)
+		} else {
+			line = " " + st.Render(text)
+		}
+		rows = append(rows, line)
+	}
+	return strings.Join(rows, "\n")
+}
+
 func (m *model) viewSortHotkeyHint() string {
-	msg := "Sort (table focused): [ ] column · r reverse · 1–8 aircraft cols · rarity 1=count 2=name"
+	msg := "Tab notify · t/o/c toggles · Sort (table): [ ] r 1–8 · rarity 1=count 2=name"
 	return m.baseStyle.
 		Width(m.width).
 		Foreground(m.theme.Secondary).

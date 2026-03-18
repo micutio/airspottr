@@ -51,6 +51,9 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 		dashboard:          dashboard,
 		notify:             notify,
 		options:            requestOptions,
+		notifyOnType:       true,
+		notifyOnOp:         true,
+		notifyOnCountry:    true,
 	}
 
 	p := tea.NewProgram(appModel, tea.WithAltScreen())

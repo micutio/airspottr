@@ -32,7 +32,11 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []internal.AircraftRecord(msg)
 	m.dashboard.ProcessAircraftRecords(aircraftRecords)
-	m.notify.EmitRarityNotifications(m.dashboard.RareSightings)
+	m.notify.EmitRarityNotifications(m.dashboard.RareSightings, internal.RarityNotifyToggles{
+		Type:      m.notifyOnType,
+		Operator:  m.notifyOnOp,
+		Country:   m.notifyOnCountry,
+	})
 
 	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
 	if callsignsWithoutRoute != nil {

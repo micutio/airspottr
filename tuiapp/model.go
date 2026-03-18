@@ -34,6 +34,12 @@ type model struct {
 	dashboard  *internal.Dashboard
 	notify     *internal.Notify
 	options    internal.RequestOptions
+
+	inputFocus     inputFocus
+	notifyStripIdx int // 0=type, 1=operator, 2=country when focusNotifyStrip
+	notifyOnType   bool
+	notifyOnOp     bool
+	notifyOnCountry bool
 }
 
 // activeTable is the table that receives focus and keyboard navigation for the current view.
@@ -49,6 +55,7 @@ func (m *model) Init() tea.Cmd {
 	tea.SetWindowTitle("airspottr")
 	m.uiState = mainPage
 	m.selectedRarityIdx = rarityByType
+	m.inputFocus = focusTable
 	m.FocusSelectedTable()
 	m.tableStyle.Selected = m.baseStyle
 	for i := rarityByOperator; i < rarityTableCount; i++ {
