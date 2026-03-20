@@ -3,6 +3,7 @@ package tuiapp
 import (
 	"io"
 	"log" //nolint:depguard
+	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,6 +13,9 @@ import (
 
 // Run starts the TUI. It exits the process if dashboard or request setup fails.
 func Run(appName string, requestOptions internal.RequestOptions) {
+	// Map ANSI palette colors to this terminal (theme-aware selection/highlight).
+	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(os.Stdout))
+
 	errLogFile, err := setupLogger()
 	if err != nil {
 		log.Fatalf("failed to set up logging: %v", err)

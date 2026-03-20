@@ -31,4 +31,8 @@
 //
 // Navigation note: Tab alternates between tables and the header Notify column so Left/Right
 // stay dedicated to rarity tables on the stats view.
+//
+// Theming: Run() sets lipgloss’s default renderer to os.Stdout so ANSI palette indices (see
+// theme.go) are mapped through the active terminal color profile (termenv). Selection uses the
+// same Highlight background for tables and the Notify list.
 package tuiapp

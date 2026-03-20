@@ -44,8 +44,8 @@ func (m *model) viewHeader() string {
 		Height(1).
 		Padding(0, 0)
 
-	keyStyle := m.baseStyle.Foreground(lipgloss.AdaptiveColor{Light: "#383838", Dark: "#F988F9"})
-	listHeader := m.baseStyle.Bold(true).Render
+	keyStyle := m.baseStyle.Foreground(m.theme.Muted)
+	listHeader := m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render
 
 	listItem := func(key, value string) string {
 		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(value)
@@ -116,7 +116,9 @@ func (m *model) viewNotifyListContent() string {
 		}
 		return "[ ]"
 	}
-	rows := []string{m.baseStyle.Bold(true).Render("Notify")}
+	rows := []string{
+		m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render("Notify"),
+	}
 	items := []struct {
 		label string
 		on    bool
@@ -128,17 +130,16 @@ func (m *model) viewNotifyListContent() string {
 	}
 	for _, it := range items {
 		text := fmt.Sprintf("%s %s", check(it.on), it.label)
-		st := m.baseStyle.Foreground(m.theme.Secondary)
-		var line string
 		if m.inputFocus == focusNotifyStrip && m.notifyStripIdx == it.idx {
-			line = st.Border(lipgloss.NormalBorder()).
-				BorderForeground(m.theme.Highlight).
+			// Same selection treatment as tables; body text uses Primary like other header lists.
+			rows = append(rows, lipgloss.NewStyle().
+				Background(m.theme.Highlight).
+				Foreground(m.theme.Primary).
 				Padding(0, 1).
-				Render(text)
-		} else {
-			line = " " + st.Render(text)
+				Render(text))
+			continue
 		}
-		rows = append(rows, line)
+		rows = append(rows, " "+m.baseStyle.Foreground(m.theme.Primary).Render(text))
 	}
 	return strings.Join(rows, "\n")
 }
