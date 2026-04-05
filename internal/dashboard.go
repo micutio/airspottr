@@ -53,7 +53,7 @@ type Dashboard struct {
 	CurrentAircraft    []AircraftRecord
 	RareSightings      []RareSighting
 	CachedFlightRoutes map[string]*FlightRouteRecord
-	aircraftSightings  map[string]AircraftSighting // set of all seen aircraft, maps hex to last seen time
+	aircraftSightings  map[string]*AircraftSighting // set of all seen aircraft, maps hex to last seen time
 	totalTypeCount     int
 	totalOperatorCount int
 	totalCountryCount  int
@@ -105,7 +105,7 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		CurrentAircraft:    nil,
 		RareSightings:      nil,
 		CachedFlightRoutes: make(map[string]*FlightRouteRecord),
-		aircraftSightings:  make(map[string]AircraftSighting),
+		aircraftSightings:  make(map[string]*AircraftSighting),
 		totalTypeCount:     0,
 		totalOperatorCount: 0,
 		totalCountryCount:  0,
@@ -148,7 +148,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
 		// Retrieve previous sighting or create new one.
 		sighting, exists := db.aircraftSightings[aircraft.Hex]
 		if !exists {
-			sighting = AircraftSighting{
+			sighting = &AircraftSighting{
 				lastSeen:     lastSeenTime,
 				lastFlightNo: flightUnknown,
 				registration: aircraft.Registration,
@@ -194,9 +194,9 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
 		db.updateFastest(aircraft)
 
 		newRarities := NoRarity
-		rareTypeFlag := db.updateType(&sighting, aircraft, isNewFlight)
-		rareOperatorFlag := db.updateOperator(&sighting, aircraft, isNewFlight)
-		rareCountryFlag := db.updateCountry(&sighting, aircraft, isNewFlight)
+		rareTypeFlag := db.updateType(sighting, aircraft, isNewFlight)
+		rareOperatorFlag := db.updateOperator(sighting, aircraft, isNewFlight)
+		rareCountryFlag := db.updateCountry(sighting, aircraft, isNewFlight)
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
@@ -205,7 +205,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []AircraftRecord) {
 		if newRarities != NoRarity {
 			rareSightings = append(rareSightings, RareSighting{
 				Rarities: newRarities,
-				Sighting: &sighting,
+				Sighting: sighting,
 			})
 		}
 
@@ -462,6 +462,16 @@ func (db *Dashboard) updateFastest(aircraft *AircraftRecord) {
 	}
 
 	db.Fastest = aircraft
+}
+
+func (db *Dashboard) recomputeFastestAndHighest() {
+	db.Fastest = nil
+	db.Highest = nil
+	for idx := range db.CurrentAircraft {
+		aircraft := &(db.CurrentAircraft)[idx]
+		db.updateHighest(aircraft)
+		db.updateFastest(aircraft)
+	}
 }
 
 func (db *Dashboard) AssignRouteToCallsigns() []string {

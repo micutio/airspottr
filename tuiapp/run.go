@@ -39,29 +39,32 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 	tables := initTables(theme)
 
 	appModel := &model{
-		width:      0,
-		height:     0,
-		baseStyle:  lipgloss.NewStyle(),
-		viewStyle:  lipgloss.NewStyle(),
-		tableStyle: tables.style,
-		theme:      theme,
+		width:            0,
+		height:           0,
+		baseStyle:        lipgloss.NewStyle(),
+		viewStyle:        lipgloss.NewStyle(),
+		tableStyle:       tables.style,
+		theme:            theme,
 		tables:           tables.tables,
 		uiState:          mainPage,
 		aircraftSortCol:  1, // FNO (matches previous default flight sort)
 		aircraftSortDesc: false,
 		startTime:        time.Now(),
-		lastUpdate:         time.Unix(0, 0),
-		request:            request,
-		dashboard:          dashboard,
-		notify:             notify,
-		options:            requestOptions,
-		notifyOnType:       true,
-		notifyOnOp:         true,
-		notifyOnCountry:    true,
+		lastUpdate:       time.Unix(0, 0),
+		request:          request,
+		dashboard:        dashboard,
+		notify:           notify,
+		options:          requestOptions,
+		notifyOnType:     true,
+		notifyOnOp:       true,
+		notifyOnCountry:  true,
 	}
 
 	p := tea.NewProgram(appModel, tea.WithAltScreen())
 	if _, progErr := p.Run(); progErr != nil {
 		log.Printf("error running program: %v", progErr)
+	}
+	if saveErr := internal.SaveState(internal.StateFilePath(), dashboard, request); saveErr != nil {
+		log.Printf("failed to save persistent state: %v", saveErr)
 	}
 }

@@ -43,6 +43,10 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 		return nil, fmt.Errorf("unable to create request: %w", requestErr)
 	}
 
+	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
+		fmt.Fprintf(stderr, "warning: unable to load persisted state: %v\n", loadErr)
+	}
+
 	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
 		appName:   appName,
 		options:   options,
@@ -119,4 +123,7 @@ func (app *TickerApp) waitForShutdown() {
 	close(app.done)
 	// Wait for the main goroutine to finish.
 	app.wg.Wait()
+	if saveErr := internal.SaveState(internal.StateFilePath(), app.dashboard, app.request); saveErr != nil {
+		app.logger.Error("failed to save persistent state", slog.Any("error", saveErr))
+	}
 }
