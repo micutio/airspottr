@@ -28,6 +28,8 @@ const (
 	flightrouteReqHost = "api.adsbdb.com"
 
 	requestTimeout = 25 * time.Second
+	// FlightRouteQueryThreshold limits the number of concurrent flight route queries to avoid overwhelming the server.
+	FlightRouteQueryThreshold = 10
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
 	// UrlAdsbLol         = "https://api.adsb.lol/v2/lat/%.6f/lon/%.6f/dist/%d"
 )
@@ -47,10 +49,12 @@ type RequestOptions struct {
 
 // Request handles http request commands.
 type Request struct {
-	aircraftReqURL string
-	apiClient      *http.Client
-	waitGroup      sync.WaitGroup
-	errOut         log.Logger
+	aircraftReqURL     string
+	apiClient          *http.Client
+	waitGroup          sync.WaitGroup
+	errOut             log.Logger
+	pendingCallsigns   []string
+	pendingCallsignsMu sync.Mutex
 }
 
 func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
@@ -129,24 +133,46 @@ func (r *Request) RequestAircraft() []AircraftRecord {
 }
 
 func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRouteRecord {
-	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns requested\n", len(callsigns))
-	// 1. Build input urls
-	urlCount := len(callsigns)
-	urls := make([]string, urlCount)
-	for idx, callsign := range callsigns {
+	r.pendingCallsignsMu.Lock()
+	// Add new callsigns to the pending queue
+	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
+	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n", len(callsigns), len(r.pendingCallsigns))
+
+	// Determine how many to process this time
+	toProcess := FlightRouteQueryThreshold
+	if len(r.pendingCallsigns) < toProcess {
+		toProcess = len(r.pendingCallsigns)
+	}
+
+	// Take the first 'toProcess' callsigns from the queue
+	selectedCallsigns := make([]string, toProcess)
+	copy(selectedCallsigns, r.pendingCallsigns[:toProcess])
+
+	// Remove the processed callsigns from the queue
+	r.pendingCallsigns = r.pendingCallsigns[toProcess:]
+	r.pendingCallsignsMu.Unlock()
+
+	r.errOut.Printf("RequestFlightRoutesForCallsigns: processing %d callsigns this batch\n", len(selectedCallsigns))
+
+	// 1. Build input urls for selected callsigns
+	urlCount := len(selectedCallsigns)
+	urls := make([]string, 0, urlCount)
+	validCallsigns := make([]string, 0, urlCount)
+	for _, callsign := range selectedCallsigns {
 		callsignURL, urlErr := createFlightRouteRequestURL(callsign)
 		if urlErr != nil {
 			// Skip invalid urls.
 			r.errOut.Println(
 				fmt.Errorf(
-					"RequestFLightRoutesForCallsigns: error constructing url: %w",
-					urlErr))
+					"RequestFlightRoutesForCallsigns: error constructing url for %s: %w",
+					callsign, urlErr))
 			continue
 		}
-		urls[idx] = callsignURL
+		urls = append(urls, callsignURL)
+		validCallsigns = append(validCallsigns, callsign)
 	}
 
-	results := make(chan []byte, urlCount)
+	results := make(chan []byte, len(urls))
 	var waitGroup sync.WaitGroup
 
 	// 2. Fan-out: Launch a goroutine for each URL
@@ -187,8 +213,8 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 		flightrouteRecords = append(flightrouteRecords, flightrouteRecord)
 	}
 	r.errOut.Printf(
-		"RequestFlightRoutesForCallsigns: %d callsigns found\n",
-		len(flightrouteRecords))
+		"RequestFlightRoutesForCallsigns: %d callsigns processed, %d routes found\n",
+		len(selectedCallsigns), len(flightrouteRecords))
 	return flightrouteRecords
 }
 
