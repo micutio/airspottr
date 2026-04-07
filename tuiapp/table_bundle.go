@@ -10,12 +10,6 @@ const (
 	rarityTableCount = 3
 )
 
-// Horizontal neighbour when pressing left / right between rarity tables.
-var (
-	rarityNavLeft  = [rarityTableCount]int{rarityByCountry, rarityByType, rarityByOperator}
-	rarityNavRight = [rarityTableCount]int{rarityByOperator, rarityByCountry, rarityByType}
-)
-
 // tuiTables groups all bubble tables and shared layout operations.
 type tuiTables struct {
 	aircraft autoFormatTable
@@ -52,7 +46,7 @@ func (t *tuiTables) resizeForTerminal(terminalWidth int, onResizeErr func(err er
 	third := 1.0 / float64(globalStatsTableCount)
 	sideW := int(float64(rightSideWidth) * third)
 
-	for i := 0; i < rarityByCountry; i++ {
+	for i := range rarityByCountry {
 		if err := t.rarities[i].resize(sideW); err != nil {
 			onResizeErr(err)
 			return

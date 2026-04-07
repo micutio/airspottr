@@ -46,22 +46,29 @@ func (m *model) updateAllTables() {
 		m.dashboard.SeenOperatorCount,
 		m.dashboard.SeenCountryCount,
 	}
-	for i := range m.tables.rarities {
-		byProperty := m.raritySortCol[i] == 1
-		tuples := sortedPropertyCounts(raritySources[i], byProperty, m.raritySortDesc[i])
+	for idx := range m.tables.rarities {
+		byProperty := m.raritySortCol[idx] == 1
+		tuples := sortedPropertyCounts(raritySources[idx], byProperty, m.raritySortDesc[idx])
 		rarityRows := make([]table.Row, len(tuples))
 		for j := range tuples {
 			rarityRows[j] = propertyCountToRow(tuples[j])
 		}
-		m.tables.rarities[i].table.SetRows(rarityRows)
-		applyRaritySortHeaders(&m.tables.rarities[i].table, i, m.raritySortCol[i], m.raritySortDesc[i])
+		m.tables.rarities[idx].table.SetRows(rarityRows)
+		applyRaritySortHeaders(
+			&m.tables.rarities[idx].table,
+			idx, m.raritySortCol[idx],
+			m.raritySortDesc[idx])
 	}
 }
 
 func (m *model) selectRarityNeighbour(direction int) {
+	// Horizontal neighbour when pressing left / right between rarity tables.
 	if m.uiState != globalStats || !m.activeTable().table.Focused() {
 		return
 	}
+
+	rarityNavLeft := [rarityTableCount]int{rarityByCountry, rarityByType, rarityByOperator}
+	rarityNavRight := [rarityTableCount]int{rarityByOperator, rarityByCountry, rarityByType}
 	m.UnfocusSelectedTable()
 	if direction < 0 {
 		m.selectedRarityIdx = rarityNavLeft[m.selectedRarityIdx]

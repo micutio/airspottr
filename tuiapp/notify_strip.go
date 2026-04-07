@@ -1,5 +1,11 @@
 package tuiapp
 
+const (
+	notifyType     = 0
+	notifyOperator = 1
+	notifyCountry  = 2
+)
+
 func (m *model) enterNotifyStrip() {
 	m.inputFocus = focusNotifyStrip
 	m.UnfocusSelectedTable()
@@ -12,11 +18,11 @@ func (m *model) leaveNotifyStrip() {
 
 func (m *model) toggleNotifyAt(idx int) {
 	switch idx {
-	case 0:
+	case notifyType:
 		m.notifyOnType = !m.notifyOnType
-	case 1:
+	case notifyOperator:
 		m.notifyOnOp = !m.notifyOnOp
-	case 2:
+	case notifyCountry:
 		m.notifyOnCountry = !m.notifyOnCountry
 	}
 }

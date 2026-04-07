@@ -20,43 +20,44 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		return nil
 	}
 
+	notifyStripCount := 3
 	if m.inputFocus == focusNotifyStrip {
 		switch key {
 		case "tab", "shift+tab", "esc":
 			m.leaveNotifyStrip()
 		case "left", "h", "up", "k":
-			m.notifyStripIdx = (m.notifyStripIdx + 2) % 3
+			m.notifyStripIdx = (m.notifyStripIdx + 2) % notifyStripCount
 		case "right", "l", "down", "j":
-			m.notifyStripIdx = (m.notifyStripIdx + 1) % 3
+			m.notifyStripIdx = (m.notifyStripIdx + 1) % notifyStripCount
 		case " ":
 			m.toggleNotifyAt(m.notifyStripIdx)
 		}
 		return nil
 	}
 
-	at := m.activeTable()
+	activeTable := m.activeTable()
 	switch key {
 	case "esc":
-		if at.table.Focused() {
+		if activeTable.table.Focused() {
 			m.UnfocusSelectedTable()
 		} else {
 			m.FocusSelectedTable()
 		}
 	case "up", "k":
-		if at.table.Focused() {
-			at.table.MoveUp(1)
+		if activeTable.table.Focused() {
+			activeTable.table.MoveUp(1)
 		}
 	case "pgup":
-		if at.table.Focused() {
-			at.table.MoveUp(at.table.Height() - 1)
+		if activeTable.table.Focused() {
+			activeTable.table.MoveUp(activeTable.table.Height() - 1)
 		}
 	case "down", "j":
-		if at.table.Focused() {
-			at.table.MoveDown(1)
+		if activeTable.table.Focused() {
+			activeTable.table.MoveDown(1)
 		}
 	case "pgdown":
-		if at.table.Focused() {
-			at.table.MoveDown(at.table.Height() - 1)
+		if activeTable.table.Focused() {
+			activeTable.table.MoveDown(activeTable.table.Height() - 1)
 		}
 	case "left", "h":
 		if m.uiState == globalStats {
@@ -71,7 +72,7 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	case "tab", "shift+tab":
 		m.enterNotifyStrip()
 	case "[", "]":
-		if at.table.Focused() {
+		if activeTable.table.Focused() {
 			if key == "[" {
 				m.cycleSortColumn(-1)
 			} else {
@@ -79,17 +80,18 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 			}
 		}
 	case "r", "R":
-		if at.table.Focused() {
+		if activeTable.table.Focused() {
 			m.toggleSortDirection()
 		}
 	case "1", "2", "3", "4", "5", "6", "7", "8":
-		if !at.table.Focused() {
+		if !activeTable.table.Focused() {
 			break
 		}
-		if m.uiState == mainPage {
+		switch m.uiState {
+		case mainPage:
 			m.aircraftSortCol = int(key[0] - '1')
 			m.updateAllTables()
-		} else if m.uiState == globalStats {
+		case globalStats:
 			switch key {
 			case "1":
 				m.raritySortCol[m.selectedRarityIdx] = 0
@@ -98,6 +100,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 				m.raritySortCol[m.selectedRarityIdx] = 1
 				m.updateAllTables()
 			}
+		default:
+			panic("unhandled default case")
 		}
 	}
 	return nil

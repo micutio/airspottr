@@ -11,7 +11,7 @@ import (
 const aircraftColumnCount = 8
 
 // Base titles (sort arrows appended in applyAircraftSortHeaders).
-var aircraftColumnTitles = [aircraftColumnCount]string{
+var aircraftColumnTitles = [aircraftColumnCount]string{ //nolint:gochecknoglobals // TODO: Fix
 	"DST", "FNO", "TID", "DEP", "ARR", "ALT", "SPD", "HDG",
 }
 
@@ -73,49 +73,61 @@ func altitudeSortKey(ac *internal.AircraftRecord) float64 {
 }
 
 // compareAircraftAscending reports whether a should sort before b (ascending).
-func compareAircraftAscending(a, b *internal.AircraftRecord, col int, db *internal.Dashboard) bool {
-	ra, rb := routeFor(db, a), routeFor(db, b)
+func compareAircraftAscending(
+	recordA, recordB *internal.AircraftRecord,
+	col int,
+	dashboard *internal.Dashboard,
+) bool {
+	dstCol := 0
+	fnoCol := 1
+	tidCol := 2
+	depCol := 3
+	arrCol := 4
+	altCol := 5
+	spdCol := 6
+	hdgCol := 7
+	routeA, routeB := routeFor(dashboard, recordA), routeFor(dashboard, recordB)
 	switch col {
-	case 0: // DST
-		if a.CachedDist != b.CachedDist {
-			return a.CachedDist < b.CachedDist
+	case dstCol: // DST
+		if recordA.CachedDist != recordB.CachedDist {
+			return recordA.CachedDist < recordB.CachedDist
 		}
-	case 1: // FNO
-		sa, sb := a.GetFlightNoAsStr(), b.GetFlightNoAsStr()
+	case fnoCol: // FNO
+		sa, sb := recordA.GetFlightNoAsStr(), recordB.GetFlightNoAsStr()
 		if sa != sb {
 			return sa < sb
 		}
-	case 2: // TID
-		ta := db.IcaoToAircraft[a.IcaoType].Make
-		tb := db.IcaoToAircraft[b.IcaoType].Make
+	case tidCol: // TID
+		ta := dashboard.IcaoToAircraft[recordA.IcaoType].Make
+		tb := dashboard.IcaoToAircraft[recordB.IcaoType].Make
 		if ta != tb {
 			return ta < tb
 		}
-	case 3: // DEP
-		da, dbi := ra.Origin.IataCode, rb.Origin.IataCode
+	case depCol: // DEP
+		da, dbi := routeA.Origin.IataCode, routeB.Origin.IataCode
 		if da != dbi {
 			return da < dbi
 		}
-	case 4: // ARR
-		da, dbi := ra.Destination.IataCode, rb.Destination.IataCode
+	case arrCol: // ARR
+		da, dbi := routeA.Destination.IataCode, routeB.Destination.IataCode
 		if da != dbi {
 			return da < dbi
 		}
-	case 5: // ALT
-		ka, kb := altitudeSortKey(a), altitudeSortKey(b)
+	case altCol: // ALT
+		ka, kb := altitudeSortKey(recordA), altitudeSortKey(recordB)
 		if ka != kb {
 			return ka < kb
 		}
-	case 6: // SPD
-		if a.GroundSpeed != b.GroundSpeed {
-			return a.GroundSpeed < b.GroundSpeed
+	case spdCol: // SPD
+		if recordA.GroundSpeed != recordB.GroundSpeed {
+			return recordA.GroundSpeed < recordB.GroundSpeed
 		}
-	case 7: // HDG
-		if a.NavHeading != b.NavHeading {
-			return a.NavHeading < b.NavHeading
+	case hdgCol: // HDG
+		if recordA.NavHeading != recordB.NavHeading {
+			return recordA.NavHeading < recordB.NavHeading
 		}
 	}
-	return a.Hex < b.Hex
+	return recordA.Hex < recordB.Hex
 }
 
 func filteredSortedAircraft(db *internal.Dashboard, sortCol int, desc bool) []internal.AircraftRecord {
@@ -137,17 +149,17 @@ func filteredSortedAircraft(db *internal.Dashboard, sortCol int, desc bool) []in
 	return rows
 }
 
-func compareRarityAscending(a, b internal.PropertyCountTuple, byProperty bool) bool {
+func compareRarityAscending(propertyA, propertyB internal.PropertyCountTuple, byProperty bool) bool {
 	if byProperty {
-		if a.Property != b.Property {
-			return a.Property < b.Property
+		if propertyA.Property != propertyB.Property {
+			return propertyA.Property < propertyB.Property
 		}
-		return a.Count < b.Count
+		return propertyA.Count < propertyB.Count
 	}
-	if a.Count != b.Count {
-		return a.Count < b.Count
+	if propertyA.Count != propertyB.Count {
+		return propertyA.Count < propertyB.Count
 	}
-	return a.Property < b.Property
+	return propertyA.Property < propertyB.Property
 }
 
 func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []internal.PropertyCountTuple {

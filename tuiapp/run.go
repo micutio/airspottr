@@ -2,7 +2,7 @@ package tuiapp
 
 import (
 	"io"
-	"log" //nolint:depguard
+	"log" //nolint:depguard // TODO: Change later.
 	"os"
 	"time"
 
@@ -30,7 +30,8 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 
 	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
 	if err != nil {
-		log.Fatalf("failed to set up dashboard and request: %v", err)
+		log.Printf("failed to set up dashboard and request: %v", err)
+		return
 	}
 
 	dashboard.FinishWarmupPeriod()

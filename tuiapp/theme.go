@@ -29,7 +29,7 @@ func getDefaultTheme() Theme {
 		},
 		Secondary: lipgloss.Color("8"),  // bright black / gray
 		Muted:     lipgloss.Color("13"), // bright magenta — key labels
-		Highlight: lipgloss.Color("5"), // selection bg (palette slot; theme-mapped)
+		Highlight: lipgloss.Color("5"),  // selection bg (palette slot; theme-mapped)
 		Border:    lipgloss.Color("8"),
 	}
 }

@@ -64,59 +64,65 @@ func (notify *Notify) EmitRarityNotifications(sightings []RareSighting, toggles 
 	}
 }
 
-func (notify *Notify) emitRarityWithToggles(rs *RareSighting, t RarityNotifyToggles) {
-	if rs.Rarities == NoRarity || rs.Sighting == nil {
+func (notify *Notify) emitRarityWithToggles(rareSighting *RareSighting, toggles RarityNotifyToggles) {
+	if rareSighting.Rarities == NoRarity || rareSighting.Sighting == nil {
 		return
 	}
-	f := rs.Rarities
+	f := rareSighting.Rarities
 	hasT := f&RareType != 0
 	hasO := f&RareOperator != 0
 	hasC := f&RareCountry != 0
 
-	wt := t.Type && hasT
-	wo := t.Operator && hasO
-	wc := t.Country && hasC
+	toggleType := toggles.Type && hasT
+	toggleOperator := toggles.Operator && hasO
+	toggleCountry := toggles.Country && hasC
 
-	eff := RarityFlag(0)
-	if wt {
-		eff |= RareType
+	rarityFlag := RarityFlag(0)
+	if toggleType {
+		rarityFlag |= RareType
 	}
-	if wo {
-		eff |= RareOperator
+	if toggleOperator {
+		rarityFlag |= RareOperator
 	}
-	if wc {
-		eff |= RareCountry
+	if toggleCountry {
+		rarityFlag |= RareCountry
 	}
-	if eff == NoRarity {
+	if rarityFlag == NoRarity {
 		return
 	}
 
-	s := rs.Sighting
-	switch eff {
+	sighting := rareSighting.Sighting
+	switch rarityFlag {
 	case RareType:
-		notify.Stdout.Printf("found rare type %s\n", s.info)
-		notifyRareType(s)
+		notify.Stdout.Printf("found rare type %sighting\n", sighting.info)
+		notifyRareType(sighting)
 	case RareOperator:
-		notify.Stdout.Printf("found rare operator: %s\n", s.operator)
-		notifyRareOperator(s)
+		notify.Stdout.Printf("found rare operator: %sighting\n", sighting.operator)
+		notifyRareOperator(sighting)
 	case RareType | RareOperator:
 		notify.Stdout.Printf(
-			"found rare type and operator: %s run by %s\n", s.info, s.operator)
-		notifyRareTypeAndOperator(s)
+			"found rare type and operator: %sighting run by %sighting\n", sighting.info, sighting.operator)
+		notifyRareTypeAndOperator(sighting)
 	case RareCountry:
-		notify.Stdout.Printf("found rare country: %s\n", s.country)
-		notifyRareCountry(s)
+		notify.Stdout.Printf("found rare country: %sighting\n", sighting.country)
+		notifyRareCountry(sighting)
 	case RareType | RareCountry:
-		notify.Stdout.Printf("found rare type and country: %s -> %s\n", s.info, s.country)
-		notifyRareTypeAndCountry(s)
+		notify.Stdout.Printf("found rare type and country: %sighting -> %sighting\n", sighting.info, sighting.country)
+		notifyRareTypeAndCountry(sighting)
 	case RareOperator | RareCountry:
 		notify.Stdout.Printf(
-			"found rare operator and country: %s -> %s\n", s.operator, s.country)
-		notifyRareOperatorAndCountry(s)
+			"found rare operator and country: %sighting -> %sighting\n", sighting.operator, sighting.country)
+		notifyRareOperatorAndCountry(sighting)
 	case RareType | RareOperator | RareCountry:
 		notify.Stdout.Printf(
-			"found the TRIFECTA: %s -> %s -> %s\n", s.info, s.operator, s.country)
-		notifyRareTypeOperatorCountry(s)
+			"found the TRIFECTA: %sighting -> %sighting -> %sighting\n",
+			sighting.info,
+			sighting.operator,
+			sighting.country,
+		)
+		notifyRareTypeOperatorCountry(sighting)
+	default:
+		panic("unknown rare type")
 	}
 }
 

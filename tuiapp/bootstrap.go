@@ -37,7 +37,7 @@ func setupRequestAndDashboard(
 	}
 
 	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
-		fmt.Fprintf(errWriter, "warning: unable to load persisted state: %v\n", loadErr)
+		return nil, nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
 	}
 
 	return request, dashboard, nil

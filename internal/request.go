@@ -74,10 +74,12 @@ func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
 	}
 
 	request := &Request{
-		aircraftReqURL: aircraftReqURL,
-		apiClient:      client,
-		waitGroup:      sync.WaitGroup{},
-		errOut:         *log.New(*stderr, "request ", log.LstdFlags),
+		aircraftReqURL:     aircraftReqURL,
+		apiClient:          client,
+		waitGroup:          sync.WaitGroup{},
+		errOut:             *log.New(*stderr, "request ", log.LstdFlags),
+		pendingCallsigns:   []string{},
+		pendingCallsignsMu: sync.Mutex{},
 	}
 
 	request.errOut.Println("Request init")
@@ -136,7 +138,11 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	r.pendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
 	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
-	r.errOut.Printf("RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n", len(callsigns), len(r.pendingCallsigns))
+	r.errOut.Printf(
+		"RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n",
+		len(callsigns),
+		len(r.pendingCallsigns),
+	)
 
 	// Determine how many to process this time
 	toProcess := FlightRouteQueryThreshold
@@ -214,7 +220,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	}
 	r.errOut.Printf(
 		"RequestFlightRoutesForCallsigns: %d callsigns processed, %d routes found\n",
-		len(selectedCallsigns), len(flightrouteRecords))
+		len(validCallsigns), len(flightrouteRecords))
 	return flightrouteRecords
 }
 

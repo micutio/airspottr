@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,11 @@ import (
 )
 
 const stateFileName = "airspottr_state.json"
+
+// Errors used by the Dashboard.
+var (
+	errCoordMismatch = errors.New("state coordinate mismatch")
+)
 
 // StateFilePath returns the platform-specific path to the persisted state file.
 func StateFilePath() string {
@@ -153,7 +159,7 @@ func (r *Request) RestoreState(state requestState) {
 
 func (db *Dashboard) RestoreState(state dashboardState) error {
 	if state.Lat != db.Lat || state.Lon != db.Lon {
-		return fmt.Errorf("state coordinates mismatch")
+		return errCoordMismatch
 	}
 
 	db.isWarmup = state.IsWarmup
@@ -186,33 +192,33 @@ func SaveState(filePath string, db *Dashboard, req *Request) error {
 	pendingCallsigns := append([]string(nil), req.pendingCallsigns...)
 	req.pendingCallsignsMu.Unlock()
 	state := db.saveState(pendingCallsigns)
-	data, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return fmt.Errorf("save state: marshal failed: %w", err)
+	data, marshallErr := json.MarshalIndent(state, "", "  ")
+	if marshallErr != nil {
+		return fmt.Errorf("save state: marshal failed: %w", marshallErr)
 	}
-	if err := os.MkdirAll(filepath.Dir(filePath), 0o700); err != nil {
-		return fmt.Errorf("save state: unable to create directory: %w", err)
+	if mkdirErr := os.MkdirAll(filepath.Dir(filePath), 0o700); mkdirErr != nil {
+		return fmt.Errorf("save state: unable to create directory: %w", mkdirErr)
 	}
-	if err := os.WriteFile(filePath, data, 0o600); err != nil {
-		return fmt.Errorf("save state: write failed: %w", err)
+	if writeFileErr := os.WriteFile(filePath, data, 0o600); writeFileErr != nil {
+		return fmt.Errorf("save state: write failed: %w", writeFileErr)
 	}
 	return nil
 }
 
 func LoadState(filePath string, db *Dashboard, req *Request) error {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
+	data, readFileErr := os.ReadFile(filePath)
+	if readFileErr != nil {
+		if os.IsNotExist(readFileErr) {
 			return nil
 		}
-		return fmt.Errorf("load state: unable to read file: %w", err)
+		return fmt.Errorf("load state: unable to read file: %w", readFileErr)
 	}
 	var state persistentState
-	if err := json.Unmarshal(data, &state); err != nil {
-		return fmt.Errorf("load state: unmarshal failed: %w", err)
+	if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr != nil {
+		return fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
-	if err := db.RestoreState(state.Dashboard); err != nil {
-		return fmt.Errorf("load state: %w", err)
+	if restoreErr := db.RestoreState(state.Dashboard); restoreErr != nil {
+		return fmt.Errorf("load state: %w", restoreErr)
 	}
 	req.RestoreState(state.Request)
 	return nil

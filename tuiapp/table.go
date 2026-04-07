@@ -167,8 +167,8 @@ func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
 // newRarityTable builds a Count + value-column table (type / operator / country).
 func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormatTable {
 	const (
-		countLen  = 7
-		nameLen   = 12
+		countLen   = 7
+		nameLen    = 12
 		initHeight = 5
 	)
 	format := newTableFormat(

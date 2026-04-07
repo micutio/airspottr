@@ -12,25 +12,23 @@ func TestSaveAndLoadState(t *testing.T) {
 	tmpDir := t.TempDir()
 	statePath := filepath.Join(tmpDir, "airspottr_state.json")
 
-	origWd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
+	origWd, wdErr := os.Getwd()
+	if wdErr != nil {
+		t.Fatal(wdErr)
 	}
 	defer func() {
-		_ = os.Chdir(origWd)
+		t.Chdir(origWd)
 	}()
-	if err := os.Chdir(findRepoRoot(t)); err != nil {
-		t.Fatal(err)
+	t.Chdir(findRepoRoot(t))
+
+	dashboard, dashErr := NewDashboard(1.0, 2.0, new(io.Discard))
+	if dashErr != nil {
+		t.Fatal(dashErr)
 	}
 
-	dashboard, err := NewDashboard(1.0, 2.0, new(io.Discard))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	request, err := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
-	if err != nil {
-		t.Fatal(err)
+	request, reqErr := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	if reqErr != nil {
+		t.Fatal(reqErr)
 	}
 
 	dashboard.isWarmup = false
@@ -116,19 +114,19 @@ func now() time.Time {
 }
 
 func findRepoRoot(t *testing.T) string {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
+	workingDir, wdErr := os.Getwd()
+	if wdErr != nil {
+		t.Fatal(wdErr)
 	}
-	for i := 0; i < 10; i++ {
-		candidate := filepath.Join(wd, "data", "ICAOList.csv")
-		if _, err := os.Stat(candidate); err == nil {
-			return wd
+	for range 10 {
+		candidate := filepath.Join(workingDir, "data", "ICAOList.csv")
+		if _, statErr := os.Stat(candidate); statErr == nil {
+			return workingDir
 		}
-		if wd == filepath.Dir(wd) {
+		if workingDir == filepath.Dir(workingDir) {
 			break
 		}
-		wd = filepath.Dir(wd)
+		workingDir = filepath.Dir(workingDir)
 	}
 	t.Fatal("could not locate repository root")
 	return ""

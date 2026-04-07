@@ -44,7 +44,7 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 	}
 
 	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
-		fmt.Fprintf(stderr, "warning: unable to load persisted state: %v\n", loadErr)
+		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
 	}
 
 	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup

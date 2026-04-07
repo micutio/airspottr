@@ -35,10 +35,10 @@ type model struct {
 	notify     *internal.Notify
 	options    internal.RequestOptions
 
-	inputFocus     inputFocus
-	notifyStripIdx int // 0=type, 1=operator, 2=country when focusNotifyStrip
-	notifyOnType   bool
-	notifyOnOp     bool
+	inputFocus      inputFocus
+	notifyStripIdx  int // 0=type, 1=operator, 2=country when focusNotifyStrip
+	notifyOnType    bool
+	notifyOnOp      bool
 	notifyOnCountry bool
 }
 

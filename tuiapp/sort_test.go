@@ -9,21 +9,21 @@ import (
 
 func TestFilteredSortedAircraftByDistance(t *testing.T) {
 	t.Parallel()
-	db := &internal.Dashboard{
+	dashboard := &internal.Dashboard{ //nolint:exhaustruct // just for testing
 		CurrentAircraft: []internal.AircraftRecord{
-			{Hex: "a", CachedDist: 100, Flight: "B"},
-			{Hex: "b", CachedDist: 10, Flight: "A"},
+			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
+			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
 		},
 		IcaoToAircraft: map[string]dash.IcaoAircraft{},
 	}
-	out := filteredSortedAircraft(db, 0, false) // DST asc
+	out := filteredSortedAircraft(dashboard, 0, false) // DST asc
 	if len(out) != 2 {
 		t.Fatalf("len %d", len(out))
 	}
 	if out[0].Hex != "b" || out[1].Hex != "a" {
 		t.Errorf("order %+v", out)
 	}
-	out = filteredSortedAircraft(db, 0, true)
+	out = filteredSortedAircraft(dashboard, 0, true)
 	if out[0].Hex != "a" {
 		t.Errorf("desc first want a got %s", out[0].Hex)
 	}
