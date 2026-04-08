@@ -62,18 +62,18 @@ func TestSaveAndLoadState(t *testing.T) {
 	request.pendingCallsigns = []string{"TEST123", "OTHER456"}
 	request.pendingCallsignsMu.Unlock()
 
-	if err := SaveState(statePath, dashboard, request); err != nil {
-		t.Fatal(err)
+	if saveErr := SaveState(statePath, dashboard, request); saveErr != nil {
+		t.Fatal(saveErr)
 	}
 
-	dashboard2, err := NewDashboard(1.0, 2.0, new(io.Discard))
-	if err != nil {
-		t.Fatal(err)
+	dashboard2, dashErr := NewDashboard(1.0, 2.0, new(io.Discard))
+	if dashErr != nil {
+		t.Fatal(dashErr)
 	}
 
-	request2, err := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
-	if err != nil {
-		t.Fatal(err)
+	request2, requestErr := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	if requestErr != nil {
+		t.Fatal(requestErr)
 	}
 
 	if err := LoadState(statePath, dashboard2, request2); err != nil {

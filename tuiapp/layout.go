@@ -92,7 +92,6 @@ func (m *model) toggleGlobalView() {
 		m.UnfocusSelectedTable()
 		m.uiState = mainPage
 		m.FocusSelectedTable()
-	case aircraftDetails:
 	default:
 	}
 }

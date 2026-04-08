@@ -36,7 +36,8 @@ func applyAircraftSortHeaders(tbl *table.Model, sortCol int, desc bool) {
 	tbl.SetColumns(cols)
 }
 
-var rarityValueColumnTitle = [rarityTableCount]string{"Type", "operator", "country"}
+//nolint:gochecknoglobals // TODO: Fix
+var rarityValueColumnTitle = [rarityTableCount]string{"Type", "Operator", "Country"}
 
 func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool) {
 	old := tbl.Columns()
@@ -63,13 +64,15 @@ func routeFor(db *internal.Dashboard, ac *internal.AircraftRecord) *internal.Fli
 }
 
 func altitudeSortKey(ac *internal.AircraftRecord) float64 {
+	ground := -1000.0
+	infinity := 1e9
 	if n, ok := ac.AltBaro.(float64); ok {
 		return n
 	}
 	if s, ok := ac.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
-		return -1000
+		return ground
 	}
-	return 1e9
+	return infinity
 }
 
 // compareAircraftAscending reports whether a should sort before b (ascending).
@@ -130,17 +133,17 @@ func compareAircraftAscending(
 	return recordA.Hex < recordB.Hex
 }
 
-func filteredSortedAircraft(db *internal.Dashboard, sortCol int, desc bool) []internal.AircraftRecord {
+func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc bool) []internal.AircraftRecord {
 	var rows []internal.AircraftRecord
-	for _, ac := range db.CurrentAircraft {
-		aircraftType := db.IcaoToAircraft[ac.IcaoType].Make
+	for _, ac := range dashboard.CurrentAircraft {
+		aircraftType := dashboard.IcaoToAircraft[ac.IcaoType].Make
 		if ac.GetFlightNoAsStr() == "" && aircraftType == "" {
 			continue
 		}
 		rows = append(rows, ac)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, db)
+		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, dashboard)
 		if desc {
 			return !less
 		}

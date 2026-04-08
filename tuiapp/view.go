@@ -21,7 +21,6 @@ func (m *model) View() string {
 			parts[i] = m.viewBorderedTable(&m.tables.rarities[i])
 		}
 		tableContent = lipgloss.JoinHorizontal(lipgloss.Top, parts[0], parts[1], parts[2])
-	case aircraftDetails:
 	}
 	body := []string{column(m.viewHeader()), column(tableContent)}
 	if m.uiState == mainPage || m.uiState == globalStats {

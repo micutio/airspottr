@@ -205,7 +205,7 @@ func SaveState(filePath string, db *Dashboard, req *Request) error {
 	return nil
 }
 
-func LoadState(filePath string, db *Dashboard, req *Request) error {
+func LoadState(filePath string, dashboard *Dashboard, req *Request) error {
 	data, readFileErr := os.ReadFile(filePath)
 	if readFileErr != nil {
 		if os.IsNotExist(readFileErr) {
@@ -217,7 +217,7 @@ func LoadState(filePath string, db *Dashboard, req *Request) error {
 	if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr != nil {
 		return fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
-	if restoreErr := db.RestoreState(state.Dashboard); restoreErr != nil {
+	if restoreErr := dashboard.RestoreState(state.Dashboard); restoreErr != nil {
 		return fmt.Errorf("load state: %w", restoreErr)
 	}
 	req.RestoreState(state.Request)

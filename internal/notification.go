@@ -92,7 +92,7 @@ func (notify *Notify) emitRarityWithToggles(rareSighting *RareSighting, toggles 
 	}
 
 	sighting := rareSighting.Sighting
-	switch rarityFlag {
+	switch rarityFlag { //nolint:exhaustive // By definition noFlag is false when this is called.
 	case RareType:
 		notify.Stdout.Printf("found rare type %sighting\n", sighting.info)
 		notifyRareType(sighting)
