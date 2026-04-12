@@ -24,12 +24,12 @@ type Theme struct {
 func getDefaultTheme() Theme {
 	return Theme{
 		Primary: lipgloss.AdaptiveColor{
-			Light: "#000000",
-			Dark:  "#FFFFFF",
+			Light: "0",  // black for light terminals
+			Dark:  "15", // bright white for dark terminals
 		},
-		Secondary: lipgloss.Color("8"),  // bright black / gray
-		Muted:     lipgloss.Color("13"), // bright magenta — key labels
-		Highlight: lipgloss.Color("5"),  // selection bg (palette slot; theme-mapped)
-		Border:    lipgloss.Color("8"),
+		Secondary: lipgloss.Color("7"),  // white
+		Muted:     lipgloss.Color("6"),  // cyan — key labels
+		Highlight: lipgloss.Color("10"), // blue — selection bg
+		Border:    lipgloss.Color("8"),  // bright black / gray
 	}
 }
