@@ -8,7 +8,11 @@ import (
 	"github.com/micutio/airspottr/internal"
 )
 
-const aircraftColumnCount = 8
+const (
+	aircraftColumnCount = 8
+	groundAltitudeZone  = -1000
+	infinity            = 1e9
+)
 
 // Base titles (sort arrows appended in applyAircraftSortHeaders).
 var aircraftColumnTitles = [aircraftColumnCount]string{ //nolint:gochecknoglobals // TODO: Fix
@@ -63,14 +67,12 @@ func routeFor(db *internal.Dashboard, ac *internal.AircraftRecord) *internal.Fli
 	return r
 }
 
-func altitudeSortKey(ac *internal.AircraftRecord) float64 {
-	ground := -1000.0
-	infinity := 1e9
-	if n, ok := ac.AltBaro.(float64); ok {
+func altitudeSortKey(aircraftRecord *internal.AircraftRecord) float64 {
+	if n, ok := aircraftRecord.AltBaro.(float64); ok {
 		return n
 	}
-	if s, ok := ac.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
-		return ground
+	if s, ok := aircraftRecord.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
+		return groundAltitudeZone
 	}
 	return infinity
 }
@@ -186,6 +188,7 @@ func (m *model) cycleSortColumn(dir int) {
 		m.aircraftSortCol = (m.aircraftSortCol + dir + aircraftColumnCount) % aircraftColumnCount
 	} else {
 		idx := m.selectedRarityIdx
+		//nolint:mnd // Don't care about this magic number.
 		m.raritySortCol[idx] = (m.raritySortCol[idx] + dir + 2) % 2
 	}
 	m.updateAllTables()
