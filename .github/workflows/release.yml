@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ matrix.img }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
       - run: go test ./...
@@ -79,7 +79,7 @@ jobs:
     runs-on: ${{ matrix.img }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
       - env:
