@@ -40,7 +40,7 @@ jobs:
             ext: ".exe"
     runs-on: ${{ matrix.img }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
@@ -78,7 +78,7 @@ jobs:
             ext: ".exe"
     runs-on: ${{ matrix.img }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
@@ -97,7 +97,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
         with:
           path: all-artifacts
