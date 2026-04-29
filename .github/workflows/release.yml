@@ -86,8 +86,7 @@ jobs:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
         run: |
-          ext="${{ matrix.ext }}"
-          go build -ldflags="-s -w" -o "airspottr-${{ matrix.os }}-${{ matrix.arch }}${ext}" .
+          go build -ldflags="-s -w" -o "airspottr-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}" .
       - uses: actions/upload-artifact@v4
         with:
           name: airspottr-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
