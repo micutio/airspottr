@@ -103,7 +103,7 @@ jobs:
           pattern: bin-* # Grabs all build outputs
           merge-multiple: true
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: all-binaries/*
           generate_release_notes: true
