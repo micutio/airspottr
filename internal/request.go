@@ -24,10 +24,10 @@ const (
 	// DashboardWarmup determines how long to 'warm up' before showing rarity reports.
 	DashboardWarmup = 1 * time.Hour
 
-	aircraftReqHost    = "opendata.adsb.fi"
-	flightrouteReqHost = "api.adsbdb.com"
-
-	requestTimeout = 25 * time.Second
+	reqHostAircraft    = "opendata.adsb.fi"
+	reqHostFlightroute = "api.adsbdb.com"
+	reqProtocolHTTPS   = "https"
+	reqTimeout         = 25 * time.Second
 	// FlightRouteQueryThreshold limits the number of concurrent flight route queries to avoid overwhelming the server.
 	FlightRouteQueryThreshold = 10
 	// UrlAdsbOne         = "https://api.adsb.one/v2/point/%.6f/%.6f/%d"
@@ -64,7 +64,7 @@ func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
 	}
 
 	client := &http.Client{
-		Timeout: requestTimeout,
+		Timeout: reqTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{ //nolint:exhaustruct // too large
 				MinVersion: tls.VersionTLS13,
@@ -90,7 +90,7 @@ func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
 func createAircraftReqURL(opts RequestOptions) (string, error) {
 	latStr := strconv.FormatFloat(opts.Lat, 'f', 6, 32)
 	lonStr := strconv.FormatFloat(opts.Lon, 'f', 6, 32)
-	baseURL := &url.URL{Scheme: "https", Host: aircraftReqHost}
+	baseURL := &url.URL{Scheme: reqProtocolHTTPS, Host: reqHostAircraft}
 	fullURL := baseURL.JoinPath("api", "v2", "lat", latStr, "lon", lonStr, "dist", "250")
 	targetURL := fullURL.String()
 	validatedURL, valErr := validateURL(targetURL)
@@ -102,11 +102,11 @@ func createAircraftReqURL(opts RequestOptions) (string, error) {
 
 func validateURL(targetURL string) (string, error) {
 	parsed, err := url.Parse(targetURL)
-	if err != nil || parsed.Scheme != "https" {
+	if err != nil || parsed.Scheme != reqProtocolHTTPS {
 		return "", ErrInvalidURL
 	}
 
-	if parsed.Host != aircraftReqHost && parsed.Host != flightrouteReqHost {
+	if parsed.Host != reqHostAircraft && parsed.Host != reqHostFlightroute {
 		return "", ErrUnauthorizedHost
 	}
 
@@ -145,10 +145,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	)
 
 	// Determine how many to process this time
-	toProcess := FlightRouteQueryThreshold
-	if len(r.pendingCallsigns) < toProcess {
-		toProcess = len(r.pendingCallsigns)
-	}
+	toProcess := min(len(r.pendingCallsigns), FlightRouteQueryThreshold)
 
 	// Take the first 'toProcess' callsigns from the queue
 	selectedCallsigns := make([]string, toProcess)
@@ -225,7 +222,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 }
 
 func createFlightRouteRequestURL(callsign string) (string, error) {
-	baseURL := &url.URL{Scheme: "https", Host: flightrouteReqHost}
+	baseURL := &url.URL{Scheme: reqProtocolHTTPS, Host: reqHostFlightroute}
 	fullURL := baseURL.JoinPath("v0", "callsign", strings.TrimSpace(callsign))
 	targetURL := fullURL.String()
 	validatedURL, valErr := validateURL(targetURL)

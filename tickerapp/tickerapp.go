@@ -106,7 +106,7 @@ func (app *TickerApp) start() {
 			case <-summaryTicker.C:
 				app.notify.PrintSummary(app.dashboard)
 			case <-app.done:
-				slog.Info("Stopping HTTP GET request routine.")
+				app.logger.Info("Stopping HTTP GET request routine.")
 				return
 			}
 		}
