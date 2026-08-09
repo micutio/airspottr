@@ -6,6 +6,7 @@ import (
 	"log" //nolint:depguard // Don't feel like using slog
 
 	"github.com/gen2brain/beeep"
+	obs "github.com/micutio/airspottr/domain/observation"
 )
 
 const (
@@ -247,7 +248,7 @@ func notifyRareTypeOperatorCountry(sighting *AircraftSighting) {
 
 // aircraftToString generates a one-liner consisting of the most relevant information about the
 // given aircraft.
-func aircraftToString(aircraft *AircraftRecord) string {
+func aircraftToString(aircraft *obs.AircraftRecord) string {
 	flight := aircraft.GetFlightNoAsStr()
 	altitude := aircraft.GetAltitudeAsStr()
 	var aType string

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	obs "github.com/micutio/airspottr/domain/observation"
 )
 
 const stateFileName = "airspottr_state.json"
@@ -34,7 +36,7 @@ type dashboardState struct {
 	IsWarmup           bool                                 `json:"is_warmup"`
 	Lat                float64                              `json:"lat"`
 	Lon                float64                              `json:"lon"`
-	CurrentAircraft    []AircraftRecord                     `json:"current_aircraft"`
+	CurrentAircraft    []obs.AircraftRecord                 `json:"current_aircraft"`
 	RareSightings      []persistedRareSighting              `json:"rare_sightings"`
 	CachedFlightRoutes map[string]*FlightRouteRecord        `json:"cached_flight_routes"`
 	AircraftSightings  map[string]persistedAircraftSighting `json:"aircraft_sightings"`

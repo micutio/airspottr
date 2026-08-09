@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
+	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
 )
 
@@ -59,7 +60,7 @@ func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool)
 	tbl.SetColumns(cols)
 }
 
-func routeFor(db *internal.Dashboard, ac *internal.AircraftRecord) *internal.FlightRouteRecord {
+func routeFor(db *internal.Dashboard, ac *obs.AircraftRecord) *internal.FlightRouteRecord {
 	r, ok := db.CachedFlightRoutes[ac.GetFlightNoAsStr()]
 	if !ok {
 		return internal.GetDefaultFlightrouteRecord()
@@ -67,7 +68,7 @@ func routeFor(db *internal.Dashboard, ac *internal.AircraftRecord) *internal.Fli
 	return r
 }
 
-func altitudeSortKey(aircraftRecord *internal.AircraftRecord) float64 {
+func altitudeSortKey(aircraftRecord *obs.AircraftRecord) float64 {
 	if n, ok := aircraftRecord.AltBaro.(float64); ok {
 		return n
 	}
@@ -79,7 +80,7 @@ func altitudeSortKey(aircraftRecord *internal.AircraftRecord) float64 {
 
 // compareAircraftAscending reports whether a should sort before b (ascending).
 func compareAircraftAscending(
-	recordA, recordB *internal.AircraftRecord,
+	recordA, recordB *obs.AircraftRecord,
 	col int,
 	dashboard *internal.Dashboard,
 ) bool {
@@ -135,8 +136,8 @@ func compareAircraftAscending(
 	return recordA.Hex < recordB.Hex
 }
 
-func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc bool) []internal.AircraftRecord {
-	var rows []internal.AircraftRecord
+func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc bool) []obs.AircraftRecord {
+	var rows []obs.AircraftRecord
 	for _, ac := range dashboard.CurrentAircraft {
 		aircraftType := dashboard.IcaoToAircraft[ac.IcaoType].Make
 		if ac.GetFlightNoAsStr() == "" && aircraftType == "" {
@@ -204,7 +205,7 @@ func (m *model) toggleSortDirection() {
 	m.updateAllTables()
 }
 
-func buildAircraftRows(db *internal.Dashboard, records []internal.AircraftRecord) []table.Row {
+func buildAircraftRows(db *internal.Dashboard, records []obs.AircraftRecord) []table.Row {
 	rows := make([]table.Row, 0, len(records))
 	for i := range records {
 		ac := &records[i]

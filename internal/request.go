@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	obs "github.com/micutio/airspottr/domain/observation"
 )
 
 const (
@@ -113,22 +115,22 @@ func validateURL(targetURL string) (string, error) {
 	return targetURL, nil
 }
 
-func (r *Request) RequestAircraft() []AircraftRecord {
+func (r *Request) RequestAircraft() []obs.AircraftRecord {
 	body, requestErr := r.sendRequest(r.aircraftReqURL)
 	if requestErr != nil {
 		r.errOut.Println(fmt.Errorf("RequestAircraft: error during request: %w", requestErr))
-		return []AircraftRecord{}
+		return []obs.AircraftRecord{}
 	}
 
-	var data aircraftResult
+	var data obs.AircraftResult
 	if err := json.Unmarshal(body, &data); err != nil {
 		r.errOut.Println(fmt.Errorf("RequestAircraft: failed to unmarshal Json: %w", err))
-		return []AircraftRecord{}
+		return []obs.AircraftRecord{}
 	}
 
 	foundAircraftCount := len(data.Aircraft)
 	if foundAircraftCount == 0 {
-		return []AircraftRecord{} // Valid outcome, no need to log an error.
+		return []obs.AircraftRecord{} // Valid outcome, no need to log an error.
 	}
 
 	return data.Aircraft

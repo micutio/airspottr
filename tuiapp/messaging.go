@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
 )
 
@@ -29,7 +30,7 @@ func aircraftQueryTick() tea.Cmd {
 	)
 }
 
-type AircraftResponseMsg []internal.AircraftRecord
+type AircraftResponseMsg []obs.AircraftRecord
 
 func requestAircraftDataCmd(request *internal.Request) tea.Cmd {
 	return func() tea.Msg {

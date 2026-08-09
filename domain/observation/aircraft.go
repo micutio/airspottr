@@ -9,8 +9,24 @@ import (
 // See https://www.adsbexchange.com/version-2-api-wip/
 // for further explanations of the fields
 
-// aircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.
-type aircraftResult struct {
+const (
+	// AltitudeUnknown is what we use for aircraft without a given altitude.
+	AltitudeUnknown = "  n/a"
+	// FlightUnknown is what we use for aircraft with missing Flight number.
+	// Note: we're adding space at the end to have a length that is consistent with ICAO codes.
+	FlightUnknown = "unknown "
+	// FlightUnknownCode is a sentinel code we use for aircraft with missing Flight number.
+	FlightUnknownCode = "n/a"
+	// TypeUnknown is what we use for aircraft with a type that's either empty or can't be found.
+	TypeUnknown = "unknown"
+	// OperatorUnknown is what we use for aircraft with a type that's either empty or can't be found.
+	OperatorUnknown = "unknown"
+	// CountryUnknown is what we use for aircraft with a type that's either empty or can't be found.
+	CountryUnknown = "unknown"
+)
+
+// AircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.
+type AircraftResult struct {
 	Now         float64          `json:"now"`         // time this file was generated in [ms]
 	ResultCount int              `json:"resultCount"` // total count of aircraft returned
 	Ptime       float64          `json:"ptime"`       // server processing time required in [ms]
@@ -99,14 +115,14 @@ func (ac *AircraftRecord) GetAltitudeAsStr() string {
 		return str
 	}
 
-	return altitudeUnknown
+	return AltitudeUnknown
 }
 
 // GetFlightNoAsStr converts the Flight number to a string.
 // Returns either the full Flight number or 'unknown ' if it was not transmitted.
 func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	if ac.Flight == "" {
-		return flightUnknown
+		return FlightUnknown
 	}
 
 	return strings.TrimSpace(ac.Flight)
@@ -117,7 +133,7 @@ func (ac *AircraftRecord) GetFlightNoAsStr() string {
 // for military, government and private flights.
 func (ac *AircraftRecord) GetFlightNoAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
-		return flightUnknownCode
+		return FlightUnknownCode
 	}
 
 	return stripDigits(strings.TrimSpace(ac.Flight))

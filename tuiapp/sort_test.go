@@ -3,6 +3,7 @@ package tuiapp
 import (
 	"testing"
 
+	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
 	"github.com/micutio/airspottr/internal/dash"
 )
@@ -10,7 +11,7 @@ import (
 func TestFilteredSortedAircraftByDistance(t *testing.T) {
 	t.Parallel()
 	dashboard := &internal.Dashboard{ //nolint:exhaustruct // just for testing
-		CurrentAircraft: []internal.AircraftRecord{
+		CurrentAircraft: []obs.AircraftRecord{
 			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
 			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
 		},

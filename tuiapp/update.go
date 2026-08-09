@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
 )
 
@@ -29,7 +30,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 
 func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
-	aircraftRecords := []internal.AircraftRecord(msg)
+	aircraftRecords := []obs.AircraftRecord(msg)
 	m.dashboard.ProcessAircraftRecords(aircraftRecords)
 	m.notify.EmitRarityNotifications(m.dashboard.RareSightings, internal.RarityNotifyToggles{
 		Type:     m.notifyOnType,
