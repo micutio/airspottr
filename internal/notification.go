@@ -66,55 +66,55 @@ func (notify *Notify) EmitRarityNotifications(sightings []RareSighting, toggles 
 }
 
 func (notify *Notify) emitRarityWithToggles(rareSighting *RareSighting, toggles RarityNotifyToggles) {
-	if rareSighting.Rarities == NoRarity || rareSighting.Sighting == nil {
+	if rareSighting.Rarities == obs.NoRarity || rareSighting.Sighting == nil {
 		return
 	}
 	f := rareSighting.Rarities
-	hasT := f&RareType != 0
-	hasO := f&RareOperator != 0
-	hasC := f&RareCountry != 0
+	hasT := f&obs.RareType != 0
+	hasO := f&obs.RareOperator != 0
+	hasC := f&obs.RareCountry != 0
 
 	toggleType := toggles.Type && hasT
 	toggleOperator := toggles.Operator && hasO
 	toggleCountry := toggles.Country && hasC
 
-	rarityFlag := RarityFlag(0)
+	rarityFlag := obs.RarityFlag(0)
 	if toggleType {
-		rarityFlag |= RareType
+		rarityFlag |= obs.RareType
 	}
 	if toggleOperator {
-		rarityFlag |= RareOperator
+		rarityFlag |= obs.RareOperator
 	}
 	if toggleCountry {
-		rarityFlag |= RareCountry
+		rarityFlag |= obs.RareCountry
 	}
-	if rarityFlag == NoRarity {
+	if rarityFlag == obs.NoRarity {
 		return
 	}
 
 	sighting := rareSighting.Sighting
 	switch rarityFlag { //nolint:exhaustive // By definition noFlag is false when this is called.
-	case RareType:
+	case obs.RareType:
 		notify.Stdout.Printf("found rare type %sighting\n", sighting.info)
 		notifyRareType(sighting)
-	case RareOperator:
+	case obs.RareOperator:
 		notify.Stdout.Printf("found rare operator: %sighting\n", sighting.operator)
 		notifyRareOperator(sighting)
-	case RareType | RareOperator:
+	case obs.RareType | obs.RareOperator:
 		notify.Stdout.Printf(
 			"found rare type and operator: %sighting run by %sighting\n", sighting.info, sighting.operator)
 		notifyRareTypeAndOperator(sighting)
-	case RareCountry:
+	case obs.RareCountry:
 		notify.Stdout.Printf("found rare country: %sighting\n", sighting.country)
 		notifyRareCountry(sighting)
-	case RareType | RareCountry:
+	case obs.RareType | obs.RareCountry:
 		notify.Stdout.Printf("found rare type and country: %sighting -> %sighting\n", sighting.info, sighting.country)
 		notifyRareTypeAndCountry(sighting)
-	case RareOperator | RareCountry:
+	case obs.RareOperator | obs.RareCountry:
 		notify.Stdout.Printf(
 			"found rare operator and country: %sighting -> %sighting\n", sighting.operator, sighting.country)
 		notifyRareOperatorAndCountry(sighting)
-	case RareType | RareOperator | RareCountry:
+	case obs.RareType | obs.RareOperator | obs.RareCountry:
 		notify.Stdout.Printf(
 			"found the TRIFECTA: %sighting -> %sighting -> %sighting\n",
 			sighting.info,

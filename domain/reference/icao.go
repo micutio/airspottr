@@ -1,4 +1,4 @@
-package dash
+package reference
 
 import (
 	"encoding/csv"

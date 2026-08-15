@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	obs "github.com/micutio/airspottr/domain/observation"
 )
 
 func TestSaveAndLoadState(t *testing.T) {
@@ -56,7 +58,7 @@ func TestSaveAndLoadState(t *testing.T) {
 		flightroute:  GetDefaultFlightrouteRecord(),
 	}
 	dashboard.aircraftSightings["ABC123"] = sighting
-	dashboard.RareSightings = []RareSighting{{Rarities: RareType, Sighting: sighting}}
+	dashboard.RareSightings = []RareSighting{{Rarities: obs.RareType, Sighting: sighting}}
 
 	request.pendingCallsignsMu.Lock()
 	request.pendingCallsigns = []string{"TEST123", "OTHER456"}

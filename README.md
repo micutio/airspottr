@@ -17,6 +17,8 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 ## TODO
 
 - [ ] allow tracking individual aircraft
+- [ ] separate history per location
+- [ ] option to clear history
 - [x] show total uptime in summaries
 - [x] show location in TUI and maybe ticker output
 - [x] TUI checkboxes to toggle notifications for type/operator/country individually

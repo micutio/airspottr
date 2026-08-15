@@ -49,8 +49,8 @@ type dashboardState struct {
 }
 
 type persistedRareSighting struct {
-	Rarities RarityFlag `json:"rarities"`
-	Hex      string     `json:"hex"`
+	Rarities obs.RarityFlag `json:"rarities"`
+	Hex      string         `json:"hex"`
 }
 
 type persistedAircraftSighting struct {

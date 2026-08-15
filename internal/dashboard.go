@@ -13,7 +13,7 @@ import (
 	"time"
 
 	obs "github.com/micutio/airspottr/domain/observation"
-	"github.com/micutio/airspottr/internal/dash"
+	ref "github.com/micutio/airspottr/domain/reference"
 )
 
 // Errors used by the Dashboard.
@@ -41,10 +41,10 @@ type Dashboard struct {
 	SeenTypeCount      map[string]int // types mapped to how often seen
 	SeenOperatorCount  map[string]int // airlines mapped to how often seen
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
-	IcaoToAircraft     map[string]dash.IcaoAircraft
-	IcaoToAirline      map[string]dash.IcaoOperator
+	IcaoToAircraft     map[string]ref.IcaoAircraft
+	IcaoToAirline      map[string]ref.IcaoOperator
 	regPrefixToCountry map[string]string
-	hexRangeToCountry  map[dash.HexRange]string
+	hexRangeToCountry  map[ref.HexRange]string
 	milCodeToOperator  map[string]string
 	errOut             log.Logger
 }
@@ -52,27 +52,27 @@ type Dashboard struct {
 func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, error) {
 	const initError = "newDashboard: %w caused by %w"
 
-	icaoToAircraftMap, aircraftErr := dash.GetIcaoToAircraftMap()
+	icaoToAircraftMap, aircraftErr := ref.GetIcaoToAircraftMap()
 	if aircraftErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAircraftMap, aircraftErr)
 	}
 
-	icaoToAirlineMap, airlineErr := dash.GetIcaoToAirlineMap()
+	icaoToAirlineMap, airlineErr := ref.GetIcaoToAirlineMap()
 	if airlineErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAirlineMap, airlineErr)
 	}
 
-	regPrefixToCountryMap, regErr := dash.GetRegPrefixMap()
+	regPrefixToCountryMap, regErr := ref.GetRegPrefixMap()
 	if regErr != nil {
 		return nil, fmt.Errorf(initError, errParseRegToCountryMap, regErr)
 	}
 
-	hexRangeToCountryMap, hexRangeErr := dash.GetHexRangeToCountryMap()
+	hexRangeToCountryMap, hexRangeErr := ref.GetHexRangeToCountryMap()
 	if hexRangeErr != nil {
 		return nil, fmt.Errorf(initError, errParseHexRangeToCountryMap, hexRangeErr)
 	}
 
-	milCodeToOperatorMap, milCodeErr := dash.GetMilCodeToOperatorMap()
+	milCodeToOperatorMap, milCodeErr := ref.GetMilCodeToOperatorMap()
 	if milCodeErr != nil {
 		return nil, fmt.Errorf(initError, errParseMilCodeMap, milCodeErr)
 	}
@@ -117,7 +117,7 @@ func (db *Dashboard) FinishWarmupPeriod() {
 func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord) {
 	db.CurrentAircraft = aircraftRecords
 	sort.Sort(obs.ByFlight(db.CurrentAircraft))
-	thisPos := dash.NewCoordinates(db.Lat, db.Lon)
+	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
 	var rareSightings []RareSighting
 
 	for idx := range len(db.CurrentAircraft) {
@@ -165,16 +165,16 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		}
 
 		// Update distance
-		acPos := dash.NewCoordinates(aircraft.Lat, aircraft.Lon)
-		(db.CurrentAircraft)[idx].CachedDist = dash.Distance(thisPos, acPos).Kilometers()
-		aircraft.CachedDist = dash.Distance(thisPos, acPos).Kilometers()
+		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
+		(db.CurrentAircraft)[idx].CachedDist = ref.Distance(thisPos, acPos).Kilometers()
+		aircraft.CachedDist = ref.Distance(thisPos, acPos).Kilometers()
 		sighting.distance = aircraft.CachedDist
 
 		// Update all aircraft, type, operator and country statistics
 		db.updateHighest(aircraft)
 		db.updateFastest(aircraft)
 
-		newRarities := NoRarity
+		newRarities := obs.NoRarity
 		rareTypeFlag := db.updateType(sighting, aircraft, isNewFlight)
 		rareOperatorFlag := db.updateOperator(sighting, aircraft, isNewFlight)
 		rareCountryFlag := db.updateCountry(sighting, aircraft, isNewFlight)
@@ -183,7 +183,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		newRarities |= rareOperatorFlag << 1
 		newRarities |= rareCountryFlag << 2 //nolint:mnd // okay for bit shifting
 
-		if newRarities != NoRarity {
+		if newRarities != obs.NoRarity {
 			rareSightings = append(rareSightings, RareSighting{
 				Rarities: newRarities,
 				Sighting: sighting,
@@ -201,7 +201,7 @@ func (db *Dashboard) updateType(
 	sighting *AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
-) RarityFlag {
+) obs.RarityFlag {
 	if sighting.typeShort == "" && aircraft.Description != "" {
 		sighting.typeShort = aircraft.Description
 	}
@@ -227,7 +227,7 @@ func (db *Dashboard) updateType(
 	thisTypeCountNew := db.SeenTypeCount[aType] + 1
 	db.SeenTypeCount[aType] = thisTypeCountNew
 	db.totalTypeCount++
-	rarityThreshold := math.Log(float64(db.totalTypeCount)) - RarityConstant
+	rarityThreshold := math.Log(float64(db.totalTypeCount)) - obs.RarityConstant
 	isRareType := float64(thisTypeCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -267,7 +267,7 @@ func (db *Dashboard) updateOperator(
 	sighting *AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
-) RarityFlag {
+) obs.RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
 	if sighting.operator != obs.OperatorUnknown && !isNewFlight {
 		return 0
@@ -306,7 +306,7 @@ func (db *Dashboard) updateOperator(
 	thisOperatorCountNew := db.SeenOperatorCount[sighting.operator] + 1
 	db.SeenOperatorCount[sighting.operator] = thisOperatorCountNew
 	db.totalOperatorCount++
-	rarityThreshold := math.Log(float64(db.totalOperatorCount)) - RarityConstant
+	rarityThreshold := math.Log(float64(db.totalOperatorCount)) - obs.RarityConstant
 	isRareOperator := float64(thisOperatorCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -335,7 +335,7 @@ func (db *Dashboard) updateCountry(
 	sighting *AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
-) RarityFlag {
+) obs.RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
 	if sighting.country != obs.CountryUnknown && !isNewFlight {
 		return 0
@@ -374,7 +374,7 @@ func (db *Dashboard) updateCountry(
 	thisCountryCountNew := db.SeenCountryCount[sighting.country] + 1
 	db.SeenCountryCount[sighting.country] = thisCountryCountNew
 	db.totalCountryCount++
-	rarityThreshold := math.Log(float64(db.totalCountryCount)) - RarityConstant
+	rarityThreshold := math.Log(float64(db.totalCountryCount)) - obs.RarityConstant
 	isRareCountry := float64(thisCountryCountNew) < rarityThreshold
 
 	// db.logger.Debug(

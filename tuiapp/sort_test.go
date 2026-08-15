@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	obs "github.com/micutio/airspottr/domain/observation"
+	ref "github.com/micutio/airspottr/domain/reference"
 	"github.com/micutio/airspottr/internal"
-	"github.com/micutio/airspottr/internal/dash"
 )
 
 func TestFilteredSortedAircraftByDistance(t *testing.T) {
@@ -15,7 +15,7 @@ func TestFilteredSortedAircraftByDistance(t *testing.T) {
 			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
 			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
 		},
-		IcaoToAircraft: map[string]dash.IcaoAircraft{},
+		IcaoToAircraft: map[string]ref.IcaoAircraft{},
 	}
 	out := filteredSortedAircraft(dashboard, 0, false) // DST asc
 	if len(out) != 2 {
