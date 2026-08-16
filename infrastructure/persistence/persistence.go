@@ -9,6 +9,7 @@ import (
 	"time"
 
 	obs "github.com/micutio/airspottr/domain/observation"
+	adsb "github.com/micutio/airspottr/infrastructure/adsb"
 )
 
 const stateFileName = "airspottr_state.json"
@@ -38,7 +39,7 @@ type dashboardState struct {
 	Lon                float64                              `json:"lon"`
 	CurrentAircraft    []obs.AircraftRecord                 `json:"current_aircraft"`
 	RareSightings      []persistedRareSighting              `json:"rare_sightings"`
-	CachedFlightRoutes map[string]*FlightRouteRecord        `json:"cached_flight_routes"`
+	CachedFlightRoutes map[string]*adsb.FlightRouteRecord   `json:"cached_flight_routes"`
 	AircraftSightings  map[string]persistedAircraftSighting `json:"aircraft_sightings"`
 	TotalTypeCount     int                                  `json:"total_type_count"`
 	TotalOperatorCount int                                  `json:"total_operator_count"`
@@ -54,27 +55,27 @@ type persistedRareSighting struct {
 }
 
 type persistedAircraftSighting struct {
-	LastSeen     time.Time          `json:"last_seen"`
-	LastFlightNo string             `json:"last_flight_no"`
-	Registration string             `json:"registration"`
-	Latitude     float64            `json:"latitude"`
-	Longitude    float64            `json:"longitude"`
-	Direction    string             `json:"direction"`
-	Distance     float64            `json:"distance"`
-	TypeShort    string             `json:"type_short"`
-	TypeDesc     string             `json:"type_desc"`
-	Operator     string             `json:"operator"`
-	Country      string             `json:"country"`
-	Info         string             `json:"info"`
-	Flightroute  *FlightRouteRecord `json:"flightroute"`
+	LastSeen     time.Time               `json:"last_seen"`
+	LastFlightNo string                  `json:"last_flight_no"`
+	Registration string                  `json:"registration"`
+	Latitude     float64                 `json:"latitude"`
+	Longitude    float64                 `json:"longitude"`
+	Direction    string                  `json:"direction"`
+	Distance     float64                 `json:"distance"`
+	TypeShort    string                  `json:"type_short"`
+	TypeDesc     string                  `json:"type_desc"`
+	Operator     string                  `json:"operator"`
+	Country      string                  `json:"country"`
+	Info         string                  `json:"info"`
+	Flightroute  *adsb.FlightRouteRecord `json:"flightroute"`
 }
 
 type requestState struct {
 	PendingCallsigns []string `json:"pending_callsigns"`
 }
 
-func (s *persistedAircraftSighting) toAircraftSighting() *AircraftSighting {
-	return &AircraftSighting{
+func (s *persistedAircraftSighting) toAircraftSighting() *obs.AircraftSighting {
+	return &obs.AircraftSighting{
 		lastSeen:     s.LastSeen,
 		lastFlightNo: s.LastFlightNo,
 		registration: s.Registration,
@@ -91,7 +92,7 @@ func (s *persistedAircraftSighting) toAircraftSighting() *AircraftSighting {
 	}
 }
 
-func (s *AircraftSighting) persisted() persistedAircraftSighting {
+func (s *obs.AircraftSighting) persisted() persistedAircraftSighting {
 	return persistedAircraftSighting{
 		LastSeen:     s.lastSeen,
 		LastFlightNo: s.lastFlightNo,

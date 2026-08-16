@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/micutio/airspottr/internal"
+	adsb "github.com/micutio/airspottr/infrastructure/adsb"
 	"github.com/micutio/airspottr/tickerapp"
 	"github.com/micutio/airspottr/tuiapp"
 	"github.com/spf13/pflag"
@@ -33,7 +33,7 @@ func main() {
 		argLatLon = val
 	}
 
-	options := internal.RequestOptions{
+	options := adsb.RequestOptions{
 		Lat: argLatLon[0],
 		Lon: argLatLon[1],
 	}

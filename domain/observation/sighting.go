@@ -1,10 +1,8 @@
-package internal
+package observation
 
 import (
 	"math"
 	"time"
-
-	obs "github.com/micutio/airspottr/domain/observation"
 )
 
 const (
@@ -106,7 +104,7 @@ type AircraftSighting struct {
 
 // RareSighting combines an aircraft sighting with a rarity flag.
 type RareSighting struct {
-	Rarities obs.RarityFlag
+	Rarities RarityFlag
 	Sighting *AircraftSighting
 }
 
