@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/airspottr/internal"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 // model implements tea.Model (Init, Update, View).
@@ -30,10 +31,10 @@ type model struct {
 	uiState    uiState
 	startTime  time.Time
 	lastUpdate time.Time
-	request    *internal.Request
+	request    *adsb.Request
 	dashboard  *internal.Dashboard
 	notify     *internal.Notify
-	options    internal.RequestOptions
+	options    adsb.RequestOptions
 
 	inputFocus      inputFocus
 	notifyStripIdx  int // 0=type, 1=operator, 2=country when focusNotifyStrip

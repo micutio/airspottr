@@ -7,7 +7,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/airspottr/internal"
+	internal "github.com/micutio/airspottr/internal"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 const errLogFilePath = "./airspottr.log"
@@ -23,10 +25,10 @@ func setupLogger() (*os.File, error) {
 
 // setupRequestAndDashboard initializes the dashboard and notification system.
 func setupRequestAndDashboard(
-	requestOptions internal.RequestOptions,
+	requestOptions adsb.RequestOptions,
 	errWriter io.Writer,
-) (*internal.Request, *internal.Dashboard, error) {
-	request, reqErr := internal.NewRequest(requestOptions, &errWriter)
+) (*adsb.Request, *internal.Dashboard, error) {
+	request, reqErr := adsb.NewRequest(requestOptions, &errWriter)
 	if reqErr != nil {
 		return nil, nil, fmt.Errorf("failed to create request: %w", reqErr)
 	}
@@ -36,7 +38,7 @@ func setupRequestAndDashboard(
 		return nil, nil, fmt.Errorf("failed to create dashboard: %w", dbErr)
 	}
 
-	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
+	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
 		return nil, nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
 	}
 

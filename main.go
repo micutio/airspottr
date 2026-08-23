@@ -2,7 +2,7 @@
 package main
 
 import (
-	adsb "github.com/micutio/airspottr/infrastructure/adsb"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/tickerapp"
 	"github.com/micutio/airspottr/tuiapp"
 	"github.com/spf13/pflag"

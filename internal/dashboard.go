@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	obs "github.com/micutio/airspottr/domain/observation"
-	ref "github.com/micutio/airspottr/domain/reference"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 // Errors used by the Dashboard.
@@ -26,27 +26,27 @@ var (
 )
 
 type Dashboard struct {
-	isWarmup           bool
+	IsWarmup           bool
 	Lat                float64
 	Lon                float64
 	Fastest            *obs.AircraftRecord
 	Highest            *obs.AircraftRecord
 	CurrentAircraft    []obs.AircraftRecord
-	RareSightings      []RareSighting
-	CachedFlightRoutes map[string]*FlightRouteRecord
-	aircraftSightings  map[string]*AircraftSighting // set of all seen aircraft, maps hex to last seen time
-	totalTypeCount     int
-	totalOperatorCount int
-	totalCountryCount  int
+	RareSightings      []obs.RareSighting
+	CachedFlightRoutes map[string]*ref.FlightRouteRecord
+	AircraftSightings  map[string]*obs.AircraftSighting // set of all seen aircraft, maps hex to last seen time
+	TotalTypeCount     int
+	TotalOperatorCount int
+	TotalCountryCount  int
 	SeenTypeCount      map[string]int // types mapped to how often seen
 	SeenOperatorCount  map[string]int // airlines mapped to how often seen
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
 	IcaoToAircraft     map[string]ref.IcaoAircraft
 	IcaoToAirline      map[string]ref.IcaoOperator
-	regPrefixToCountry map[string]string
-	hexRangeToCountry  map[ref.HexRange]string
-	milCodeToOperator  map[string]string
-	errOut             log.Logger
+	RegPrefixToCountry map[string]string
+	HexRangeToCountry  map[ref.HexRange]string
+	MilCodeToOperator  map[string]string
+	ErrOut             log.Logger
 }
 
 func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, error) {
@@ -78,36 +78,36 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 	}
 
 	dashboard := Dashboard{
-		isWarmup:           true,
+		IsWarmup:           true,
 		Lat:                lat,
 		Lon:                lon,
 		Fastest:            nil,
 		Highest:            nil,
 		CurrentAircraft:    nil,
 		RareSightings:      nil,
-		CachedFlightRoutes: make(map[string]*FlightRouteRecord),
-		aircraftSightings:  make(map[string]*AircraftSighting),
-		totalTypeCount:     0,
-		totalOperatorCount: 0,
-		totalCountryCount:  0,
+		CachedFlightRoutes: make(map[string]*ref.FlightRouteRecord),
+		AircraftSightings:  make(map[string]*obs.AircraftSighting),
+		TotalTypeCount:     0,
+		TotalOperatorCount: 0,
+		TotalCountryCount:  0,
 		SeenTypeCount:      make(map[string]int),
 		SeenOperatorCount:  make(map[string]int),
 		SeenCountryCount:   make(map[string]int),
 		IcaoToAircraft:     icaoToAircraftMap,
 		IcaoToAirline:      icaoToAirlineMap,
-		regPrefixToCountry: regPrefixToCountryMap,
-		hexRangeToCountry:  hexRangeToCountryMap,
-		milCodeToOperator:  milCodeToOperatorMap,
-		errOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
+		RegPrefixToCountry: regPrefixToCountryMap,
+		HexRangeToCountry:  hexRangeToCountryMap,
+		MilCodeToOperator:  milCodeToOperatorMap,
+		ErrOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
 
-	dashboard.errOut.Println("Dashboard init")
+	dashboard.ErrOut.Println("Dashboard init")
 
 	return &dashboard, nil
 }
 
 func (db *Dashboard) FinishWarmupPeriod() {
-	db.isWarmup = false
+	db.IsWarmup = false
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 	db.CurrentAircraft = aircraftRecords
 	sort.Sort(obs.ByFlight(db.CurrentAircraft))
 	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
-	var rareSightings []RareSighting
+	var rareSightings []obs.RareSighting
 
 	for idx := range len(db.CurrentAircraft) {
 		// Get aircraft and time of sighting
@@ -127,48 +127,48 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
 		// Retrieve previous sighting or create new one.
-		sighting, exists := db.aircraftSightings[aircraft.Hex]
+		sighting, exists := db.AircraftSightings[aircraft.Hex]
 		if !exists {
-			sighting = &AircraftSighting{
-				lastSeen:     lastSeenTime,
-				lastFlightNo: obs.FlightUnknown,
-				registration: aircraft.Registration,
-				latitude:     aircraft.Lat,
-				longitude:    aircraft.Lon,
-				direction:    getDirection(db.Lat, db.Lon, aircraft.Lat, aircraft.Lon),
-				distance:     math.MaxInt,
-				typeShort:    "",
-				typeDesc:     obs.TypeUnknown,
-				operator:     obs.OperatorUnknown,
-				country:      obs.CountryUnknown,
-				info:         "",
-				flightroute:  nil,
+			sighting = &obs.AircraftSighting{
+				LastSeen:     lastSeenTime,
+				LastFlightNo: obs.FlightUnknown,
+				Registration: aircraft.Registration,
+				Latitude:     aircraft.Lat,
+				Longitude:    aircraft.Lon,
+				Direction:    obs.GetDirection(db.Lat, db.Lon, aircraft.Lat, aircraft.Lon),
+				Distance:     math.MaxInt,
+				TypeShort:    "",
+				TypeDesc:     obs.TypeUnknown,
+				Operator:     obs.OperatorUnknown,
+				Country:      obs.CountryUnknown,
+				Info:         "",
+				Flightroute:  nil,
 			}
 		}
 
-		if sighting.registration == "" {
-			sighting.registration = aircraft.Registration
+		if sighting.Registration == "" {
+			sighting.Registration = aircraft.Registration
 		}
 
 		// Check whether we've seen this aircraft before by comparing last and current Flight number.
 		// If they differ, then we allow recording in the statistics again.
 		thisFlightNo := aircraft.GetFlightNoAsStr()
-		isFlightIdentified := sighting.lastFlightNo == obs.FlightUnknown && thisFlightNo != obs.FlightUnknown
-		isFlightUpdated := sighting.lastFlightNo != obs.FlightUnknown &&
+		isFlightIdentified := sighting.LastFlightNo == obs.FlightUnknown && thisFlightNo != obs.FlightUnknown
+		isFlightUpdated := sighting.LastFlightNo != obs.FlightUnknown &&
 			thisFlightNo != obs.FlightUnknown &&
-			sighting.lastFlightNo != thisFlightNo
+			sighting.LastFlightNo != thisFlightNo
 
 		isNewFlight := !exists || isFlightUpdated
 
 		if isFlightIdentified || isFlightUpdated {
-			sighting.lastFlightNo = thisFlightNo
+			sighting.LastFlightNo = thisFlightNo
 		}
 
 		// Update distance
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
 		(db.CurrentAircraft)[idx].CachedDist = ref.Distance(thisPos, acPos).Kilometers()
 		aircraft.CachedDist = ref.Distance(thisPos, acPos).Kilometers()
-		sighting.distance = aircraft.CachedDist
+		sighting.Distance = aircraft.CachedDist
 
 		// Update all aircraft, type, operator and country statistics
 		db.updateHighest(aircraft)
@@ -184,33 +184,33 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		newRarities |= rareCountryFlag << 2 //nolint:mnd // okay for bit shifting
 
 		if newRarities != obs.NoRarity {
-			rareSightings = append(rareSightings, RareSighting{
+			rareSightings = append(rareSightings, obs.RareSighting{
 				Rarities: newRarities,
 				Sighting: sighting,
 			})
 		}
 
 		// Finally, update the records
-		sighting.info = aircraftToString(aircraft)
-		db.aircraftSightings[aircraft.Hex] = sighting
+		sighting.Info = aircraftToString(aircraft)
+		db.AircraftSightings[aircraft.Hex] = sighting
 	}
 	db.RareSightings = rareSightings
 }
 
 func (db *Dashboard) updateType(
-	sighting *AircraftSighting,
+	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
 ) obs.RarityFlag {
-	if sighting.typeShort == "" && aircraft.Description != "" {
-		sighting.typeShort = aircraft.Description
+	if sighting.TypeShort == "" && aircraft.Description != "" {
+		sighting.TypeShort = aircraft.Description
 	}
 
 	// We already know the type or just saw this one recently, no need to update again.
-	isTypeKnown := sighting.typeDesc != obs.TypeUnknown
+	isTypeKnown := sighting.TypeDesc != obs.TypeUnknown
 	isFlightKnown := !isNewFlight
 	if isTypeKnown && isFlightKnown {
-		aircraft.CachedType = sighting.typeDesc
+		aircraft.CachedType = sighting.TypeDesc
 		return 0
 	}
 
@@ -220,14 +220,14 @@ func (db *Dashboard) updateType(
 		return 0
 	}
 
-	sighting.typeDesc = aType
+	sighting.TypeDesc = aType
 	aircraft.CachedType = aType
 
 	// Valid type found! Record type and update type rarities.
 	thisTypeCountNew := db.SeenTypeCount[aType] + 1
 	db.SeenTypeCount[aType] = thisTypeCountNew
-	db.totalTypeCount++
-	rarityThreshold := math.Log(float64(db.totalTypeCount)) - obs.RarityConstant
+	db.TotalTypeCount++
+	rarityThreshold := math.Log(float64(db.TotalTypeCount)) - obs.RarityConstant
 	isRareType := float64(thisTypeCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -264,12 +264,12 @@ func (db *Dashboard) updateType(
 }
 
 func (db *Dashboard) updateOperator(
-	sighting *AircraftSighting,
+	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
 ) obs.RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.operator != obs.OperatorUnknown && !isNewFlight {
+	if sighting.Operator != obs.OperatorUnknown && !isNewFlight {
 		return 0
 	}
 
@@ -282,31 +282,31 @@ func (db *Dashboard) updateOperator(
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != obs.FlightUnknownCode {
 		if operatorRecord, opExists := db.IcaoToAirline[flightCode]; opExists {
-			sighting.operator = operatorRecord.Company
+			sighting.Operator = operatorRecord.Company
 		}
 	}
 
 	// Unable to detect airline, maybe it's military or government.
-	if sighting.operator == obs.OperatorUnknown {
-		if militaryOperator, milOpExists := db.milCodeToOperator[flightCode]; milOpExists {
-			sighting.operator = militaryOperator
+	if sighting.Operator == obs.OperatorUnknown {
+		if militaryOperator, milOpExists := db.MilCodeToOperator[flightCode]; milOpExists {
+			sighting.Operator = militaryOperator
 		}
 	}
 
 	// operator still not found, check whether the 'ownOp' field in the aircraft record is set.
-	if sighting.operator == obs.OperatorUnknown && aircraft.OwnOp != "" {
-		sighting.operator = aircraft.OwnOp
+	if sighting.Operator == obs.OperatorUnknown && aircraft.OwnOp != "" {
+		sighting.Operator = aircraft.OwnOp
 	}
 
 	// Did not manage to find out the operator of this aircraft.
-	if sighting.operator == obs.OperatorUnknown {
+	if sighting.Operator == obs.OperatorUnknown {
 		return 0
 	}
 
-	thisOperatorCountNew := db.SeenOperatorCount[sighting.operator] + 1
-	db.SeenOperatorCount[sighting.operator] = thisOperatorCountNew
-	db.totalOperatorCount++
-	rarityThreshold := math.Log(float64(db.totalOperatorCount)) - obs.RarityConstant
+	thisOperatorCountNew := db.SeenOperatorCount[sighting.Operator] + 1
+	db.SeenOperatorCount[sighting.Operator] = thisOperatorCountNew
+	db.TotalOperatorCount++
+	rarityThreshold := math.Log(float64(db.TotalOperatorCount)) - obs.RarityConstant
 	isRareOperator := float64(thisOperatorCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -332,12 +332,12 @@ func (db *Dashboard) updateOperator(
 }
 
 func (db *Dashboard) updateCountry(
-	sighting *AircraftSighting,
+	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
 ) obs.RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.country != obs.CountryUnknown && !isNewFlight {
+	if sighting.Country != obs.CountryUnknown && !isNewFlight {
 		return 0
 	}
 
@@ -350,31 +350,31 @@ func (db *Dashboard) updateCountry(
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != obs.FlightUnknownCode {
 		if operatorRecord, exists := db.IcaoToAirline[flightCode]; exists {
-			sighting.country = strings.ToUpper(operatorRecord.Country)
+			sighting.Country = strings.ToUpper(operatorRecord.Country)
 		}
 	}
 
 	// Option #2: Detect country by the range of it's hex registration.
-	if sighting.country == obs.CountryUnknown {
-		sighting.country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
+	if sighting.Country == obs.CountryUnknown {
+		sighting.Country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
 	}
 
 	// Option #3: Detect country by its ICAO registration prefix.
-	if sighting.country == obs.CountryUnknown {
+	if sighting.Country == obs.CountryUnknown {
 		if country, exists := db.getCountryByRegPrefix(aircraft.Registration); exists {
-			sighting.country = strings.ToUpper(country)
+			sighting.Country = strings.ToUpper(country)
 		}
 	}
 
 	// Unable to detect country of this aircraft.
-	if sighting.country == obs.CountryUnknown {
+	if sighting.Country == obs.CountryUnknown {
 		return 0
 	}
 
-	thisCountryCountNew := db.SeenCountryCount[sighting.country] + 1
-	db.SeenCountryCount[sighting.country] = thisCountryCountNew
-	db.totalCountryCount++
-	rarityThreshold := math.Log(float64(db.totalCountryCount)) - obs.RarityConstant
+	thisCountryCountNew := db.SeenCountryCount[sighting.Country] + 1
+	db.SeenCountryCount[sighting.Country] = thisCountryCountNew
+	db.TotalCountryCount++
+	rarityThreshold := math.Log(float64(db.TotalCountryCount)) - obs.RarityConstant
 	isRareCountry := float64(thisCountryCountNew) < rarityThreshold
 
 	// db.logger.Debug(
@@ -402,10 +402,10 @@ func (db *Dashboard) updateCountry(
 func (db *Dashboard) getCountryByHexRange(hexAsStr string) string {
 	hexAsInt, err := strconv.ParseInt(hexAsStr, 16, 64)
 	if err != nil {
-		db.errOut.Printf("unable to convert hex to int: %s\n", hexAsStr)
+		db.ErrOut.Printf("unable to convert hex to int: %s\n", hexAsStr)
 		return obs.CountryUnknown
 	}
-	for key, value := range db.hexRangeToCountry {
+	for key, value := range db.HexRangeToCountry {
 		if hexAsInt > key.LowerBound && hexAsInt < key.UpperBound {
 			return value
 		}
@@ -414,7 +414,7 @@ func (db *Dashboard) getCountryByHexRange(hexAsStr string) string {
 }
 
 func (db *Dashboard) getCountryByRegPrefix(reg string) (string, bool) {
-	for key, value := range db.regPrefixToCountry {
+	for key, value := range db.RegPrefixToCountry {
 		if strings.Contains(reg, key) {
 			return value, true
 		}
@@ -445,7 +445,7 @@ func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
 	db.Fastest = aircraft
 }
 
-func (db *Dashboard) recomputeFastestAndHighest() {
+func (db *Dashboard) RecomputeFastestAndHighest() {
 	db.Fastest = nil
 	db.Highest = nil
 	for idx := range db.CurrentAircraft {
@@ -457,55 +457,55 @@ func (db *Dashboard) recomputeFastestAndHighest() {
 
 func (db *Dashboard) AssignRouteToCallsigns() []string {
 	var callsignsWithoutRoute []string
-	for _, sighting := range db.aircraftSightings {
-		if sighting.lastFlightNo == obs.FlightUnknown {
+	for _, sighting := range db.AircraftSightings {
+		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
-		if sighting.flightroute != nil {
+		if sighting.Flightroute != nil {
 			// A Flight route is already set.
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
+		if flightRoute, ok := db.CachedFlightRoutes[sighting.LastFlightNo]; ok {
 			// Found a cached route for this Flight, reuse it!
-			sighting.flightroute = flightRoute
+			sighting.Flightroute = flightRoute
 			continue
 		}
 
 		// No routes found, record this callsign to request route from adsbdb
-		callsignsWithoutRoute = append(callsignsWithoutRoute, sighting.lastFlightNo)
+		callsignsWithoutRoute = append(callsignsWithoutRoute, sighting.LastFlightNo)
 	}
 	return callsignsWithoutRoute
 }
 
 // AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
-func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []FlightRouteRecord) {
+func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightRouteRecord) {
 	for _, flightrouteRecord := range flightRouteRecords {
 		callsign := flightrouteRecord.Callsign
 		db.CachedFlightRoutes[callsign] = &flightrouteRecord
 	}
-	for _, sighting := range db.aircraftSightings {
-		if sighting.lastFlightNo == obs.FlightUnknown {
+	for _, sighting := range db.AircraftSightings {
+		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
-		if sighting.flightroute != nil {
+		if sighting.Flightroute != nil {
 			// A Flight route is already set.
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightRoutes[sighting.lastFlightNo]; ok {
+		if flightRoute, ok := db.CachedFlightRoutes[sighting.LastFlightNo]; ok {
 			// Found a cached route for this Flight, reuse it!
-			sighting.flightroute = flightRoute
+			sighting.Flightroute = flightRoute
 			continue
 		}
 
 		// Route cannot be found: use a dummy and also cache a dummy to prevent unnecessary requests
 		// for the same callsign again.
-		sighting.flightroute = GetDefaultFlightrouteRecord()
-		db.CachedFlightRoutes[sighting.lastFlightNo] = GetDefaultFlightrouteRecord()
+		sighting.Flightroute = ref.GetDefaultFlightrouteRecord()
+		db.CachedFlightRoutes[sighting.LastFlightNo] = ref.GetDefaultFlightrouteRecord()
 	}
 }

@@ -3,9 +3,9 @@ package tuiapp
 import (
 	"testing"
 
-	obs "github.com/micutio/airspottr/domain/observation"
-	ref "github.com/micutio/airspottr/domain/reference"
 	"github.com/micutio/airspottr/internal"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 func TestFilteredSortedAircraftByDistance(t *testing.T) {

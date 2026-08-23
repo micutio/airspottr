@@ -9,10 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/airspottr/internal"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 // Run starts the TUI. It exits the process if dashboard or request setup fails.
-func Run(appName string, requestOptions internal.RequestOptions) {
+func Run(appName string, requestOptions adsb.RequestOptions) {
 	// Map ANSI palette colors to this terminal (theme-aware selection/highlight).
 	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(os.Stdout))
 
@@ -70,7 +72,7 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 	if _, progErr := p.Run(); progErr != nil {
 		log.Printf("error running program: %v", progErr)
 	}
-	if saveErr := internal.SaveState(internal.StateFilePath(), dashboard, request); saveErr != nil {
+	if saveErr := pers.SaveState(pers.StateFilePath(), dashboard, request); saveErr != nil {
 		log.Printf("failed to save persistent state: %v", saveErr)
 	}
 }

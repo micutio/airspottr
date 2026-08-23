@@ -1,4 +1,4 @@
-package internal
+package reference
 
 // See https://www.adsbdb.com for Flight route data definition.
 

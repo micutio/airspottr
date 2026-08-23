@@ -14,14 +14,16 @@ import (
 	"time"
 
 	"github.com/micutio/airspottr/internal"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
 	appName   string
-	options   internal.RequestOptions
+	options   adsb.RequestOptions
 	logger    *slog.Logger
-	request   *internal.Request
+	request   *adsb.Request
 	dashboard *internal.Dashboard
 	notify    *internal.Notify
 	done      chan bool
@@ -29,7 +31,7 @@ type TickerApp struct {
 }
 
 // New creates and initializes a new TickerApp.
-func New(appName string, options internal.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
+func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
 	logger := slog.Default() // Or a custom logger
 	notify := internal.NewNotify(appName, &stdout)
 
@@ -38,12 +40,12 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 		return nil, fmt.Errorf("unable to create dashboard: %w", dashboardErr)
 	}
 
-	request, requestErr := internal.NewRequest(options, &stderr)
+	request, requestErr := adsb.NewRequest(options, &stderr)
 	if requestErr != nil {
 		return nil, fmt.Errorf("unable to create request: %w", requestErr)
 	}
 
-	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
+	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
 	}
 
@@ -59,7 +61,7 @@ func New(appName string, options internal.RequestOptions, stdout, stderr io.Writ
 }
 
 // Run is the main entry point for the ticker application.
-func Run(appName string, options internal.RequestOptions) {
+func Run(appName string, options adsb.RequestOptions) {
 	app, err := New(appName, options, os.Stdout, os.Stderr)
 	if err != nil {
 		slog.Default().Error("failed to initialize ticker app", slog.Any("error", err))
@@ -75,12 +77,12 @@ func Run(appName string, options internal.RequestOptions) {
 // start begins the application's main event loop in a goroutine.
 func (app *TickerApp) start() {
 	// Set a timeout for the warmup period.
-	time.AfterFunc(internal.DashboardWarmup, func() {
+	time.AfterFunc(adsb.DashboardWarmup, func() {
 		app.dashboard.FinishWarmupPeriod()
 	})
 
-	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
-	summaryTicker := time.NewTicker(internal.SummaryInterval)
+	aircraftUpdateTicker := time.NewTicker(adsb.AircraftUpdateInterval)
+	summaryTicker := time.NewTicker(adsb.SummaryInterval)
 
 	app.wg.Go(func() {
 		defer aircraftUpdateTicker.Stop()
@@ -123,7 +125,7 @@ func (app *TickerApp) waitForShutdown() {
 	close(app.done)
 	// Wait for the main goroutine to finish.
 	app.wg.Wait()
-	if saveErr := internal.SaveState(internal.StateFilePath(), app.dashboard, app.request); saveErr != nil {
+	if saveErr := pers.SaveState(pers.StateFilePath(), app.dashboard, app.request); saveErr != nil {
 		app.logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }

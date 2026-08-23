@@ -7,7 +7,10 @@ import (
 	"testing"
 	"time"
 
-	obs "github.com/micutio/airspottr/domain/observation"
+	internal "github.com/micutio/airspottr/internal"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 func TestSaveAndLoadState(t *testing.T) {
@@ -23,57 +26,57 @@ func TestSaveAndLoadState(t *testing.T) {
 	}()
 	t.Chdir(findRepoRoot(t))
 
-	dashboard, dashErr := NewDashboard(1.0, 2.0, new(io.Discard))
+	dashboard, dashErr := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 	if dashErr != nil {
 		t.Fatal(dashErr)
 	}
 
-	request, reqErr := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	request, reqErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
 	if reqErr != nil {
 		t.Fatal(reqErr)
 	}
 
-	dashboard.isWarmup = false
+	dashboard.IsWarmup = false
 	dashboard.SeenTypeCount["A"] = 1
 	dashboard.SeenOperatorCount["OP"] = 2
 	dashboard.SeenCountryCount["US"] = 3
-	dashboard.totalTypeCount = 1
-	dashboard.totalOperatorCount = 2
-	dashboard.totalCountryCount = 3
-	dashboard.CachedFlightRoutes["TEST123"] = GetDefaultFlightrouteRecord()
+	dashboard.TotalTypeCount = 1
+	dashboard.TotalOperatorCount = 2
+	dashboard.TotalCountryCount = 3
+	dashboard.CachedFlightRoutes["TEST123"] = ref.GetDefaultFlightrouteRecord()
 
-	sighting := &AircraftSighting{
-		lastSeen:     now(),
-		lastFlightNo: "TEST123",
-		registration: "N12345",
-		latitude:     1.23,
-		longitude:    4.56,
-		direction:    "north",
-		distance:     789.0,
-		typeShort:    "A320",
-		typeDesc:     "Airbus A320",
-		operator:     "TestAir",
-		country:      "US",
-		info:         "test info",
-		flightroute:  GetDefaultFlightrouteRecord(),
+	sighting := &obs.AircraftSighting{
+		LastSeen:     now(),
+		LastFlightNo: "TEST123",
+		Registration: "N12345",
+		Latitude:     1.23,
+		Longitude:    4.56,
+		Direction:    "north",
+		Distance:     789.0,
+		TypeShort:    "A320",
+		TypeDesc:     "Airbus A320",
+		Operator:     "TestAir",
+		Country:      "US",
+		Info:         "test info",
+		Flightroute:  ref.GetDefaultFlightrouteRecord(),
 	}
-	dashboard.aircraftSightings["ABC123"] = sighting
-	dashboard.RareSightings = []RareSighting{{Rarities: obs.RareType, Sighting: sighting}}
+	dashboard.AircraftSightings["ABC123"] = sighting
+	dashboard.RareSightings = []obs.RareSighting{{Rarities: obs.RareType, Sighting: sighting}}
 
-	request.pendingCallsignsMu.Lock()
-	request.pendingCallsigns = []string{"TEST123", "OTHER456"}
-	request.pendingCallsignsMu.Unlock()
+	request.PendingCallsignsMu.Lock()
+	request.PendingCallsigns = []string{"TEST123", "OTHER456"}
+	request.PendingCallsignsMu.Unlock()
 
 	if saveErr := SaveState(statePath, dashboard, request); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 
-	dashboard2, dashErr := NewDashboard(1.0, 2.0, new(io.Discard))
+	dashboard2, dashErr := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 	if dashErr != nil {
 		t.Fatal(dashErr)
 	}
 
-	request2, requestErr := NewRequest(RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	request2, requestErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
 	if requestErr != nil {
 		t.Fatal(requestErr)
 	}
@@ -82,10 +85,10 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got, want := len(request2.pendingCallsigns), 2; got != want {
+	if got, want := len(request2.PendingCallsigns), 2; got != want {
 		t.Fatalf("expected %d pending callsigns, got %d", want, got)
 	}
-	if got := request2.pendingCallsigns[0]; got != "TEST123" {
+	if got := request2.PendingCallsigns[0]; got != "TEST123" {
 		t.Fatalf("expected first pending callsign TEST123, got %s", got)
 	}
 	if got := dashboard2.SeenTypeCount["A"]; got != 1 {
@@ -97,16 +100,16 @@ func TestSaveAndLoadState(t *testing.T) {
 	if got := dashboard2.SeenCountryCount["US"]; got != 3 {
 		t.Fatalf("expected SeenCountryCount US=3, got %d", got)
 	}
-	if got := len(dashboard2.aircraftSightings); got != 1 {
+	if got := len(dashboard2.AircraftSightings); got != 1 {
 		t.Fatalf("expected 1 aircraft sighting, got %d", got)
 	}
-	if got := dashboard2.aircraftSightings["ABC123"].lastFlightNo; got != "TEST123" {
+	if got := dashboard2.AircraftSightings["ABC123"].LastFlightNo; got != "TEST123" {
 		t.Fatalf("expected restored sighting flight TEST123, got %s", got)
 	}
 	if len(dashboard2.RareSightings) != 1 {
 		t.Fatalf("expected 1 rare sighting, got %d", len(dashboard2.RareSightings))
 	}
-	if got := dashboard2.RareSightings[0].Sighting.lastFlightNo; got != "TEST123" {
+	if got := dashboard2.RareSightings[0].Sighting.LastFlightNo; got != "TEST123" {
 		t.Fatalf("expected rare sighting to reference restored sighting, got %s", got)
 	}
 }

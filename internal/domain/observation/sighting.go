@@ -3,6 +3,8 @@ package observation
 import (
 	"math"
 	"time"
+
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
@@ -87,19 +89,19 @@ var directions = []string{ //nolint: gochecknoglobals // Can't be bothered to fi
 // continuously updating the AircraftSighting struct fields with data received
 // from an ongoing Flight.
 type AircraftSighting struct {
-	lastSeen     time.Time
-	lastFlightNo string
-	registration string
-	latitude     float64
-	longitude    float64
-	direction    string
-	distance     float64            // distance is the distance of the aircraft to our location [m]
-	typeShort    string             // typeShort is a short type name, directly from the record
-	typeDesc     string             // typeDesc is the full name of the aircraft type
-	operator     string             // operator can be either airline or military organization
-	country      string             // country of registration
-	info         string             // info contains the aircraft information represented as string
-	flightroute  *FlightRouteRecord // flightroute contains airline, origin and destination
+	LastSeen     time.Time              `json:"last_seen"`
+	LastFlightNo string                 `json:"last_flight_no"`
+	Registration string                 `json:"registration"`
+	Latitude     float64                `json:"latitude"`
+	Longitude    float64                `json:"longitude"`
+	Direction    string                 `json:"direction"`
+	Distance     float64                `json:"distance"`    // distance of the aircraft to our location [m]
+	TypeShort    string                 `json:"type_short"`  // short type name, directly from the record
+	TypeDesc     string                 `json:"type_desc"`   // typeDesc is the full name of the aircraft type
+	Operator     string                 `json:"operator"`    // operator can be either airline or military organization
+	Country      string                 `json:"country"`     // country of registration
+	Info         string                 `json:"info"`        // info contains the aircraft information represented as string
+	Flightroute  *ref.FlightRouteRecord `json:"flightroute"` // flightroute contains airline, origin and destination
 }
 
 // RareSighting combines an aircraft sighting with a rarity flag.
@@ -108,8 +110,8 @@ type RareSighting struct {
 	Sighting *AircraftSighting
 }
 
-func getDirection(originLat, originLon, destLat, destLon float64) string {
-	// TODO: Get bearing from (lat, lon) towards sighting location
+// TODO: Ensure this method belongs into this package
+func GetDirection(originLat, originLon, destLat, destLon float64) string {
 	bearing := calculateBearing(originLat, originLon, destLat, destLon)
 
 	start := 5.625

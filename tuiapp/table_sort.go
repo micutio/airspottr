@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
@@ -60,10 +61,10 @@ func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool)
 	tbl.SetColumns(cols)
 }
 
-func routeFor(db *internal.Dashboard, ac *obs.AircraftRecord) *internal.FlightRouteRecord {
+func routeFor(db *internal.Dashboard, ac *obs.AircraftRecord) *ref.FlightRouteRecord {
 	r, ok := db.CachedFlightRoutes[ac.GetFlightNoAsStr()]
 	if !ok {
-		return internal.GetDefaultFlightrouteRecord()
+		return ref.GetDefaultFlightrouteRecord()
 	}
 	return r
 }

@@ -4,8 +4,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	obs "github.com/micutio/airspottr/domain/observation"
-	"github.com/micutio/airspottr/internal"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
+	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 type UpdateTickMsg time.Time
@@ -23,7 +24,7 @@ type AircraftQueryTickMsg time.Time
 
 func aircraftQueryTick() tea.Cmd {
 	return tea.Every(
-		internal.AircraftUpdateInterval,
+		adsb.AircraftUpdateInterval,
 		func(t time.Time) tea.Msg {
 			return AircraftQueryTickMsg(t)
 		},
@@ -32,16 +33,16 @@ func aircraftQueryTick() tea.Cmd {
 
 type AircraftResponseMsg []obs.AircraftRecord
 
-func requestAircraftDataCmd(request *internal.Request) tea.Cmd {
+func requestAircraftDataCmd(request *adsb.Request) tea.Cmd {
 	return func() tea.Msg {
 		aircraftData := request.RequestAircraft()
 		return AircraftResponseMsg(aircraftData)
 	}
 }
 
-type FlightRoutesResponseMsg []internal.FlightRouteRecord
+type FlightRoutesResponseMsg []ref.FlightRouteRecord
 
-func requestFlightRouteDataCmd(request *internal.Request, callsigns []string) tea.Cmd {
+func requestFlightRouteDataCmd(request *adsb.Request, callsigns []string) tea.Cmd {
 	return func() tea.Msg {
 		flightRoutes := request.RequestFlightRoutesForCallsigns(callsigns)
 		return FlightRoutesResponseMsg(flightRoutes)

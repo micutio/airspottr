@@ -1,4 +1,4 @@
-package internal
+package adsb
 
 import (
 	"context"
@@ -15,7 +15,8 @@ import (
 	"sync"
 	"time"
 
-	obs "github.com/micutio/airspottr/domain/observation"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
@@ -55,8 +56,8 @@ type Request struct {
 	apiClient          *http.Client
 	waitGroup          sync.WaitGroup
 	errOut             log.Logger
-	pendingCallsigns   []string
-	pendingCallsignsMu sync.Mutex
+	PendingCallsigns   []string
+	PendingCallsignsMu sync.Mutex
 }
 
 func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
@@ -80,8 +81,8 @@ func NewRequest(opts RequestOptions, stderr *io.Writer) (*Request, error) {
 		apiClient:          client,
 		waitGroup:          sync.WaitGroup{},
 		errOut:             *log.New(*stderr, "request ", log.LstdFlags),
-		pendingCallsigns:   []string{},
-		pendingCallsignsMu: sync.Mutex{},
+		PendingCallsigns:   []string{},
+		PendingCallsignsMu: sync.Mutex{},
 	}
 
 	request.errOut.Println("Request init")
@@ -136,26 +137,26 @@ func (r *Request) RequestAircraft() []obs.AircraftRecord {
 	return data.Aircraft
 }
 
-func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRouteRecord {
-	r.pendingCallsignsMu.Lock()
+func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []ref.FlightRouteRecord {
+	r.PendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
-	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
+	r.PendingCallsigns = append(r.PendingCallsigns, callsigns...)
 	r.errOut.Printf(
 		"RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n",
 		len(callsigns),
-		len(r.pendingCallsigns),
+		len(r.PendingCallsigns),
 	)
 
 	// Determine how many to process this time
-	toProcess := min(len(r.pendingCallsigns), FlightRouteQueryThreshold)
+	toProcess := min(len(r.PendingCallsigns), FlightRouteQueryThreshold)
 
 	// Take the first 'toProcess' callsigns from the queue
 	selectedCallsigns := make([]string, toProcess)
-	copy(selectedCallsigns, r.pendingCallsigns[:toProcess])
+	copy(selectedCallsigns, r.PendingCallsigns[:toProcess])
 
 	// Remove the processed callsigns from the queue
-	r.pendingCallsigns = r.pendingCallsigns[toProcess:]
-	r.pendingCallsignsMu.Unlock()
+	r.PendingCallsigns = r.PendingCallsigns[toProcess:]
+	r.PendingCallsignsMu.Unlock()
 
 	r.errOut.Printf("RequestFlightRoutesForCallsigns: processing %d callsigns this batch\n", len(selectedCallsigns))
 
@@ -206,7 +207,7 @@ func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []FlightRo
 	}()
 
 	// 4. Fan-in: Collect and process results
-	var flightrouteRecords []FlightRouteRecord
+	var flightrouteRecords []ref.FlightRouteRecord
 	for result := range results {
 		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
 		if err != nil {
@@ -237,8 +238,8 @@ func createFlightRouteRequestURL(callsign string) (string, error) {
 // flightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
 // FlightRouteRecord.
 // It is then assigned to all flights matching the callsign.
-func (r *Request) flightRouteJSONToRecord(jsonBytes []byte) (FlightRouteRecord, error) {
-	var data FlightrouteResponse
+func (r *Request) flightRouteJSONToRecord(jsonBytes []byte) (ref.FlightRouteRecord, error) {
+	var data ref.FlightrouteResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
 		r.errOut.Println(jsonErr)

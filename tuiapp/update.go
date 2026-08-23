@@ -4,8 +4,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	obs "github.com/micutio/airspottr/domain/observation"
 	"github.com/micutio/airspottr/internal"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // tea.Model interface
@@ -48,7 +49,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 }
 
 func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd {
-	flightRoutes := []internal.FlightRouteRecord(msg)
+	flightRoutes := []ref.FlightRouteRecord(msg)
 	m.dashboard.AssignFlightRoutes(flightRoutes)
 
 	// Check if there are more callsigns without routes and request them

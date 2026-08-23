@@ -7,7 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/micutio/airspottr/internal"
 
-	obs "github.com/micutio/airspottr/domain/observation"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 // Error types
@@ -191,7 +192,7 @@ func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormat
 	return autoFormatTable{table: tbl, format: format}
 }
 
-func aircraftToRow(aircraft *obs.AircraftRecord, route *internal.FlightRouteRecord) table.Row {
+func aircraftToRow(aircraft *obs.AircraftRecord, route *ref.FlightRouteRecord) table.Row {
 	return table.Row{
 		fmt.Sprintf("%3.0f", aircraft.CachedDist),
 		aircraft.GetFlightNoAsStr(),
