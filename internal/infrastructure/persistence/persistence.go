@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	internal "github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 const stateFileName = "airspottr_state.json"
@@ -59,10 +59,10 @@ type requestState struct {
 	PendingCallsigns []string `json:"pending_callsigns"`
 }
 
-func saveState(db *internal.Dashboard, pendingCallsigns []string) *persistentState {
-	aircraftSightings := make(map[string]obs.AircraftSighting, len(db.AircraftSightings))
-	sightingKeys := make(map[*obs.AircraftSighting]string, len(db.AircraftSightings))
-	for hex, sighting := range db.AircraftSightings {
+func saveState(dash *internal.Dashboard, pendingCallsigns []string) *persistentState {
+	aircraftSightings := make(map[string]obs.AircraftSighting, len(dash.AircraftSightings))
+	sightingKeys := make(map[*obs.AircraftSighting]string, len(dash.AircraftSightings))
+	for hex, sighting := range dash.AircraftSightings {
 		if sighting == nil {
 			continue
 		}
@@ -70,8 +70,8 @@ func saveState(db *internal.Dashboard, pendingCallsigns []string) *persistentSta
 		sightingKeys[sighting] = hex
 	}
 
-	raceSightings := make([]persistedRareSighting, 0, len(db.RareSightings))
-	for _, rare := range db.RareSightings {
+	raceSightings := make([]persistedRareSighting, 0, len(dash.RareSightings))
+	for _, rare := range dash.RareSightings {
 		if rare.Sighting == nil {
 			continue
 		}
@@ -85,19 +85,19 @@ func saveState(db *internal.Dashboard, pendingCallsigns []string) *persistentSta
 
 	return &persistentState{
 		Dashboard: dashboardState{
-			IsWarmup:           db.IsWarmup,
-			Lat:                db.Lat,
-			Lon:                db.Lon,
-			CurrentAircraft:    db.CurrentAircraft,
+			IsWarmup:           dash.IsWarmup,
+			Lat:                dash.Lat,
+			Lon:                dash.Lon,
+			CurrentAircraft:    dash.CurrentAircraft,
 			RareSightings:      raceSightings,
-			CachedFlightRoutes: db.CachedFlightRoutes,
+			CachedFlightRoutes: dash.CachedFlightRoutes,
 			AircraftSightings:  aircraftSightings,
-			TotalTypeCount:     db.TotalTypeCount,
-			TotalOperatorCount: db.TotalOperatorCount,
-			TotalCountryCount:  db.TotalCountryCount,
-			SeenTypeCount:      db.SeenTypeCount,
-			SeenOperatorCount:  db.SeenOperatorCount,
-			SeenCountryCount:   db.SeenCountryCount,
+			TotalTypeCount:     dash.TotalTypeCount,
+			TotalOperatorCount: dash.TotalOperatorCount,
+			TotalCountryCount:  dash.TotalCountryCount,
+			SeenTypeCount:      dash.SeenTypeCount,
+			SeenOperatorCount:  dash.SeenOperatorCount,
+			SeenCountryCount:   dash.SeenCountryCount,
 		},
 		Request: requestState{PendingCallsigns: append([]string(nil), pendingCallsigns...)},
 	}
@@ -109,33 +109,36 @@ func restoreState(r *adsb.Request, state requestState) {
 	r.PendingCallsigns = append([]string(nil), state.PendingCallsigns...)
 }
 
-func RestoreState(db *internal.Dashboard, state dashboardState) error {
-	if state.Lat != db.Lat || state.Lon != db.Lon {
+func RestoreState(dash *internal.Dashboard, state dashboardState) error {
+	if state.Lat != dash.Lat || state.Lon != dash.Lon {
 		return errCoordMismatch
 	}
 
-	db.IsWarmup = state.IsWarmup
-	db.CurrentAircraft = state.CurrentAircraft
-	db.CachedFlightRoutes = state.CachedFlightRoutes
-	db.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
+	dash.IsWarmup = state.IsWarmup
+	dash.CurrentAircraft = state.CurrentAircraft
+	dash.CachedFlightRoutes = state.CachedFlightRoutes
+	dash.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
 	for hex, persisted := range state.AircraftSightings {
-		db.AircraftSightings[hex] = &persisted
+		dash.AircraftSightings[hex] = &persisted
 	}
-	db.TotalTypeCount = state.TotalTypeCount
-	db.TotalOperatorCount = state.TotalOperatorCount
-	db.TotalCountryCount = state.TotalCountryCount
-	db.SeenTypeCount = state.SeenTypeCount
-	db.SeenOperatorCount = state.SeenOperatorCount
-	db.SeenCountryCount = state.SeenCountryCount
+	dash.TotalTypeCount = state.TotalTypeCount
+	dash.TotalOperatorCount = state.TotalOperatorCount
+	dash.TotalCountryCount = state.TotalCountryCount
+	dash.SeenTypeCount = state.SeenTypeCount
+	dash.SeenOperatorCount = state.SeenOperatorCount
+	dash.SeenCountryCount = state.SeenCountryCount
 
-	db.RareSightings = make([]obs.RareSighting, 0, len(state.RareSightings))
+	dash.RareSightings = make([]obs.RareSighting, 0, len(state.RareSightings))
 	for _, rare := range state.RareSightings {
-		if sighting, ok := db.AircraftSightings[rare.Hex]; ok {
-			db.RareSightings = append(db.RareSightings, obs.RareSighting{Rarities: rare.Rarities, Sighting: sighting})
+		if sighting, ok := dash.AircraftSightings[rare.Hex]; ok {
+			dash.RareSightings = append(
+				dash.RareSightings,
+				obs.RareSighting{Rarities: rare.Rarities, Sighting: sighting},
+			)
 		}
 	}
 
-	db.RecomputeFastestAndHighest()
+	dash.RecomputeFastestAndHighest()
 	return nil
 }
 

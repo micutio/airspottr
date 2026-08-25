@@ -110,6 +110,8 @@ type RareSighting struct {
 	Sighting *AircraftSighting
 }
 
+// GetDirection calculates the bearing between two given coordinates and converts it into a human-
+// readable direction, e.g.: north north-west.
 // TODO: Ensure this method belongs into this package
 func GetDirection(originLat, originLon, destLat, destLon float64) string {
 	bearing := calculateBearing(originLat, originLon, destLat, destLon)
