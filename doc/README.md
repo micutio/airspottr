@@ -120,7 +120,7 @@ Adjust constants in `internal/request.go`:
 ### Supporting a new data source
 
 - Add new request logic in `internal/request.go`.
-- Update dashboard enrichment in `internal/dashboard.go`.
+- Update dashboard enrichment in `../internal/application/dashboard.go`.
 - Add any new data source mapping or parsing code under `internal/dash/`.
 
 ### Persistence

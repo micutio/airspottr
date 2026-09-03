@@ -159,6 +159,28 @@ func stripDigits(str string) string {
 	}, str)
 }
 
+// AircraftToString generates a one-liner consisting of the most relevant information about the
+// given aircraft.
+func (ac *AircraftRecord) AircraftToString() string {
+	flight := ac.GetFlightNoAsStr()
+	altitude := ac.GetAltitudeAsStr()
+	var aType string
+	if ac.Description != "" {
+		aType = ac.Description
+	} else {
+		aType = ac.CachedType
+	}
+
+	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
+		flight,
+		ac.CachedDist,
+		altitude,
+		ac.GroundSpeed,
+		ac.NavHeading,
+		aType,
+		ac.Registration)
+}
+
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
 // by Flight.
 type ByFlight []AircraftRecord

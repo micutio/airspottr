@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	repo "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 const stateFileName = "airspottr_state.json"
@@ -30,8 +30,8 @@ func StateFilePath() string {
 }
 
 type persistentState struct {
-	Dashboard dashboardState `json:"dashboard"`
-	Request   requestState   `json:"request"`
+	Dashboard       dashboardState       `json:"dashboard"`
+	FlightrouteRepo flightrouteRepoState `json:"request"`
 }
 
 type dashboardState struct {
@@ -55,11 +55,11 @@ type persistedRareSighting struct {
 	Hex      string         `json:"hex"`
 }
 
-type requestState struct {
+type flightrouteRepoState struct {
 	PendingCallsigns []string `json:"pending_callsigns"`
 }
 
-func saveState(dash *internal.Dashboard, pendingCallsigns []string) *persistentState {
+func saveState(dash *application.Dashboard, pendingCallsigns []string) *persistentState {
 	aircraftSightings := make(map[string]obs.AircraftSighting, len(dash.AircraftSightings))
 	sightingKeys := make(map[*obs.AircraftSighting]string, len(dash.AircraftSightings))
 	for hex, sighting := range dash.AircraftSightings {
@@ -99,17 +99,13 @@ func saveState(dash *internal.Dashboard, pendingCallsigns []string) *persistentS
 			SeenOperatorCount:  dash.SeenOperatorCount,
 			SeenCountryCount:   dash.SeenCountryCount,
 		},
-		Request: requestState{PendingCallsigns: append([]string(nil), pendingCallsigns...)},
+		FlightrouteRepo: flightrouteRepoState{
+			PendingCallsigns: append([]string(nil), pendingCallsigns...),
+		},
 	}
 }
 
-func restoreState(r *adsb.Request, state requestState) {
-	r.PendingCallsignsMu.Lock()
-	defer r.PendingCallsignsMu.Unlock()
-	r.PendingCallsigns = append([]string(nil), state.PendingCallsigns...)
-}
-
-func RestoreState(dash *internal.Dashboard, state dashboardState) error {
+func restoreDashboardState(dash *application.Dashboard, state dashboardState) error {
 	if state.Lat != dash.Lat || state.Lon != dash.Lon {
 		return errCoordMismatch
 	}
@@ -142,10 +138,8 @@ func RestoreState(dash *internal.Dashboard, state dashboardState) error {
 	return nil
 }
 
-func SaveState(filePath string, db *internal.Dashboard, req *adsb.Request) error {
-	req.PendingCallsignsMu.Lock()
-	pendingCallsigns := append([]string(nil), req.PendingCallsigns...)
-	req.PendingCallsignsMu.Unlock()
+func SaveState(filePath string, db *application.Dashboard, frr repo.FlightrouteRepository) error {
+	pendingCallsigns := frr.GetPendingCallsigns()
 	state := saveState(db, pendingCallsigns)
 	data, marshallErr := json.MarshalIndent(state, "", "  ")
 	if marshallErr != nil {
@@ -160,7 +154,11 @@ func SaveState(filePath string, db *internal.Dashboard, req *adsb.Request) error
 	return nil
 }
 
-func LoadState(filePath string, dashboard *internal.Dashboard, req *adsb.Request) error {
+func LoadState(
+	filePath string,
+	dashboard *application.Dashboard,
+	frr repo.FlightrouteRepository,
+) error {
 	data, readFileErr := os.ReadFile(filePath)
 	if readFileErr != nil {
 		if os.IsNotExist(readFileErr) {
@@ -172,9 +170,9 @@ func LoadState(filePath string, dashboard *internal.Dashboard, req *adsb.Request
 	if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr != nil {
 		return fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
-	if restoreErr := RestoreState(dashboard, state.Dashboard); restoreErr != nil {
+	if restoreErr := restoreDashboardState(dashboard, state.Dashboard); restoreErr != nil {
 		return fmt.Errorf("load state: %w", restoreErr)
 	}
-	restoreState(req, state.Request)
+	frr.RestorePendingCallsigns(state.FlightrouteRepo.PendingCallsigns)
 	return nil
 }

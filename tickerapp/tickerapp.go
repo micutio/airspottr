@@ -13,8 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/micutio/airspottr/internal"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/application"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -24,8 +25,8 @@ type TickerApp struct {
 	options   adsb.RequestOptions
 	logger    *slog.Logger
 	request   *adsb.Request
-	dashboard *internal.Dashboard
-	notify    *internal.Notify
+	dashboard *application.Dashboard
+	notify    *noti.Notify
 	done      chan bool
 	wg        sync.WaitGroup
 }
@@ -33,9 +34,9 @@ type TickerApp struct {
 // New creates and initializes a new TickerApp.
 func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
 	logger := slog.Default() // Or a custom logger
-	notify := internal.NewNotify(appName, &stdout)
+	notify := noti.NewNotify(appName, &stdout)
 
-	dashboard, dashboardErr := internal.NewDashboard(options.Lat, options.Lon, &stderr)
+	dashboard, dashboardErr := application.NewDashboard(options.Lat, options.Lon, &stderr)
 	if dashboardErr != nil {
 		return nil, fmt.Errorf("unable to create dashboard: %w", dashboardErr)
 	}
@@ -95,14 +96,14 @@ func (app *TickerApp) start() {
 				app.dashboard.ProcessAircraftRecords(aircraftRecords)
 				app.notify.EmitRarityNotifications(
 					app.dashboard.RareSightings,
-					internal.DefaultRarityNotifyToggles(),
+					noti.DefaultRarityNotifyToggles(),
 				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.
 				callsignsWithoutRoute := app.dashboard.AssignRouteToCallsigns()
 				if len(callsignsWithoutRoute) > 0 {
 					// For flights without known route we query data from adsbdb.com.
-					routes := app.request.RequestFlightRoutesForCallsigns(callsignsWithoutRoute)
+					routes := app.request.RequestFlightroutesForCallsigns(callsignsWithoutRoute)
 					app.dashboard.AssignFlightRoutes(routes)
 				}
 			case <-summaryTicker.C:

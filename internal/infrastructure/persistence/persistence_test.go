@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	internal "github.com/micutio/airspottr/internal"
+	internal "github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 func TestSaveAndLoadState(t *testing.T) {

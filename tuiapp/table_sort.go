@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
@@ -61,7 +62,7 @@ func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool)
 	tbl.SetColumns(cols)
 }
 
-func routeFor(db *internal.Dashboard, ac *obs.AircraftRecord) *ref.FlightRouteRecord {
+func routeFor(db *application.Dashboard, ac *obs.AircraftRecord) *ref.FlightRouteRecord {
 	r, ok := db.CachedFlightRoutes[ac.GetFlightNoAsStr()]
 	if !ok {
 		return ref.GetDefaultFlightrouteRecord()
@@ -83,7 +84,7 @@ func altitudeSortKey(aircraftRecord *obs.AircraftRecord) float64 {
 func compareAircraftAscending(
 	recordA, recordB *obs.AircraftRecord,
 	col int,
-	dashboard *internal.Dashboard,
+	dashboard *application.Dashboard,
 ) bool {
 	dstCol := 0
 	fnoCol := 1
@@ -137,7 +138,7 @@ func compareAircraftAscending(
 	return recordA.Hex < recordB.Hex
 }
 
-func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc bool) []obs.AircraftRecord {
+func filteredSortedAircraft(dashboard *application.Dashboard, sortCol int, desc bool) []obs.AircraftRecord {
 	var rows []obs.AircraftRecord
 	for _, ac := range dashboard.CurrentAircraft {
 		aircraftType := dashboard.IcaoToAircraft[ac.IcaoType].Make
@@ -206,7 +207,7 @@ func (m *model) toggleSortDirection() {
 	m.updateAllTables()
 }
 
-func buildAircraftRows(db *internal.Dashboard, records []obs.AircraftRecord) []table.Row {
+func buildAircraftRows(db *application.Dashboard, records []obs.AircraftRecord) []table.Row {
 	rows := make([]table.Row, 0, len(records))
 	for i := range records {
 		ac := &records[i]

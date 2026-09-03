@@ -8,7 +8,7 @@ This guide is a pragmatic, incremental refactoring plan for the airspottr codeba
 
 These are the places where infrastructure or I/O is currently mixed with business rules and core state:
 
-- [internal/dashboard.go](../internal/dashboard.go)
+- [internal/dashboard.go](../internal/application/dashboard.go)
   - `Dashboard.ProcessAircraftRecords` is the main hotspot. It mixes:
     - state transitions for sightings,
     - type/operator/country classification,
@@ -36,7 +36,7 @@ These are the places where infrastructure or I/O is currently mixed with busines
     - and app-state restoration.
   - The persistence layer is also responsible for translating between runtime objects and persisted shapes.
 
-- [internal/notification.go](../internal/notification.go)
+- [internal/notification.go](../internal/infrastructure/notify/notification.go)
   - `Notify.EmitRarityNotifications` and the `notifyRare*` helpers mix:
     - domain event interpretation,
     - formatting,
@@ -54,7 +54,7 @@ A small number of boundaries will be enough for this codebase. I would start wit
    - Best fit for:
      - [internal/sighting.go](../internal/sighting.go)
      - [internal/rarity.go](../internal/rarity.go)
-     - the state transition logic in [internal/dashboard.go](../internal/dashboard.go)
+     - the state transition logic in [internal/dashboard.go](../internal/application/dashboard.go)
    - Purpose:
      - capture what was observed,
      - track sighting history,
@@ -79,7 +79,7 @@ A small number of boundaries will be enough for this codebase. I would start wit
 
 4. Presentation / Delivery Context
    - Best fit for:
-     - [internal/notification.go](../internal/notification.go)
+     - [internal/notification.go](../internal/infrastructure/notify/notification.go)
      - [tickerapp/tickerapp.go](../tickerapp/tickerapp.go)
      - [tuiapp/model.go](../tuiapp/model.go)
    - Purpose:
@@ -110,7 +110,7 @@ These types and modules should become pure or much less coupled:
   - Create a small domain-focused module for observation concepts.
   - Move `AircraftSighting`, `RareSighting`, `RarityFlag`, and the related constants from [internal/sighting.go](../internal/sighting.go) and [internal/rarity.go](../internal/rarity.go) into that module.
   - Extract the core decision logic into a function shaped like `EvaluateBatch(state, records, classifier) -> (newState, rareSightings)`.
-  - Leave [internal/dashboard.go](../internal/dashboard.go) as a thin wrapper that adapts the result back into the existing dashboard fields.
+  - Leave [internal/dashboard.go](../internal/application/dashboard.go) as a thin wrapper that adapts the result back into the existing dashboard fields.
 
 - Before:
 
@@ -231,7 +231,7 @@ These types and modules should become pure or much less coupled:
 - Goal: Keep notification delivery outside the core domain.
 
 - Human recipe:
-  - Treat [internal/notification.go](../internal/notification.go) as a delivery-specific layer.
+  - Treat [internal/notification.go](../internal/infrastructure/notify/notification.go) as a delivery-specific layer.
   - Keep the domain side as simple events such as `RareSightingDetected`.
   - Let the notification layer format and emit those events, rather than deciding what counts as rare itself.
 

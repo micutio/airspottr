@@ -1,5 +1,5 @@
-// Package internal provides the Dashboard type and all associated program logic.
-package internal
+// Package application provides the Dashboard type and all associated program logic.
+package application
 
 import (
 	"errors"
@@ -191,7 +191,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		}
 
 		// Finally, update the records
-		sighting.Info = aircraftToString(aircraft)
+		sighting.Info = aircraft.AircraftToString()
 		db.AircraftSightings[aircraft.Hex] = sighting
 	}
 	db.RareSightings = rareSightings

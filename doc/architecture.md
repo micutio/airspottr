@@ -37,7 +37,7 @@ The request layer uses a 25-second HTTP client timeout and only permits configur
 
 ### internal.Dashboard
 
-Located in `internal/dashboard.go`, the `Dashboard` holds runtime state and performs enrichment and statistics.
+Located in `../internal/application/dashboard.go`, the `Dashboard` holds runtime state and performs enrichment and statistics.
 
 It tracks:
 
@@ -69,7 +69,7 @@ The `internal/dash/` package provides parsing for CSV-based lookups and distance
 
 ### internal/notification
 
-Located in `internal/notification.go`, the notification layer handles summary printing and desktop notifications.
+Located in `../internal/infrastructure/notify/notification.go`, the notification layer handles summary printing and desktop notifications.
 
 Notifications are triggered for rare sightings using a combination of rarity flags:
 
@@ -151,7 +151,7 @@ The TUI displays current aircraft data, rarity panels, and allows toggling notif
 
 ## Findings and extension suggestions
 
-- If you add a new external API, keep HTTP wrapper concerns in `internal/request.go` and enrichment in `internal/dashboard.go`.
+- If you add a new external API, keep HTTP wrapper concerns in `internal/request.go` and enrichment in `../internal/application/dashboard.go`.
 - If you add new UI state or controls, follow the existing `tuiapp` pattern: `model.go` for state, `view.go` for rendering, `update.go` for event handling.
 - Consider adding a dedicated configuration or environment-driven data path if you need to support non-root repository execution.
 - Use the existing test packages as a guide for domain-level unit tests in `internal/` and UI-level tests in `tuiapp/`.

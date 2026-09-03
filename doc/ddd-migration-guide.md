@@ -52,7 +52,7 @@ Suggested packages:
 
 - `application/service` or `application/usecase`
   - `spotting.go` - high-level use cases such as `ProcessAircraftSightings`, `AssignFlightRoutes`, `PrintSummary`, `SaveState`, and `LoadState`.
-  - `interfaces.go` - repository and service interfaces used by application services.
+  - `aircraft_repository.go` - repository and service interfaces used by application services.
 
 ### Infrastructure layer
 
@@ -82,7 +82,7 @@ Keep the existing `tuiapp/` and `tickerapp/` packages here.
 ### 1. Define domain interfaces and entities
 
 1. Create `domain/spotting` and `domain/reference`.
-2. Move domain types from `internal/aircraft.go`, `internal/sighting.go`, `internal/flightroute.go`, and `internal/dashboard.go` into the new domain packages.
+2. Move domain types from `internal/aircraft.go`, `internal/sighting.go`, `internal/flightroute.go`, and `../internal/application/dashboard.go` into the new domain packages.
 3. Keep behavior such as `GetFlightNoAsStr`, `GetFlightNoAsIcaoCode`, `GetAltitudeAsStr`, and `Distance` inside domain/value object code.
 4. Extract `Dashboard` methods that are pure domain behavior:
    - `ProcessAircraftRecords`
@@ -188,7 +188,7 @@ A steady migration should minimize churn:
 
 ### Increment 1: Domain extraction
 
-- Move types from `internal/aircraft.go`, `internal/sighting.go`, `internal/flightroute.go`, and `internal/dashboard.go` to `domain/spotting`.
+- Move types from `internal/aircraft.go`, `internal/sighting.go`, `internal/flightroute.go`, and `../internal/application/dashboard.go` to `domain/spotting`.
 - Move geographic helpers from `internal/dash/geo.go` to `domain/common` or `domain/spotting`.
 - Keep the moved code behaviorally equivalent.
 
@@ -263,13 +263,13 @@ To better match the `go-ddd` style without changing the core migration plan, con
 | --- | --- | --- |
 | `internal/aircraft.go` | `domain/spotting/aircraft.go` | entity model and helpers |
 | `internal/sighting.go` | `domain/spotting/sighting.go` | aggregate and event model |
-| `internal/dashboard.go` | `domain/spotting/dashboard.go` | aggregate root and domain invariants |
+| `../internal/application/dashboard.go` | `domain/spotting/dashboard.go` | aggregate root and domain invariants |
 | `internal/flightroute.go` | `domain/spotting/flightroute.go` | route value objects |
 | `internal/dash/icao.go` | `infrastructure/data/csv_reference_provider.go` | reference data adapter |
 | `internal/dash/geo.go` | `domain/common/geo.go` | physical distance value objects |
 | `internal/request.go` | `infrastructure/adsb/client.go` | HTTP adapters |
 | `internal/persistence.go` | `infrastructure/persistence/json_state_repo.go` | state repository |
-| `internal/notification.go` | `infrastructure/notify/desktop_notifier.go` | notification adapter |
+| `../internal/infrastructure/notify/notification.go` | `infrastructure/notify/desktop_notifier.go` | notification adapter |
 
 ## Migration checklist
 

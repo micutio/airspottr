@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
-	internal "github.com/micutio/airspottr/internal"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	internal "github.com/micutio/airspottr/internal/application"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 

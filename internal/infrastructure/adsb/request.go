@@ -51,6 +51,9 @@ type RequestOptions struct {
 }
 
 // Request handles http request commands.
+// Should implement:
+//   - application.AircraftRepository
+//   - application.FlightrouteRepository
 type Request struct {
 	aircraftReqURL     string
 	apiClient          *http.Client
@@ -137,7 +140,7 @@ func (r *Request) RequestAircraft() []obs.AircraftRecord {
 	return data.Aircraft
 }
 
-func (r *Request) RequestFlightRoutesForCallsigns(callsigns []string) []ref.FlightRouteRecord {
+func (r *Request) RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightRouteRecord {
 	r.PendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
 	r.PendingCallsigns = append(r.PendingCallsigns, callsigns...)
@@ -289,4 +292,18 @@ func (r *Request) sendRequest(targetURL string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (r *Request) GetPendingCallsigns() []string {
+	r.PendingCallsignsMu.Lock()
+	defer r.PendingCallsignsMu.Unlock()
+	cp := make([]string, len(r.PendingCallsigns))
+	copy(cp, r.PendingCallsigns)
+	return cp
+}
+
+func (r *Request) RestorePendingCallsigns(pendingCallsigns []string) {
+	r.PendingCallsignsMu.Lock()
+	defer r.PendingCallsignsMu.Unlock()
+	r.PendingCallsigns = append([]string(nil), pendingCallsigns...)
 }

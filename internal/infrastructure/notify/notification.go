@@ -1,4 +1,4 @@
-package internal
+package notify
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"log" //nolint:depguard // Don't feel like using slog
 
 	"github.com/gen2brain/beeep"
+	"github.com/micutio/airspottr/internal"
+	"github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
 
@@ -25,21 +27,23 @@ func NewNotify(appName string, consoleOut *io.Writer) *Notify {
 	}
 }
 
+// TODO: Extract these console printing methods into a separate context.
+
 // PrintSummary prints the highest, fastest and the most and the least common types.
-func (notify *Notify) PrintSummary(dash *Dashboard) {
+func (notify *Notify) PrintSummary(dash *application.Dashboard) {
 	notify.Stdout.Println("=== Summary ===")
 	notify.listByRarity("aircraft", dash.SeenTypeCount)
 	notify.listByRarity("operator", dash.SeenOperatorCount)
 	notify.listByRarity("country", dash.SeenCountryCount)
 	notify.Stdout.Println("Fastest Aircraft:")
-	notify.Stdout.Println(aircraftToString(dash.Fastest))
+	notify.Stdout.Println(dash.Fastest.AircraftToString())
 	notify.Stdout.Println("Highest Aircraft:")
-	notify.Stdout.Println(aircraftToString(dash.Highest))
+	notify.Stdout.Println(dash.Highest.AircraftToString())
 	notify.Stdout.Println("=== End Summary ===")
 }
 
 func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[string]int) {
-	propertyCounts := GetSortedCountsForProperty(propertyCountMap)
+	propertyCounts := internal.GetSortedCountsForProperty(propertyCountMap)
 
 	notify.Stdout.Printf("Rarity from least to most common %s", propertyName)
 	for j := range propertyCounts {
@@ -47,25 +51,26 @@ func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[str
 	}
 }
 
-// RarityNotifyToggles selects which rarity dimensions may trigger desktop notifications.
-type RarityNotifyToggles struct {
-	Type, Operator, Country bool
-}
-
 // DefaultRarityNotifyToggles enables notifications for all rarity kinds.
-func DefaultRarityNotifyToggles() RarityNotifyToggles {
-	return RarityNotifyToggles{Type: true, Operator: true, Country: true}
+func DefaultRarityNotifyToggles() obs.RarityNotifyToggles {
+	return obs.RarityNotifyToggles{Type: true, Operator: true, Country: true}
 }
 
 // EmitRarityNotifications sends desktop notifications for sightings, respecting toggles.
 // Combined rarities (e.g. type+operator) degrade to the best matching template for the enabled subset.
-func (notify *Notify) EmitRarityNotifications(sightings []obs.RareSighting, toggles RarityNotifyToggles) {
+func (notify *Notify) EmitRarityNotifications(
+	sightings []obs.RareSighting,
+	toggles obs.RarityNotifyToggles,
+) {
 	for i := range sightings {
 		notify.emitRarityWithToggles(&sightings[i], toggles)
 	}
 }
 
-func (notify *Notify) emitRarityWithToggles(rareSighting *obs.RareSighting, toggles RarityNotifyToggles) {
+func (notify *Notify) emitRarityWithToggles(
+	rareSighting *obs.RareSighting,
+	toggles obs.RarityNotifyToggles,
+) {
 	if rareSighting.Rarities == obs.NoRarity || rareSighting.Sighting == nil {
 		return
 	}
@@ -244,26 +249,4 @@ func notifyRareTypeOperatorCountry(sighting *obs.AircraftSighting) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// aircraftToString generates a one-liner consisting of the most relevant information about the
-// given aircraft.
-func aircraftToString(aircraft *obs.AircraftRecord) string {
-	flight := aircraft.GetFlightNoAsStr()
-	altitude := aircraft.GetAltitudeAsStr()
-	var aType string
-	if aircraft.Description != "" {
-		aType = aircraft.Description
-	} else {
-		aType = aircraft.CachedType
-	}
-
-	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
-		flight,
-		aircraft.CachedDist,
-		altitude,
-		aircraft.GroundSpeed,
-		aircraft.NavHeading,
-		aType,
-		aircraft.Registration)
 }

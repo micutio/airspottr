@@ -6,7 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	repo "github.com/micutio/airspottr/internal/domain/repositories"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
 type UpdateTickMsg time.Time
@@ -33,18 +34,18 @@ func aircraftQueryTick() tea.Cmd {
 
 type AircraftResponseMsg []obs.AircraftRecord
 
-func requestAircraftDataCmd(request *adsb.Request) tea.Cmd {
+func requestAircraftDataCmd(frr repo.AircraftRepository) tea.Cmd {
 	return func() tea.Msg {
-		aircraftData := request.RequestAircraft()
+		aircraftData := frr.RequestAircraft()
 		return AircraftResponseMsg(aircraftData)
 	}
 }
 
 type FlightRoutesResponseMsg []ref.FlightRouteRecord
 
-func requestFlightRouteDataCmd(request *adsb.Request, callsigns []string) tea.Cmd {
+func requestFlightRouteDataCmd(frr repo.FlightrouteRepository, callsigns []string) tea.Cmd {
 	return func() tea.Msg {
-		flightRoutes := request.RequestFlightRoutesForCallsigns(callsigns)
+		flightRoutes := frr.RequestFlightroutesForCallsigns(callsigns)
 		return FlightRoutesResponseMsg(flightRoutes)
 	}
 }

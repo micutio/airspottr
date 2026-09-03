@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/airspottr/internal"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -28,7 +28,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		}
 	}()
 
-	notify := internal.NewNotify(appName, new(io.Discard))
+	notify := noti.NewNotify(appName, new(io.Discard))
 
 	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
 	if err != nil {
@@ -57,7 +57,8 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		uiState:           mainPage,
 		startTime:         time.Now(),
 		lastUpdate:        time.Unix(0, 0),
-		request:           request,
+		aircraftRepo:      request,
+		flightrouteRepo:   request,
 		dashboard:         dashboard,
 		notify:            notify,
 		options:           requestOptions,

@@ -12,3 +12,8 @@ const (
 	RareOperator RarityFlag = 0b010
 	RareCountry  RarityFlag = 0b100
 )
+
+// RarityNotifyToggles selects which rarity dimensions may trigger desktop notifications.
+type RarityNotifyToggles struct {
+	Type, Operator, Country bool
+}

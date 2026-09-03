@@ -6,8 +6,10 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/airspottr/internal"
-	adsb "github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/application"
+	repo "github.com/micutio/airspottr/internal/domain/repositories"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/notify"
 )
 
 // model implements tea.Model (Init, Update, View).
@@ -28,13 +30,14 @@ type model struct {
 	raritySortCol    [rarityTableCount]int
 	raritySortDesc   [rarityTableCount]bool
 
-	uiState    uiState
-	startTime  time.Time
-	lastUpdate time.Time
-	request    *adsb.Request
-	dashboard  *internal.Dashboard
-	notify     *internal.Notify
-	options    adsb.RequestOptions
+	uiState         uiState
+	startTime       time.Time
+	lastUpdate      time.Time
+	aircraftRepo    repo.AircraftRepository
+	flightrouteRepo repo.FlightrouteRepository
+	dashboard       *application.Dashboard
+	notify          *notify.Notify
+	options         adsb.RequestOptions
 
 	inputFocus      inputFocus
 	notifyStripIdx  int // 0=type, 1=operator, 2=country when focusNotifyStrip
@@ -63,7 +66,7 @@ func (m *model) Init() tea.Cmd {
 		m.tables.rarities[i].table.SetStyles(m.tableStyle)
 		m.tables.rarities[i].table.Blur()
 	}
-	return tea.Batch(updateTick(), aircraftQueryTick(), requestAircraftDataCmd(m.request))
+	return tea.Batch(updateTick(), aircraftQueryTick(), requestAircraftDataCmd(m.aircraftRepo))
 }
 
 func (m *model) UnfocusSelectedTable() {

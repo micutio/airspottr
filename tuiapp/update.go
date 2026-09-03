@@ -4,7 +4,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/micutio/airspottr/internal"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
@@ -20,7 +19,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 	case UpdateTickMsg:
 		return m, updateTick()
 	case AircraftQueryTickMsg:
-		return m, tea.Batch(requestAircraftDataCmd(m.request), aircraftQueryTick())
+		return m, tea.Batch(requestAircraftDataCmd(m.aircraftRepo), aircraftQueryTick())
 	case AircraftResponseMsg:
 		return m, m.processAircraftResponse(thisMsg)
 	case FlightRoutesResponseMsg:
@@ -33,7 +32,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []obs.AircraftRecord(msg)
 	m.dashboard.ProcessAircraftRecords(aircraftRecords)
-	m.notify.EmitRarityNotifications(m.dashboard.RareSightings, internal.RarityNotifyToggles{
+	m.notify.EmitRarityNotifications(m.dashboard.RareSightings, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
 		Country:  m.notifyOnCountry,
@@ -41,7 +40,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 
 	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
 	if callsignsWithoutRoute != nil {
-		return requestFlightRouteDataCmd(m.request, callsignsWithoutRoute)
+		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}
 
 	m.updateAllTables()
@@ -55,7 +54,7 @@ func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd 
 	// Check if there are more callsigns without routes and request them
 	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
 	if callsignsWithoutRoute != nil {
-		return requestFlightRouteDataCmd(m.request, callsignsWithoutRoute)
+		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}
 
 	m.updateAllTables()

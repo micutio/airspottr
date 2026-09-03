@@ -26,7 +26,6 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 - [x] graceful shutdown
 - [x] current aircraft closest to your location
 - [ ] graphs for aircraft type count over time
-- [ ] radar-like visual for nearby aircraft (look up APIs for geographic data)
 - [x] more flight information, e.g.: origin, destination, flight time remaining
 - [x] more unit testing
 - [ ] collect additional information about unknown aircraft/types to try and identify later
