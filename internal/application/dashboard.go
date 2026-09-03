@@ -122,7 +122,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 
 	for idx := range len(db.CurrentAircraft) {
 		// Get aircraft and time of sighting
-		aircraft := &(db.CurrentAircraft)[idx]
+		aircraft := &db.CurrentAircraft[idx]
 		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
@@ -166,7 +166,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 
 		// Update distance
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
-		(db.CurrentAircraft)[idx].CachedDist = ref.Distance(thisPos, acPos).Kilometers()
+		db.CurrentAircraft[idx].CachedDist = ref.Distance(thisPos, acPos).Kilometers()
 		aircraft.CachedDist = ref.Distance(thisPos, acPos).Kilometers()
 		sighting.Distance = aircraft.CachedDist
 
@@ -449,7 +449,7 @@ func (db *Dashboard) RecomputeFastestAndHighest() {
 	db.Fastest = nil
 	db.Highest = nil
 	for idx := range db.CurrentAircraft {
-		aircraft := &(db.CurrentAircraft)[idx]
+		aircraft := &db.CurrentAircraft[idx]
 		db.updateHighest(aircraft)
 		db.updateFastest(aircraft)
 	}
