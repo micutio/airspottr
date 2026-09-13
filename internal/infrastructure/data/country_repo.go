@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
 	"os"
 	"strconv"
 	"strings"
@@ -26,13 +25,16 @@ var (
 	errParseHexRangeToCountryMap = errors.New("failed to parse hex-range to country map")
 )
 
+// TODO: Remove logger member.
+
 type CountryRepo struct {
 	hexRangeToCountry  map[ref.HexRange]string
 	regPrefixToCountry map[string]string
-	errOut             log.Logger
 }
 
-func NewCountryRepo(stderr *io.Writer) (*CountryRepo, error) {
+// TODO: Replace error logging with returning error.
+
+func NewCountryRepo() (*CountryRepo, error) {
 	const initError = "NewCountryRepo: %w caused by %w"
 	hexRangeToCountryMap, hexRangeErr := getHexRangeToCountryMap()
 	if hexRangeErr != nil {
@@ -47,7 +49,6 @@ func NewCountryRepo(stderr *io.Writer) (*CountryRepo, error) {
 	repo := CountryRepo{
 		hexRangeToCountry:  hexRangeToCountryMap,
 		regPrefixToCountry: regPrefixToCountryMap,
-		errOut:             *log.New(*stderr, "CountryRepository ", log.LstdFlags),
 	}
 
 	return &repo, nil
@@ -58,18 +59,17 @@ func NewCountryRepo(stderr *io.Writer) (*CountryRepo, error) {
 /// Interface Methods ////////////////////////////////////////////////////////
 
 // GetCountryByHexCode implements the CountryRepo interface of the same name.
-func (cr *CountryRepo) GetCountryByHexCode(hexCode string) string {
+func (cr *CountryRepo) GetCountryByHexCode(hexCode string) (string, error) {
 	hexAsInt, err := strconv.ParseInt(hexCode, 16, 64)
 	if err != nil {
-		cr.errOut.Printf("unable to convert hex to int: %s\n", hexCode)
-		return ref.CountryUnknown
+		return "", fmt.Errorf("unable to convert hex to int: %s: %w", hexCode, err)
 	}
 	for key, value := range cr.hexRangeToCountry {
 		if hexAsInt > key.LowerBound && hexAsInt < key.UpperBound {
-			return value
+			return value, nil
 		}
 	}
-	return ref.CountryUnknown
+	return ref.CountryUnknown, nil
 }
 
 // GetCountryByRegistration implements the CountryRepo interface of the same name.

@@ -43,7 +43,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		return
 	}
 
-	countryRepo, countryRepoErr := setupCountryRepository(errLogFile)
+	countryRepo, countryRepoErr := data.NewCountryRepo()
 	if countryRepoErr != nil {
 		log.Printf("unable to create country repository: %v", countryRepoErr)
 		return

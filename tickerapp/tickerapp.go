@@ -58,7 +58,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	if operatorRepoErr != nil {
 		return nil, fmt.Errorf("unable to create operator repository: %w", operatorRepoErr)
 	}
-	countryRepo, countryRepoErr := data.NewCountryRepo(&stderr)
+	countryRepo, countryRepoErr := data.NewCountryRepo()
 	if countryRepoErr != nil {
 		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
 	}

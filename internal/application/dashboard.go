@@ -332,7 +332,12 @@ func (db *Dashboard) updateCountry(
 
 	// Option #2: Detect country by the range of it's hex registration.
 	if sighting.Country == ref.CountryUnknown {
-		sighting.Country = strings.ToUpper(countryRepo.GetCountryByHexCode(aircraft.Hex))
+		country, countryErr := countryRepo.GetCountryByHexCode(aircraft.Hex)
+		if countryErr != nil {
+			db.ErrOut.Printf("warning: invalid hex code: %v", countryErr)
+		} else {
+			sighting.Country = strings.ToUpper(country)
+		}
 	}
 
 	// Option #3: Detect country by its ICAO registration prefix.
