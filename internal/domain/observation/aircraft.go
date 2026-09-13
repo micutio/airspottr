@@ -21,8 +21,6 @@ const (
 	TypeUnknown = "unknown"
 	// OperatorUnknown is what we use for aircraft with a type that's either empty or can't be found.
 	OperatorUnknown = "unknown"
-	// CountryUnknown is what we use for aircraft with a type that's either empty or can't be found.
-	CountryUnknown = "unknown"
 )
 
 // AircraftResult mirrors the JSON which is returned for aircraft queries within a given distance.

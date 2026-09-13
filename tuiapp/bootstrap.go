@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	internal "github.com/micutio/airspottr/internal/application"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/data"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -43,6 +44,14 @@ func setupRequestAndDashboard(
 	}
 
 	return request, dashboard, nil
+}
+
+func setupCountryRepository(errWriter io.Writer) (*data.CountryRepo, error) {
+	countryRepo, countryRepoErr := data.NewCountryRepo(&errWriter)
+	if countryRepoErr != nil {
+		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
+	}
+	return countryRepo, nil
 }
 
 type tableSetup struct {

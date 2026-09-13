@@ -8,21 +8,19 @@ import (
 	"log" //nolint:depguard // Don't feel like using slog
 	"math"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
+	rep "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 // Errors used by the Dashboard.
 var (
-	errParseIcaoAircraftMap      = errors.New("failed to parse ICAO to aircraft map")
-	errParseIcaoAirlineMap       = errors.New("failed to parse ICAO to airline map")
-	errParseRegToCountryMap      = errors.New("failed to parse reg-prefix to country map")
-	errParseHexRangeToCountryMap = errors.New("failed to parse hex-range to country map")
-	errParseMilCodeMap           = errors.New("failed to parse mil code to operator map")
+	errParseIcaoAircraftMap = errors.New("failed to parse ICAO to aircraft map")
+	errParseIcaoAirlineMap  = errors.New("failed to parse ICAO to airline map")
+	errParseMilCodeMap      = errors.New("failed to parse mil code to operator map")
 )
 
 type Dashboard struct {
@@ -43,8 +41,6 @@ type Dashboard struct {
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
 	IcaoToAircraft     map[string]ref.IcaoAircraft
 	IcaoToAirline      map[string]ref.IcaoOperator
-	RegPrefixToCountry map[string]string
-	HexRangeToCountry  map[ref.HexRange]string
 	MilCodeToOperator  map[string]string
 	ErrOut             log.Logger
 }
@@ -60,16 +56,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 	icaoToAirlineMap, airlineErr := ref.GetIcaoToAirlineMap()
 	if airlineErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAirlineMap, airlineErr)
-	}
-
-	regPrefixToCountryMap, regErr := ref.GetRegPrefixMap()
-	if regErr != nil {
-		return nil, fmt.Errorf(initError, errParseRegToCountryMap, regErr)
-	}
-
-	hexRangeToCountryMap, hexRangeErr := ref.GetHexRangeToCountryMap()
-	if hexRangeErr != nil {
-		return nil, fmt.Errorf(initError, errParseHexRangeToCountryMap, hexRangeErr)
 	}
 
 	milCodeToOperatorMap, milCodeErr := ref.GetMilCodeToOperatorMap()
@@ -95,8 +81,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		SeenCountryCount:   make(map[string]int),
 		IcaoToAircraft:     icaoToAircraftMap,
 		IcaoToAirline:      icaoToAirlineMap,
-		RegPrefixToCountry: regPrefixToCountryMap,
-		HexRangeToCountry:  hexRangeToCountryMap,
 		MilCodeToOperator:  milCodeToOperatorMap,
 		ErrOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
@@ -114,7 +98,10 @@ func (db *Dashboard) FinishWarmupPeriod() {
 /// Processing of all aircraft: civilian, military, government, private.    //
 //////////////////////////////////////////////////////////////////////////////
 
-func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord) {
+func (db *Dashboard) ProcessAircraftRecords(
+	countryRepo rep.CountryRepository,
+	aircraftRecords []obs.AircraftRecord,
+) {
 	db.CurrentAircraft = aircraftRecords
 	sort.Sort(obs.ByFlight(db.CurrentAircraft))
 	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
@@ -140,7 +127,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 				TypeShort:    "",
 				TypeDesc:     obs.TypeUnknown,
 				Operator:     obs.OperatorUnknown,
-				Country:      obs.CountryUnknown,
+				Country:      ref.CountryUnknown,
 				Info:         "",
 				Flightroute:  nil,
 			}
@@ -177,7 +164,7 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 		newRarities := obs.NoRarity
 		rareTypeFlag := db.updateType(sighting, aircraft, isNewFlight)
 		rareOperatorFlag := db.updateOperator(sighting, aircraft, isNewFlight)
-		rareCountryFlag := db.updateCountry(sighting, aircraft, isNewFlight)
+		rareCountryFlag := db.updateCountry(countryRepo, sighting, aircraft, isNewFlight)
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
@@ -332,12 +319,13 @@ func (db *Dashboard) updateOperator(
 }
 
 func (db *Dashboard) updateCountry(
+	countryRepo rep.CountryRepository,
 	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
 ) obs.RarityFlag {
 	// We already know the type or just saw this one recently, no need to update again.
-	if sighting.Country != obs.CountryUnknown && !isNewFlight {
+	if sighting.Country != ref.CountryUnknown && !isNewFlight {
 		return 0
 	}
 
@@ -355,19 +343,19 @@ func (db *Dashboard) updateCountry(
 	}
 
 	// Option #2: Detect country by the range of it's hex registration.
-	if sighting.Country == obs.CountryUnknown {
-		sighting.Country = strings.ToUpper(db.getCountryByHexRange(aircraft.Hex))
+	if sighting.Country == ref.CountryUnknown {
+		sighting.Country = strings.ToUpper(countryRepo.GetCountryByHexCode(aircraft.Hex))
 	}
 
 	// Option #3: Detect country by its ICAO registration prefix.
-	if sighting.Country == obs.CountryUnknown {
-		if country, exists := db.getCountryByRegPrefix(aircraft.Registration); exists {
+	if sighting.Country == ref.CountryUnknown {
+		if country, exists := countryRepo.GetCountryByRegistration(aircraft.Registration); exists {
 			sighting.Country = strings.ToUpper(country)
 		}
 	}
 
 	// Unable to detect country of this aircraft.
-	if sighting.Country == obs.CountryUnknown {
+	if sighting.Country == ref.CountryUnknown {
 		return 0
 	}
 
@@ -397,30 +385,6 @@ func (db *Dashboard) updateCountry(
 	//	"isRareCountry", isRareCountry)
 
 	return 1
-}
-
-func (db *Dashboard) getCountryByHexRange(hexAsStr string) string {
-	hexAsInt, err := strconv.ParseInt(hexAsStr, 16, 64)
-	if err != nil {
-		db.ErrOut.Printf("unable to convert hex to int: %s\n", hexAsStr)
-		return obs.CountryUnknown
-	}
-	for key, value := range db.HexRangeToCountry {
-		if hexAsInt > key.LowerBound && hexAsInt < key.UpperBound {
-			return value
-		}
-	}
-	return obs.CountryUnknown
-}
-
-func (db *Dashboard) getCountryByRegPrefix(reg string) (string, bool) {
-	for key, value := range db.RegPrefixToCountry {
-		if strings.Contains(reg, key) {
-			return value, true
-		}
-	}
-
-	return "", false
 }
 
 func (db *Dashboard) updateHighest(aircraft *obs.AircraftRecord) {

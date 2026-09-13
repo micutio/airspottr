@@ -36,6 +36,12 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		return
 	}
 
+	countryRepo, countryRepoErr := setupCountryRepository(errLogFile)
+	if countryRepoErr != nil {
+		log.Printf("unable to create country repository: %v", countryRepoErr)
+		return
+	}
+
 	dashboard.FinishWarmupPeriod()
 
 	theme := getDefaultTheme()
@@ -59,6 +65,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      request,
 		flightrouteRepo:   request,
+		countryRepo:       countryRepo,
 		dashboard:         dashboard,
 		notify:            notify,
 		options:           requestOptions,
