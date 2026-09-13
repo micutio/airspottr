@@ -19,8 +19,6 @@ import (
 // Errors used by the Dashboard.
 var (
 	errParseIcaoAircraftMap = errors.New("failed to parse ICAO to aircraft map")
-	errParseIcaoAirlineMap  = errors.New("failed to parse ICAO to airline map")
-	errParseMilCodeMap      = errors.New("failed to parse mil code to operator map")
 )
 
 type Dashboard struct {
@@ -40,8 +38,6 @@ type Dashboard struct {
 	SeenOperatorCount  map[string]int // airlines mapped to how often seen
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
 	IcaoToAircraft     map[string]ref.IcaoAircraft
-	IcaoToAirline      map[string]ref.IcaoOperator
-	MilCodeToOperator  map[string]string
 	ErrOut             log.Logger
 }
 
@@ -51,16 +47,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 	icaoToAircraftMap, aircraftErr := ref.GetIcaoToAircraftMap()
 	if aircraftErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAircraftMap, aircraftErr)
-	}
-
-	icaoToAirlineMap, airlineErr := ref.GetIcaoToAirlineMap()
-	if airlineErr != nil {
-		return nil, fmt.Errorf(initError, errParseIcaoAirlineMap, airlineErr)
-	}
-
-	milCodeToOperatorMap, milCodeErr := ref.GetMilCodeToOperatorMap()
-	if milCodeErr != nil {
-		return nil, fmt.Errorf(initError, errParseMilCodeMap, milCodeErr)
 	}
 
 	dashboard := Dashboard{
@@ -80,8 +66,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		SeenOperatorCount:  make(map[string]int),
 		SeenCountryCount:   make(map[string]int),
 		IcaoToAircraft:     icaoToAircraftMap,
-		IcaoToAirline:      icaoToAirlineMap,
-		MilCodeToOperator:  milCodeToOperatorMap,
 		ErrOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
 
@@ -99,6 +83,7 @@ func (db *Dashboard) FinishWarmupPeriod() {
 //////////////////////////////////////////////////////////////////////////////
 
 func (db *Dashboard) ProcessAircraftRecords(
+	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
 	aircraftRecords []obs.AircraftRecord,
 ) {
@@ -163,8 +148,9 @@ func (db *Dashboard) ProcessAircraftRecords(
 
 		newRarities := obs.NoRarity
 		rareTypeFlag := db.updateType(sighting, aircraft, isNewFlight)
-		rareOperatorFlag := db.updateOperator(sighting, aircraft, isNewFlight)
-		rareCountryFlag := db.updateCountry(countryRepo, sighting, aircraft, isNewFlight)
+		rareOperatorFlag := db.updateOperator(operatorRepo, sighting, aircraft, isNewFlight)
+		rareCountryFlag := db.updateCountry(
+			operatorRepo, countryRepo, sighting, aircraft, isNewFlight)
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
@@ -251,6 +237,7 @@ func (db *Dashboard) updateType(
 }
 
 func (db *Dashboard) updateOperator(
+	operatorRepo rep.OperatorRepository,
 	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
@@ -268,14 +255,14 @@ func (db *Dashboard) updateOperator(
 	// First option: try to detect the airline and get operator & country from it.
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != obs.FlightUnknownCode {
-		if operatorRecord, opExists := db.IcaoToAirline[flightCode]; opExists {
+		if operatorRecord, opExists := operatorRepo.GetOperatorByIcao(flightCode); opExists {
 			sighting.Operator = operatorRecord.Company
 		}
 	}
 
 	// Unable to detect airline, maybe it's military or government.
 	if sighting.Operator == obs.OperatorUnknown {
-		if militaryOperator, milOpExists := db.MilCodeToOperator[flightCode]; milOpExists {
+		if militaryOperator, milOpExists := operatorRepo.GetOperatorByMilCode(flightCode); milOpExists {
 			sighting.Operator = militaryOperator
 		}
 	}
@@ -319,6 +306,7 @@ func (db *Dashboard) updateOperator(
 }
 
 func (db *Dashboard) updateCountry(
+	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
 	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
@@ -337,7 +325,7 @@ func (db *Dashboard) updateCountry(
 	// Option #1: Try to detect the airline and get operator & country from it.
 	flightCode := aircraft.GetFlightNoAsIcaoCode()
 	if flightCode != obs.FlightUnknownCode {
-		if operatorRecord, exists := db.IcaoToAirline[flightCode]; exists {
+		if operatorRecord, exists := operatorRepo.GetOperatorByIcao(flightCode); exists {
 			sighting.Country = strings.ToUpper(operatorRecord.Country)
 		}
 	}

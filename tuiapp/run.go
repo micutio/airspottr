@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
@@ -33,6 +34,12 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
 	if err != nil {
 		log.Printf("failed to set up dashboard and request: %v", err)
+		return
+	}
+
+	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
+	if operatorRepoErr != nil {
+		log.Printf("failed to set up operator repository: %v", operatorRepoErr)
 		return
 	}
 
@@ -65,6 +72,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      request,
 		flightrouteRepo:   request,
+		operatorRepo:      operatorRepo,
 		countryRepo:       countryRepo,
 		dashboard:         dashboard,
 		notify:            notify,

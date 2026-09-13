@@ -35,6 +35,7 @@ type model struct {
 	lastUpdate      time.Time
 	aircraftRepo    repo.AircraftRepository
 	flightrouteRepo repo.FlightrouteRepository
+	operatorRepo    repo.OperatorRepository
 	countryRepo     repo.CountryRepository
 	dashboard       *application.Dashboard
 	notify          *notify.Notify

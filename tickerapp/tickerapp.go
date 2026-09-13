@@ -23,15 +23,16 @@ import (
 
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
-	appName     string
-	options     adsb.RequestOptions
-	logger      *slog.Logger
-	request     *adsb.Request
-	countryRepo rep.CountryRepository
-	dashboard   *application.Dashboard
-	notify      *noti.Notify
-	done        chan bool
-	wg          sync.WaitGroup
+	appName      string
+	options      adsb.RequestOptions
+	logger       *slog.Logger
+	request      *adsb.Request
+	operatorRepo rep.OperatorRepository
+	countryRepo  rep.CountryRepository
+	dashboard    *application.Dashboard
+	notify       *noti.Notify
+	done         chan bool
+	wg           sync.WaitGroup
 }
 
 // New creates and initializes a new TickerApp.
@@ -53,20 +54,25 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
 	}
 
+	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
+	if operatorRepoErr != nil {
+		return nil, fmt.Errorf("unable to create operator repository: %w", operatorRepoErr)
+	}
 	countryRepo, countryRepoErr := data.NewCountryRepo(&stderr)
 	if countryRepoErr != nil {
 		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
 	}
 
 	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
-		appName:     appName,
-		options:     options,
-		logger:      logger,
-		request:     request,
-		countryRepo: countryRepo,
-		dashboard:   dashboard,
-		notify:      notify,
-		done:        make(chan bool),
+		appName:      appName,
+		options:      options,
+		logger:       logger,
+		request:      request,
+		operatorRepo: operatorRepo,
+		countryRepo:  countryRepo,
+		dashboard:    dashboard,
+		notify:       notify,
+		done:         make(chan bool),
 	}, nil
 }
 
@@ -102,7 +108,7 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.request.RequestAircraft()
-				app.dashboard.ProcessAircraftRecords(app.countryRepo, aircraftRecords)
+				app.dashboard.ProcessAircraftRecords(app.operatorRepo, app.countryRepo, aircraftRecords)
 				app.notify.EmitRarityNotifications(
 					app.dashboard.RareSightings,
 					noti.DefaultRarityNotifyToggles(),
