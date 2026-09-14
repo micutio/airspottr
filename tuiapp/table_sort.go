@@ -9,6 +9,7 @@ import (
 	"github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
+	"github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 const (
@@ -81,10 +82,13 @@ func altitudeSortKey(aircraftRecord *obs.AircraftRecord) float64 {
 }
 
 // compareAircraftAscending reports whether a should sort before b (ascending).
+//
+//nolint:gocognit
 func compareAircraftAscending(
 	recordA, recordB *obs.AircraftRecord,
 	col int,
 	dashboard *application.Dashboard,
+	typeRepo repositories.AircraftTypeRepo,
 ) bool {
 	dstCol := 0
 	fnoCol := 1
@@ -106,10 +110,16 @@ func compareAircraftAscending(
 			return sa < sb
 		}
 	case tidCol: // TID
-		ta := dashboard.IcaoToAircraft[recordA.IcaoType].Make
-		tb := dashboard.IcaoToAircraft[recordB.IcaoType].Make
-		if ta != tb {
-			return ta < tb
+		typeA, taExists := typeRepo.GetAircraftType(recordA.IcaoType)
+		if !taExists {
+			return false
+		}
+		typeB, tbExists := typeRepo.GetAircraftType(recordB.IcaoType)
+		if !tbExists {
+			return false
+		}
+		if typeA.Make != typeB.Make {
+			return typeA.Make < typeB.Make
 		}
 	case depCol: // DEP
 		da, dbi := routeA.Origin.IataCode, routeB.Origin.IataCode
@@ -138,17 +148,22 @@ func compareAircraftAscending(
 	return recordA.Hex < recordB.Hex
 }
 
-func filteredSortedAircraft(dashboard *application.Dashboard, sortCol int, desc bool) []obs.AircraftRecord {
+func filteredSortedAircraft(
+	dashboard *application.Dashboard,
+	typeRepo repositories.AircraftTypeRepo,
+	sortCol int,
+	desc bool,
+) []obs.AircraftRecord {
 	var rows []obs.AircraftRecord
 	for _, ac := range dashboard.CurrentAircraft {
-		aircraftType := dashboard.IcaoToAircraft[ac.IcaoType].Make
-		if ac.GetFlightNoAsStr() == "" && aircraftType == "" {
+		aircraftType, atExists := typeRepo.GetAircraftType(ac.IcaoType)
+		if !atExists || (ac.GetFlightNoAsStr() == "" && aircraftType.Make == "") {
 			continue
 		}
 		rows = append(rows, ac)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, dashboard)
+		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, dashboard, typeRepo)
 		if desc {
 			return !less
 		}

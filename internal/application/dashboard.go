@@ -2,8 +2,6 @@
 package application
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
 	"math"
@@ -14,11 +12,6 @@ import (
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
-)
-
-// Errors used by the Dashboard.
-var (
-	errParseIcaoAircraftMap = errors.New("failed to parse ICAO to aircraft map")
 )
 
 type Dashboard struct {
@@ -37,18 +30,10 @@ type Dashboard struct {
 	SeenTypeCount      map[string]int // types mapped to how often seen
 	SeenOperatorCount  map[string]int // airlines mapped to how often seen
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
-	IcaoToAircraft     map[string]ref.IcaoAircraftSpec
 	ErrOut             log.Logger
 }
 
-func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, error) {
-	const initError = "newDashboard: %w caused by %w"
-
-	icaoToAircraftMap, aircraftErr := ref.GetIcaoToAircraftMap()
-	if aircraftErr != nil {
-		return nil, fmt.Errorf(initError, errParseIcaoAircraftMap, aircraftErr)
-	}
-
+func NewDashboard(lat float64, lon float64, stderr *io.Writer) *Dashboard {
 	dashboard := Dashboard{
 		IsWarmup:           true,
 		Lat:                lat,
@@ -65,13 +50,12 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) (*Dashboard, erro
 		SeenTypeCount:      make(map[string]int),
 		SeenOperatorCount:  make(map[string]int),
 		SeenCountryCount:   make(map[string]int),
-		IcaoToAircraft:     icaoToAircraftMap,
 		ErrOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
 
 	dashboard.ErrOut.Println("Dashboard init")
 
-	return &dashboard, nil
+	return &dashboard
 }
 
 func (db *Dashboard) FinishWarmupPeriod() {
@@ -91,6 +75,7 @@ func (db *Dashboard) FinishWarmupPeriod() {
 // has been counted below a certain threshold, then this sighting is now
 // considered rare and can be used to emit notifications to the user.
 func (db *Dashboard) ProcessAircraftRecords(
+	aircraftSpecRepo rep.AircraftTypeRepo,
 	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
 	aircraftRecords []obs.AircraftRecord,
@@ -157,7 +142,7 @@ func (db *Dashboard) ProcessAircraftRecords(
 		db.updateFastest(aircraft)
 
 		newRarities := obs.NoRarity
-		rareTypeFlag := db.updateType(sighting, aircraft, isNewFlight)
+		rareTypeFlag := db.updateType(aircraftSpecRepo, sighting, aircraft, isNewFlight)
 		rareOperatorFlag := db.updateOperator(operatorRepo, sighting, aircraft, isNewFlight)
 		rareCountryFlag := db.updateCountry(
 			operatorRepo, countryRepo, sighting, aircraft, isNewFlight)
@@ -181,6 +166,7 @@ func (db *Dashboard) ProcessAircraftRecords(
 }
 
 func (db *Dashboard) updateType(
+	aircraftSpecRepo rep.AircraftTypeRepo,
 	sighting *obs.AircraftSighting,
 	aircraft *obs.AircraftRecord,
 	isNewFlight bool,
@@ -198,10 +184,12 @@ func (db *Dashboard) updateType(
 	}
 
 	// We couldn't find out the type of this aircraft, unable to update statistics.
-	aType := db.IcaoToAircraft[aircraft.IcaoType].Make
-	if aType == "" {
+	spec, exists := aircraftSpecRepo.GetAircraftType(aircraft.IcaoType)
+	if !exists {
 		return 0
 	}
+
+	aType := spec.Make
 
 	sighting.TypeDesc = aType
 	aircraft.CachedType = aType

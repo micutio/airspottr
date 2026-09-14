@@ -25,14 +25,10 @@ var (
 	errParseHexRangeToCountryMap = errors.New("failed to parse hex-range to country map")
 )
 
-// TODO: Remove logger member.
-
 type CountryRepo struct {
 	hexRangeToCountry  map[ref.HexRange]string
 	regPrefixToCountry map[string]string
 }
-
-// TODO: Replace error logging with returning error.
 
 func NewCountryRepo() (*CountryRepo, error) {
 	const initError = "NewCountryRepo: %w caused by %w"

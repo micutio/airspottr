@@ -8,6 +8,18 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
+type TypeRepoMock struct{}
+
+// GetAircraftType implements the AircraftTypeRepo interface of
+// the same name.
+func (mock *TypeRepoMock) GetAircraftType(icaoCode string) (ref.IcaoAircraftSpec, bool) {
+	return ref.IcaoAircraftSpec{
+		Class:  icaoCode,
+		Engine: icaoCode,
+		Make:   icaoCode,
+	}, true
+}
+
 func TestFilteredSortedAircraftByDistance(t *testing.T) {
 	t.Parallel()
 	dashboard := &application.Dashboard{ //nolint:exhaustruct // just for testing
@@ -15,16 +27,17 @@ func TestFilteredSortedAircraftByDistance(t *testing.T) {
 			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
 			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
 		},
-		IcaoToAircraft: map[string]ref.IcaoAircraftSpec{},
 	}
-	out := filteredSortedAircraft(dashboard, 0, false) // DST asc
+	typeRepo := TypeRepoMock{}
+
+	out := filteredSortedAircraft(dashboard, &typeRepo, 0, false) // DST asc
 	if len(out) != 2 {
 		t.Fatalf("len %d", len(out))
 	}
 	if out[0].Hex != "b" || out[1].Hex != "a" {
 		t.Errorf("order %+v", out)
 	}
-	out = filteredSortedAircraft(dashboard, 0, true)
+	out = filteredSortedAircraft(dashboard, &typeRepo, 0, true)
 	if out[0].Hex != "a" {
 		t.Errorf("desc first want a got %s", out[0].Hex)
 	}

@@ -74,26 +74,30 @@ func (m *model) viewHeader() string {
 	highest := m.dashboard.Highest
 	fastest := m.dashboard.Fastest
 	if highest != nil && fastest != nil {
-		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
-			lipgloss.JoinVertical(lipgloss.Left,
-				listHeader("Highest"),
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					listItem("ALT", highest.GetAltitudeAsStr()),
-					listItem("FNO", highest.GetFlightNoAsStr()),
-					listItem("REG", highest.Registration),
-					listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
+		highestType, htExists := m.typeRepo.GetAircraftType(highest.IcaoType)
+		fastestType, ftExists := m.typeRepo.GetAircraftType(fastest.IcaoType)
+		if htExists && ftExists {
+			rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					listHeader("Highest"),
+					lipgloss.JoinHorizontal(
+						lipgloss.Left,
+						listItem("ALT", highest.GetAltitudeAsStr()),
+						listItem("FNO", highest.GetFlightNoAsStr()),
+						listItem("REG", highest.Registration),
+						listItem("TID", highestType.Make),
+					),
+					listHeader("Fastest"),
+					lipgloss.JoinHorizontal(
+						lipgloss.Left,
+						listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
+						listItem("FNO", fastest.GetFlightNoAsStr()),
+						listItem("REG", fastest.Registration),
+						listItem("TID", fastestType.Make),
+					),
 				),
-				listHeader("Fastest"),
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
-					listItem("FNO", fastest.GetFlightNoAsStr()),
-					listItem("REG", fastest.Registration),
-					listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
-				),
-			),
-		)
+			)
+		}
 	} else {
 		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
 			m.baseStyle.Foreground(m.theme.Secondary).Render(

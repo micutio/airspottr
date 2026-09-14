@@ -27,6 +27,7 @@ type TickerApp struct {
 	options      adsb.RequestOptions
 	logger       *slog.Logger
 	request      *adsb.Request
+	typeRepo     rep.AircraftTypeRepo
 	operatorRepo rep.OperatorRepository
 	countryRepo  rep.CountryRepository
 	dashboard    *application.Dashboard
@@ -40,10 +41,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	logger := slog.Default() // Or a custom logger
 	notify := noti.NewNotify(appName, &stdout)
 
-	dashboard, dashboardErr := application.NewDashboard(options.Lat, options.Lon, &stderr)
-	if dashboardErr != nil {
-		return nil, fmt.Errorf("unable to create dashboard: %w", dashboardErr)
-	}
+	dashboard := application.NewDashboard(options.Lat, options.Lon, &stderr)
 
 	request, requestErr := adsb.NewRequest(options, &stderr)
 	if requestErr != nil {
@@ -52,6 +50,11 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 
 	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
+	}
+
+	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
+	if typeRepoErr != nil {
+		return nil, fmt.Errorf("unable to create aircraft type repository: %w", typeRepoErr)
 	}
 
 	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
@@ -68,6 +71,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		options:      options,
 		logger:       logger,
 		request:      request,
+		typeRepo:     typeRepo,
 		operatorRepo: operatorRepo,
 		countryRepo:  countryRepo,
 		dashboard:    dashboard,
@@ -108,7 +112,11 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.request.RequestAircraft()
-				app.dashboard.ProcessAircraftRecords(app.operatorRepo, app.countryRepo, aircraftRecords)
+				app.dashboard.ProcessAircraftRecords(
+					app.typeRepo,
+					app.operatorRepo,
+					app.countryRepo,
+					aircraftRecords)
 				app.notify.EmitRarityNotifications(
 					app.dashboard.RareSightings,
 					noti.DefaultRarityNotifyToggles(),

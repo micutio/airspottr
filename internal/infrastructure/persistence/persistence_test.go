@@ -26,10 +26,7 @@ func TestSaveAndLoadState(t *testing.T) {
 	}()
 	t.Chdir(findRepoRoot(t))
 
-	dashboard, dashErr := internal.NewDashboard(1.0, 2.0, new(io.Discard))
-	if dashErr != nil {
-		t.Fatal(dashErr)
-	}
+	dashboard := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 
 	request, reqErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
 	if reqErr != nil {
@@ -71,10 +68,7 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(saveErr)
 	}
 
-	dashboard2, dashErr := internal.NewDashboard(1.0, 2.0, new(io.Discard))
-	if dashErr != nil {
-		t.Fatal(dashErr)
-	}
+	dashboard2 := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 
 	request2, requestErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
 	if requestErr != nil {

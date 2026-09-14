@@ -33,10 +33,7 @@ func setupRequestAndDashboard(
 		return nil, nil, fmt.Errorf("failed to create request: %w", reqErr)
 	}
 
-	dashboard, dbErr := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
-	if dbErr != nil {
-		return nil, nil, fmt.Errorf("failed to create dashboard: %w", dbErr)
-	}
+	dashboard := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
 
 	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
 		return nil, nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)

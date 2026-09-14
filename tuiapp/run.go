@@ -37,6 +37,12 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		return
 	}
 
+	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
+	if typeRepoErr != nil {
+		log.Printf("failed to create aircraft type repo: %v", typeRepoErr)
+		return
+	}
+
 	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
 	if operatorRepoErr != nil {
 		log.Printf("failed to set up operator repository: %v", operatorRepoErr)
@@ -72,6 +78,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      request,
 		flightrouteRepo:   request,
+		typeRepo:          typeRepo,
 		operatorRepo:      operatorRepo,
 		countryRepo:       countryRepo,
 		dashboard:         dashboard,
