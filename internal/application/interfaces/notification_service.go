@@ -1,4 +1,4 @@
-package application
+package interfaces
 
 import obs "github.com/micutio/airspottr/internal/domain/observation"
 

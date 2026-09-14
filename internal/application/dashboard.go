@@ -37,7 +37,7 @@ type Dashboard struct {
 	SeenTypeCount      map[string]int // types mapped to how often seen
 	SeenOperatorCount  map[string]int // airlines mapped to how often seen
 	SeenCountryCount   map[string]int // airlines mapped to how often seen
-	IcaoToAircraft     map[string]ref.IcaoAircraft
+	IcaoToAircraft     map[string]ref.IcaoAircraftSpec
 	ErrOut             log.Logger
 }
 
@@ -82,13 +82,23 @@ func (db *Dashboard) FinishWarmupPeriod() {
 /// Processing of all aircraft: civilian, military, government, private.    //
 //////////////////////////////////////////////////////////////////////////////
 
+// ProcessAircraftRecords takes currently observed aircraft messages to update
+// sightings and determine sighting rarity.
+// If an aircraft has not been recorded before -> create a new sighting.
+// If an aircraft has been recorded before on a different flight -> create a new sighting.
+// If an aircraft has been recorded before on the same flight -> update existing sighting.
+// If a sighting contains either a type, operator or country of origin that
+// has been counted below a certain threshold, then this sighting is now
+// considered rare and can be used to emit notifications to the user.
 func (db *Dashboard) ProcessAircraftRecords(
 	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
 	aircraftRecords []obs.AircraftRecord,
 ) {
 	db.CurrentAircraft = aircraftRecords
+	// TODO: Remove unnecessary sorting.
 	sort.Sort(obs.ByFlight(db.CurrentAircraft))
+	// TODO: Cache position.
 	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
 	var rareSightings []obs.RareSighting
 
@@ -402,6 +412,9 @@ func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
 	db.Fastest = aircraft
 }
 
+// RecomputeFastestAndHighest is currently only used during persistence,
+// to update the data after re-loading internal state from a stored JSON.
+// TODO: Create SpottingService API with dedicated method for loading state.
 func (db *Dashboard) RecomputeFastestAndHighest() {
 	db.Fastest = nil
 	db.Highest = nil
@@ -412,7 +425,11 @@ func (db *Dashboard) RecomputeFastestAndHighest() {
 	}
 }
 
-func (db *Dashboard) AssignRouteToCallsigns() []string {
+// TryMatchCallsignRoutes attempts to assign cached route information to all
+// sightings.
+// It returns a list of callsigns without known routes, to allow querying
+// online for these cases.
+func (db *Dashboard) TryMatchCallsignRoutes() []string {
 	var callsignsWithoutRoute []string
 	for _, sighting := range db.AircraftSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {

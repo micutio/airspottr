@@ -89,7 +89,7 @@ Keep the existing `tuiapp/` and `tickerapp/` packages here.
    - `updateType`
    - `updateOperator`
    - `updateCountry`
-   - `AssignRouteToCallsigns`
+   - `TryMatchCallsignRoutes`
    - `AssignFlightRoutes`
    - `recomputeFastestAndHighest`
 

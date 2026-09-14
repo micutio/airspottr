@@ -115,7 +115,7 @@ func (app *TickerApp) start() {
 				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.
-				callsignsWithoutRoute := app.dashboard.AssignRouteToCallsigns()
+				callsignsWithoutRoute := app.dashboard.TryMatchCallsignRoutes()
 				if len(callsignsWithoutRoute) > 0 {
 					// For flights without known route we query data from adsbdb.com.
 					routes := app.request.RequestFlightroutesForCallsigns(callsignsWithoutRoute)

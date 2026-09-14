@@ -38,7 +38,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 		Country:  m.notifyOnCountry,
 	})
 
-	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
+	callsignsWithoutRoute := m.dashboard.TryMatchCallsignRoutes()
 	if callsignsWithoutRoute != nil {
 		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}
@@ -52,7 +52,7 @@ func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd 
 	m.dashboard.AssignFlightRoutes(flightRoutes)
 
 	// Check if there are more callsigns without routes and request them
-	callsignsWithoutRoute := m.dashboard.AssignRouteToCallsigns()
+	callsignsWithoutRoute := m.dashboard.TryMatchCallsignRoutes()
 	if callsignsWithoutRoute != nil {
 		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}

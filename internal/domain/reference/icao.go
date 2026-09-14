@@ -21,14 +21,14 @@ var (
 	errHeaderLen = errors.New("unexpected header length")
 )
 
-type IcaoAircraft struct {
+type IcaoAircraftSpec struct {
 	Class  string
 	Engine string
 	Make   string
 }
 
 // GetIcaoToAircraftMap returns an ICAO id to aircraft record mapping.
-func GetIcaoToAircraftMap() (map[string]IcaoAircraft, error) {
+func GetIcaoToAircraftMap() (map[string]IcaoAircraftSpec, error) {
 	// Parse the CSV file
 	icaoAircraftMap, err := parseIcaoCsvToMap(icaoListPath)
 	if err != nil {
@@ -39,7 +39,7 @@ func GetIcaoToAircraftMap() (map[string]IcaoAircraft, error) {
 }
 
 // parseIcaoCsvToMap reads a CSV file and parses it into a map ICAO -> aircraft spec.
-func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
+func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraftSpec, error) {
 	// Open the CSV file
 	file, fileErr := os.Open(filePath)
 	if fileErr != nil {
@@ -72,7 +72,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 		return nil, fmt.Errorf("parseIcaoCsvToMap: %w", errHeaderLen)
 	}
 
-	records := make(map[string]IcaoAircraft)
+	records := make(map[string]IcaoAircraftSpec)
 
 	// Loop through the remaining records
 	for {
@@ -89,7 +89,7 @@ func parseIcaoCsvToMap(filePath string) (map[string]IcaoAircraft, error) {
 		class := record[1]
 		engine := record[2]
 		manufacturer := strings.Trim(record[3], "\"")
-		records[key] = IcaoAircraft{class, engine, manufacturer}
+		records[key] = IcaoAircraftSpec{class, engine, manufacturer}
 	}
 
 	return records, nil

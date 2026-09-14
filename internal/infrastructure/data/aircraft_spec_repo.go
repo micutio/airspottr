@@ -9,18 +9,18 @@ import (
 
 var errParseIcaoAircraftMap = errors.New("failed to parse ICAO to aircraft map")
 
-type AircraftDescriptionRepo struct {
-	icaoToAircraft map[string]ref.IcaoAircraft
+type AircraftSpecificationRepo struct {
+	icaoToAircraft map[string]ref.IcaoAircraftSpec
 }
 
-func NewAircraftDescriptionRepo() (*AircraftDescriptionRepo, error) {
+func NewAircraftDescriptionRepo() (*AircraftSpecificationRepo, error) {
 	const initError = "NewAircraftDescriptionRepo: %w caused by %w"
 	icaoToAircraftMap, aircraftErr := ref.GetIcaoToAircraftMap()
 	if aircraftErr != nil {
 		return nil, fmt.Errorf(initError, errParseIcaoAircraftMap, aircraftErr)
 	}
 
-	repo := AircraftDescriptionRepo{
+	repo := AircraftSpecificationRepo{
 		icaoToAircraft: icaoToAircraftMap,
 	}
 
@@ -29,6 +29,6 @@ func NewAircraftDescriptionRepo() (*AircraftDescriptionRepo, error) {
 
 // GetAircraftDescription implements the AicraftDescriptionRepo interface of
 // the same name.
-func (acr *AircraftDescriptionRepo) GetAircraftDescription(icaoCode string) ref.IcaoAircraft {
+func (acr *AircraftSpecificationRepo) GetAircraftDescription(icaoCode string) ref.IcaoAircraftSpec {
 	return acr.icaoToAircraft[icaoCode]
 }

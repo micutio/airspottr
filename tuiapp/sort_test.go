@@ -15,7 +15,7 @@ func TestFilteredSortedAircraftByDistance(t *testing.T) {
 			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
 			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
 		},
-		IcaoToAircraft: map[string]ref.IcaoAircraft{},
+		IcaoToAircraft: map[string]ref.IcaoAircraftSpec{},
 	}
 	out := filteredSortedAircraft(dashboard, 0, false) // DST asc
 	if len(out) != 2 {
