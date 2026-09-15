@@ -1,82 +1,14 @@
 package observation
 
 import (
-	"math"
 	"time"
 
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-const (
-	dirUnknown string = "unknown"
-	dirN       string = "north"
-	dirNbE     string = "north by east"
-	dirNNE     string = "north-northeast"
-	dirNEbN    string = "northeast by north"
-	dirNE      string = "northeast"
-	dirNEbE    string = "northeast by east"
-	dirENE     string = "east-northeast"
-	dirEbN     string = "east by north"
-	dirE       string = "east"
-	dirEbS     string = "east by south"
-	dirESE     string = "east-southeast"
-	dirSEbE    string = "southeast by east"
-	dirSE      string = "southeast"
-	dirSEbS    string = "southeast by south"
-	dirSSE     string = "south-southeast"
-	dirSbE     string = "south by east"
-	dirS       string = "south"
-	dirSbW     string = "south by west"
-	dirSSW     string = "south-southwest"
-	dirSWbS    string = "southwest by south"
-	dirSW      string = "southwest"
-	dirSWbW    string = "southwest by west"
-	dirWSW     string = "west-southwest"
-	dirWbS     string = "west by south"
-	dirW       string = "west"
-	dirWbN     string = "west by north"
-	dirWNW     string = "west-northwest"
-	dirNWbW    string = "northwest by west"
-	dirNW      string = "northwest"
-	dirNWbN    string = "northwest by north"
-	dirNNW     string = "north-northwest"
-	dirNbW     string = "north by west"
-)
-
-var directions = []string{ //nolint: gochecknoglobals // Can't be bothered to fix for now
-	dirN,
-	dirNbE,
-	dirNNE,
-	dirNEbN,
-	dirNE,
-	dirNEbE,
-	dirENE,
-	dirEbN,
-	dirE,
-	dirEbS,
-	dirESE,
-	dirSEbE,
-	dirSE,
-	dirSEbS,
-	dirSSE,
-	dirSbE,
-	dirS,
-	dirSbW,
-	dirSSW,
-	dirSWbS,
-	dirSW,
-	dirSWbW,
-	dirWSW,
-	dirWbS,
-	dirW,
-	dirWbN,
-	dirWNW,
-	dirNWbW,
-	dirNW,
-	dirNWbN,
-	dirNNW,
-	dirNbW,
-}
+// TODO: Remove dependency on Math, if possible.
+// TODO: Make flightroute record value instead of pointer.
+// TODO: Avoid duplicating data by adding field: lastStatus AicraftRecord `json:"lastStatus"`.
 
 // AircraftSighting represents signals received from an aircraft in Flight.
 // This includes aircraft on the ground as long as a valid Flight number is
@@ -94,7 +26,7 @@ type AircraftSighting struct {
 	Registration string                 `json:"registration"`
 	Latitude     float64                `json:"latitude"`
 	Longitude    float64                `json:"longitude"`
-	Direction    string                 `json:"direction"`
+	Direction    Direction              `json:"direction"`
 	Distance     float64                `json:"distance"`    // distance of the aircraft to our location [m]
 	TypeShort    string                 `json:"type_short"`  // short type name, directly from the record
 	TypeDesc     string                 `json:"type_desc"`   // typeDesc is the full name of the aircraft type
@@ -108,59 +40,4 @@ type AircraftSighting struct {
 type RareSighting struct {
 	Rarities RarityFlag
 	Sighting *AircraftSighting
-}
-
-// GetDirection calculates the bearing between two given coordinates and converts it into a human-
-// readable direction, e.g.: north north-west.
-// TODO: Ensure this method belongs into this package
-func GetDirection(originLat, originLon, destLat, destLon float64) string {
-	bearing := calculateBearing(originLat, originLon, destLat, destLon)
-
-	start := 5.625
-	step := 11.25
-
-	for i := range 32 {
-		if bearing <= start {
-			return directions[i]
-		}
-
-		start += step
-	}
-	return dirUnknown
-}
-
-// toRadians converts degrees to radians.
-func toRadians(deg float64) float64 {
-	return deg * math.Pi / 180.0 //nolint: mnd // readability
-}
-
-// toDegrees converts radians to degrees.
-func toDegrees(rad float64) float64 {
-	return rad * 180.0 / math.Pi
-}
-
-// calculateBearing calculates the initial bearing (forward azimuth) from point 1 to point 2.
-func calculateBearing(lat1, lon1, lat2, lon2 float64) float64 {
-	// Convert degrees to radians
-	fLat := toRadians(lat1)
-	fLong := toRadians(lon1)
-	tLat := toRadians(lat2)
-	tLong := toRadians(lon2)
-
-	dLon := tLong - fLong
-
-	y := math.Sin(dLon) * math.Cos(tLat)
-	x := math.Cos(fLat)*math.Sin(tLat) - math.Sin(fLat)*math.Cos(tLat)*math.Cos(dLon)
-
-	// Calculate bearing in radians
-	brng := math.Atan2(y, x)
-
-	// Convert bearing to degrees
-	brngDeg := toDegrees(brng)
-
-	// Normalize the bearing to a value between 0 and 360 degrees
-	// The result from Atan2 ranges from -180 to +180
-	normalizedBearing := math.Mod(brngDeg+360.0, 360.0) //nolint: mnd // readability
-
-	return normalizedBearing
 }

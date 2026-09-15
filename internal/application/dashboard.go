@@ -14,6 +14,7 @@ import (
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
+// TODO: Remove and privatise as many fields as possible.
 type Dashboard struct {
 	IsWarmup           bool
 	Lat                float64

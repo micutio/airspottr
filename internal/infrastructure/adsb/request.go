@@ -19,6 +19,8 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
+// TODO: Split into request for aircraft and request for flightroutes.
+
 const (
 	// AircraftUpdateInterval determines the update rate for general aircraft.
 	AircraftUpdateInterval = 30 * time.Second
