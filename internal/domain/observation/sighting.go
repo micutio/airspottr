@@ -33,7 +33,7 @@ type AircraftSighting struct {
 	Operator     string                 `json:"operator"`    // operator can be either airline or military organization
 	Country      string                 `json:"country"`     // country of registration
 	Info         string                 `json:"info"`        // info contains the aircraft information represented as string
-	Flightroute  *ref.FlightRouteRecord `json:"flightroute"` // flightroute contains airline, origin and destination
+	Flightroute  *ref.FlightrouteRecord `json:"flightroute"` // flightroute contains airline, origin and destination
 }
 
 // RareSighting combines an aircraft sighting with a rarity flag.

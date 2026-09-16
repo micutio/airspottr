@@ -37,10 +37,10 @@ func TestSaveAndLoadState(t *testing.T) {
 	dashboard.SeenTypeCount["A"] = 1
 	dashboard.SeenOperatorCount["OP"] = 2
 	dashboard.SeenCountryCount["US"] = 3
-	dashboard.TotalTypeCount = 1
-	dashboard.TotalOperatorCount = 2
-	dashboard.TotalCountryCount = 3
-	dashboard.CachedFlightRoutes["TEST123"] = ref.GetDefaultFlightrouteRecord()
+	dashboard.SightedTypesCount = 1
+	dashboard.SightedOperatorsCount = 2
+	dashboard.SightedCountriesCount = 3
+	dashboard.CachedFlightroutes["TEST123"] = ref.GetDefaultFlightrouteRecord()
 
 	sighting := &obs.AircraftSighting{
 		LastSeen:     now(),

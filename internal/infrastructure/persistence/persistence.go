@@ -40,7 +40,7 @@ type dashboardState struct {
 	Lon                float64                           `json:"lon"`
 	CurrentAircraft    []obs.AircraftRecord              `json:"current_aircraft"`
 	RareSightings      []persistedRareSighting           `json:"rare_sightings"`
-	CachedFlightRoutes map[string]*ref.FlightRouteRecord `json:"cached_flight_routes"`
+	CachedFlightRoutes map[string]*ref.FlightrouteRecord `json:"cached_flight_routes"`
 	AircraftSightings  map[string]obs.AircraftSighting   `json:"aircraft_sightings"`
 	TotalTypeCount     int                               `json:"total_type_count"`
 	TotalOperatorCount int                               `json:"total_operator_count"`
@@ -90,11 +90,11 @@ func saveState(dash *application.Dashboard, pendingCallsigns []string) *persiste
 			Lon:                dash.Lon,
 			CurrentAircraft:    dash.CurrentAircraft,
 			RareSightings:      raceSightings,
-			CachedFlightRoutes: dash.CachedFlightRoutes,
+			CachedFlightRoutes: dash.CachedFlightroutes,
 			AircraftSightings:  aircraftSightings,
-			TotalTypeCount:     dash.TotalTypeCount,
-			TotalOperatorCount: dash.TotalOperatorCount,
-			TotalCountryCount:  dash.TotalCountryCount,
+			TotalTypeCount:     dash.SightedTypesCount,
+			TotalOperatorCount: dash.SightedOperatorsCount,
+			TotalCountryCount:  dash.SightedCountriesCount,
 			SeenTypeCount:      dash.SeenTypeCount,
 			SeenOperatorCount:  dash.SeenOperatorCount,
 			SeenCountryCount:   dash.SeenCountryCount,
@@ -112,14 +112,14 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 
 	dash.IsWarmup = state.IsWarmup
 	dash.CurrentAircraft = state.CurrentAircraft
-	dash.CachedFlightRoutes = state.CachedFlightRoutes
+	dash.CachedFlightroutes = state.CachedFlightRoutes
 	dash.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
 	for hex, persisted := range state.AircraftSightings {
 		dash.AircraftSightings[hex] = &persisted
 	}
-	dash.TotalTypeCount = state.TotalTypeCount
-	dash.TotalOperatorCount = state.TotalOperatorCount
-	dash.TotalCountryCount = state.TotalCountryCount
+	dash.SightedTypesCount = state.TotalTypeCount
+	dash.SightedOperatorsCount = state.TotalOperatorCount
+	dash.SightedCountriesCount = state.TotalCountryCount
 	dash.SeenTypeCount = state.SeenTypeCount
 	dash.SeenOperatorCount = state.SeenOperatorCount
 	dash.SeenCountryCount = state.SeenCountryCount
@@ -134,7 +134,6 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 		}
 	}
 
-	dash.RecomputeFastestAndHighest()
 	return nil
 }
 

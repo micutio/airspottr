@@ -16,42 +16,42 @@ import (
 
 // TODO: Remove and privatise as many fields as possible.
 type Dashboard struct {
-	IsWarmup           bool
-	Lat                float64
-	Lon                float64
-	Fastest            *obs.AircraftRecord
-	Highest            *obs.AircraftRecord
-	CurrentAircraft    []obs.AircraftRecord
-	RareSightings      []obs.RareSighting
-	CachedFlightRoutes map[string]*ref.FlightRouteRecord
-	AircraftSightings  map[string]*obs.AircraftSighting // set of all seen aircraft, maps hex to last seen time
-	TotalTypeCount     int
-	TotalOperatorCount int
-	TotalCountryCount  int
-	SeenTypeCount      map[string]int // types mapped to how often seen
-	SeenOperatorCount  map[string]int // airlines mapped to how often seen
-	SeenCountryCount   map[string]int // airlines mapped to how often seen
-	ErrOut             log.Logger
+	IsWarmup              bool
+	Lat                   float64
+	Lon                   float64
+	Fastest               *obs.AircraftRecord
+	Highest               *obs.AircraftRecord
+	CurrentAircraft       []obs.AircraftRecord
+	RareSightings         []obs.RareSighting
+	CachedFlightroutes    map[string]*ref.FlightrouteRecord
+	AircraftSightings     map[string]*obs.AircraftSighting
+	SightedTypesCount     int            // total count of unique sighted types
+	SightedOperatorsCount int            // total count of unique sighted operators
+	SightedCountriesCount int            // total count of unique sighted countries of origin
+	SeenTypeCount         map[string]int // types mapped to how often seen
+	SeenOperatorCount     map[string]int // airlines mapped to how often seen
+	SeenCountryCount      map[string]int // airlines mapped to how often seen
+	ErrOut                log.Logger
 }
 
 func NewDashboard(lat float64, lon float64, stderr *io.Writer) *Dashboard {
 	dashboard := Dashboard{
-		IsWarmup:           true,
-		Lat:                lat,
-		Lon:                lon,
-		Fastest:            nil,
-		Highest:            nil,
-		CurrentAircraft:    nil,
-		RareSightings:      nil,
-		CachedFlightRoutes: make(map[string]*ref.FlightRouteRecord),
-		AircraftSightings:  make(map[string]*obs.AircraftSighting),
-		TotalTypeCount:     0,
-		TotalOperatorCount: 0,
-		TotalCountryCount:  0,
-		SeenTypeCount:      make(map[string]int),
-		SeenOperatorCount:  make(map[string]int),
-		SeenCountryCount:   make(map[string]int),
-		ErrOut:             *log.New(*stderr, "dashboard ", log.LstdFlags),
+		IsWarmup:              true,
+		Lat:                   lat,
+		Lon:                   lon,
+		Fastest:               nil,
+		Highest:               nil,
+		CurrentAircraft:       nil,
+		RareSightings:         nil,
+		CachedFlightroutes:    make(map[string]*ref.FlightrouteRecord),
+		AircraftSightings:     make(map[string]*obs.AircraftSighting),
+		SightedTypesCount:     0,
+		SightedOperatorsCount: 0,
+		SightedCountriesCount: 0,
+		SeenTypeCount:         make(map[string]int),
+		SeenOperatorCount:     make(map[string]int),
+		SeenCountryCount:      make(map[string]int),
+		ErrOut:                *log.New(*stderr, "dashboard ", log.LstdFlags),
 	}
 
 	dashboard.ErrOut.Println("Dashboard init")
@@ -198,8 +198,8 @@ func (db *Dashboard) updateType(
 	// Valid type found! Record type and update type rarities.
 	thisTypeCountNew := db.SeenTypeCount[aType] + 1
 	db.SeenTypeCount[aType] = thisTypeCountNew
-	db.TotalTypeCount++
-	rarityThreshold := math.Log(float64(db.TotalTypeCount)) - obs.RarityConstant
+	db.SightedTypesCount++
+	rarityThreshold := math.Log(float64(db.SightedTypesCount)) - obs.RarityConstant
 	isRareType := float64(thisTypeCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -278,8 +278,8 @@ func (db *Dashboard) updateOperator(
 
 	thisOperatorCountNew := db.SeenOperatorCount[sighting.Operator] + 1
 	db.SeenOperatorCount[sighting.Operator] = thisOperatorCountNew
-	db.TotalOperatorCount++
-	rarityThreshold := math.Log(float64(db.TotalOperatorCount)) - obs.RarityConstant
+	db.SightedOperatorsCount++
+	rarityThreshold := math.Log(float64(db.SightedOperatorsCount)) - obs.RarityConstant
 	isRareOperator := float64(thisOperatorCountNew) < rarityThreshold
 
 	// fmt.Println(
@@ -353,8 +353,8 @@ func (db *Dashboard) updateCountry(
 
 	thisCountryCountNew := db.SeenCountryCount[sighting.Country] + 1
 	db.SeenCountryCount[sighting.Country] = thisCountryCountNew
-	db.TotalCountryCount++
-	rarityThreshold := math.Log(float64(db.TotalCountryCount)) - obs.RarityConstant
+	db.SightedCountriesCount++
+	rarityThreshold := math.Log(float64(db.SightedCountriesCount)) - obs.RarityConstant
 	isRareCountry := float64(thisCountryCountNew) < rarityThreshold
 
 	// db.logger.Debug(
@@ -401,19 +401,6 @@ func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
 	db.Fastest = aircraft
 }
 
-// RecomputeFastestAndHighest is currently only used during persistence,
-// to update the data after re-loading internal state from a stored JSON.
-// TODO: Create SpottingService API with dedicated method for loading state.
-func (db *Dashboard) RecomputeFastestAndHighest() {
-	db.Fastest = nil
-	db.Highest = nil
-	for idx := range db.CurrentAircraft {
-		aircraft := &db.CurrentAircraft[idx]
-		db.updateHighest(aircraft)
-		db.updateFastest(aircraft)
-	}
-}
-
 // TryMatchCallsignRoutes attempts to assign cached route information to all
 // sightings.
 // It returns a list of callsigns without known routes, to allow querying
@@ -431,7 +418,7 @@ func (db *Dashboard) TryMatchCallsignRoutes() []string {
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightRoutes[sighting.LastFlightNo]; ok {
+		if flightRoute, ok := db.CachedFlightroutes[sighting.LastFlightNo]; ok {
 			// Found a cached route for this Flight, reuse it!
 			sighting.Flightroute = flightRoute
 			continue
@@ -444,10 +431,10 @@ func (db *Dashboard) TryMatchCallsignRoutes() []string {
 }
 
 // AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
-func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightRouteRecord) {
+func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightrouteRecord) {
 	for _, flightrouteRecord := range flightRouteRecords {
 		callsign := flightrouteRecord.Callsign
-		db.CachedFlightRoutes[callsign] = &flightrouteRecord
+		db.CachedFlightroutes[callsign] = &flightrouteRecord
 	}
 	for _, sighting := range db.AircraftSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
@@ -460,7 +447,7 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightRouteReco
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightRoutes[sighting.LastFlightNo]; ok {
+		if flightRoute, ok := db.CachedFlightroutes[sighting.LastFlightNo]; ok {
 			// Found a cached route for this Flight, reuse it!
 			sighting.Flightroute = flightRoute
 			continue
@@ -469,6 +456,6 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightRouteReco
 		// Route cannot be found: use a dummy and also cache a dummy to prevent unnecessary requests
 		// for the same callsign again.
 		sighting.Flightroute = ref.GetDefaultFlightrouteRecord()
-		db.CachedFlightRoutes[sighting.LastFlightNo] = ref.GetDefaultFlightrouteRecord()
+		db.CachedFlightroutes[sighting.LastFlightNo] = ref.GetDefaultFlightrouteRecord()
 	}
 }

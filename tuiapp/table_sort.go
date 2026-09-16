@@ -63,8 +63,8 @@ func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool)
 	tbl.SetColumns(cols)
 }
 
-func routeFor(db *application.Dashboard, ac *obs.AircraftRecord) *ref.FlightRouteRecord {
-	r, ok := db.CachedFlightRoutes[ac.GetFlightNoAsStr()]
+func routeFor(db *application.Dashboard, ac *obs.AircraftRecord) *ref.FlightrouteRecord {
+	r, ok := db.CachedFlightroutes[ac.GetFlightNoAsStr()]
 	if !ok {
 		return ref.GetDefaultFlightrouteRecord()
 	}

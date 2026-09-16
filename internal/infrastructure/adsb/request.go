@@ -142,7 +142,7 @@ func (r *Request) RequestAircraft() []obs.AircraftRecord {
 	return data.Aircraft
 }
 
-func (r *Request) RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightRouteRecord {
+func (r *Request) RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightrouteRecord {
 	r.PendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
 	r.PendingCallsigns = append(r.PendingCallsigns, callsigns...)
@@ -212,7 +212,7 @@ func (r *Request) RequestFlightroutesForCallsigns(callsigns []string) []ref.Flig
 	}()
 
 	// 4. Fan-in: Collect and process results
-	var flightrouteRecords []ref.FlightRouteRecord
+	var flightrouteRecords []ref.FlightrouteRecord
 	for result := range results {
 		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
 		if err != nil {
@@ -243,7 +243,7 @@ func createFlightRouteRequestURL(callsign string) (string, error) {
 // flightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
 // FlightRouteRecord.
 // It is then assigned to all flights matching the callsign.
-func (r *Request) flightRouteJSONToRecord(jsonBytes []byte) (ref.FlightRouteRecord, error) {
+func (r *Request) flightRouteJSONToRecord(jsonBytes []byte) (ref.FlightrouteRecord, error) {
 	var data ref.FlightrouteResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)

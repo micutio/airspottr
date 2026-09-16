@@ -9,7 +9,7 @@ type FlightrouteRepository interface {
 
 	// RequestFlightroutesForCallsigns collects known flight routes for the given callsigns.
 	// a.k.a. flight numbers.
-	RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightRouteRecord
+	RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightrouteRecord
 
 	// The following methods should be used only for saving and loading application state in-between
 	// program shutdowns and starts.

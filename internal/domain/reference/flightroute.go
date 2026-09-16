@@ -13,11 +13,11 @@ type FlightrouteResponse struct {
 
 // FlightrouteResult reflects the result contained withing FlightrouteResponse.
 type FlightrouteResult struct {
-	Flightroute FlightRouteRecord `json:"flightroute"`
+	Flightroute FlightrouteRecord `json:"flightroute"`
 }
 
-// FlightRouteRecord reflects the actual flightroute data contained in the result.
-type FlightRouteRecord struct {
+// FlightrouteRecord reflects the actual flightroute data contained in the result.
+type FlightrouteRecord struct {
 	Callsign     string         `json:"callsign"`
 	CallsignIcao string         `json:"callsign_icao"`
 	CallsignIata string         `json:"callsign_iata"`
@@ -26,7 +26,7 @@ type FlightRouteRecord struct {
 	Destination  LocationRecord `json:"destination"`
 }
 
-// AirlineRecord reflects the airline data within FlightRouteRecord.
+// AirlineRecord reflects the airline data within FlightrouteRecord.
 type AirlineRecord struct {
 	Name       string `json:"name"`
 	Icao       string `json:"icao"`
@@ -49,8 +49,8 @@ type LocationRecord struct {
 	Airport        string  `json:"name"`
 }
 
-func GetDefaultFlightrouteRecord() *FlightRouteRecord {
-	return &FlightRouteRecord{
+func GetDefaultFlightrouteRecord() *FlightrouteRecord {
+	return &FlightrouteRecord{
 		Callsign:     NotAvailable,
 		CallsignIcao: NotAvailable,
 		CallsignIata: NotAvailable,

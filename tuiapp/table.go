@@ -192,7 +192,7 @@ func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormat
 	return autoFormatTable{table: tbl, format: format}
 }
 
-func aircraftToRow(aircraft *obs.AircraftRecord, route *ref.FlightRouteRecord) table.Row {
+func aircraftToRow(aircraft *obs.AircraftRecord, route *ref.FlightrouteRecord) table.Row {
 	return table.Row{
 		fmt.Sprintf("%3.0f", aircraft.CachedDist),
 		aircraft.GetFlightNoAsStr(),

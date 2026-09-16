@@ -52,7 +52,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 }
 
 func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd {
-	flightRoutes := []ref.FlightRouteRecord(msg)
+	flightRoutes := []ref.FlightrouteRecord(msg)
 	m.dashboard.AssignFlightRoutes(flightRoutes)
 
 	// Check if there are more callsigns without routes and request them
