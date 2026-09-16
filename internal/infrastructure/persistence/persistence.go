@@ -38,6 +38,8 @@ type dashboardState struct {
 	IsWarmup           bool                              `json:"is_warmup"`
 	Lat                float64                           `json:"lat"`
 	Lon                float64                           `json:"lon"`
+	Fastest            obs.AircraftRecord                `json:"fastest"`
+	Highest            obs.AircraftRecord                `json:"highest"`
 	CurrentAircraft    []obs.AircraftRecord              `json:"current_aircraft"`
 	RareSightings      []persistedRareSighting           `json:"rare_sightings"`
 	CachedFlightRoutes map[string]*ref.FlightrouteRecord `json:"cached_flight_routes"`
@@ -111,6 +113,8 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 	}
 
 	dash.IsWarmup = state.IsWarmup
+	dash.Fastest = &state.Fastest
+	dash.Highest = &state.Highest
 	dash.CurrentAircraft = state.CurrentAircraft
 	dash.CachedFlightroutes = state.CachedFlightRoutes
 	dash.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
