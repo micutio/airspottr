@@ -29,19 +29,26 @@ func StateFilePath() string {
 	return filepath.Join(configDir, "airspottr", stateFileName)
 }
 
+// AirspottrState encapsulates the internal state of the app to hide the exported JSON fields of
+// persistentState.
+type AirspottrState struct {
+	internalState persistentState
+}
+
 type persistentState struct {
-	Dashboard       dashboardState       `json:"dashboard"`
-	FlightrouteRepo flightrouteRepoState `json:"request"`
+	DashboardState       dashboardState       `json:"dashboard"`
+	FlightrouteRepoState flightrouteRepoState `json:"request"`
 }
 
 type dashboardState struct {
-	IsWarmup           bool                              `json:"is_warmup"`
-	Lat                float64                           `json:"lat"`
-	Lon                float64                           `json:"lon"`
-	Fastest            obs.AircraftRecord                `json:"fastest"`
-	Highest            obs.AircraftRecord                `json:"highest"`
-	CurrentAircraft    []obs.AircraftRecord              `json:"current_aircraft"`
-	RareSightings      []persistedRareSighting           `json:"rare_sightings"`
+	IsWarmup        bool                    `json:"is_warmup"`
+	Lat             float64                 `json:"lat"`
+	Lon             float64                 `json:"lon"`
+	Fastest         *obs.AircraftRecord     `json:"fastest"`
+	Highest         *obs.AircraftRecord     `json:"highest"`
+	CurrentAircraft []obs.AircraftRecord    `json:"current_aircraft"`
+	RareSightings   []persistedRareSighting `json:"rare_sightings"`
+	// TODO: Move out into a separate Flightroute Repo
 	CachedFlightRoutes map[string]*ref.FlightrouteRecord `json:"cached_flight_routes"`
 	AircraftSightings  map[string]obs.AircraftSighting   `json:"aircraft_sightings"`
 	TotalTypeCount     int                               `json:"total_type_count"`
@@ -86,10 +93,12 @@ func saveState(dash *application.Dashboard, pendingCallsigns []string) *persiste
 	}
 
 	return &persistentState{
-		Dashboard: dashboardState{
+		DashboardState: dashboardState{
 			IsWarmup:           dash.IsWarmup,
 			Lat:                dash.Lat,
 			Lon:                dash.Lon,
+			Fastest:            dash.Fastest,
+			Highest:            dash.Highest,
 			CurrentAircraft:    dash.CurrentAircraft,
 			RareSightings:      raceSightings,
 			CachedFlightRoutes: dash.CachedFlightroutes,
@@ -101,7 +110,7 @@ func saveState(dash *application.Dashboard, pendingCallsigns []string) *persiste
 			SeenOperatorCount:  dash.SeenOperatorCount,
 			SeenCountryCount:   dash.SeenCountryCount,
 		},
-		FlightrouteRepo: flightrouteRepoState{
+		FlightrouteRepoState: flightrouteRepoState{
 			PendingCallsigns: append([]string(nil), pendingCallsigns...),
 		},
 	}
@@ -113,8 +122,8 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 	}
 
 	dash.IsWarmup = state.IsWarmup
-	dash.Fastest = &state.Fastest
-	dash.Highest = &state.Highest
+	dash.Fastest = state.Fastest
+	dash.Highest = state.Highest
 	dash.CurrentAircraft = state.CurrentAircraft
 	dash.CachedFlightroutes = state.CachedFlightRoutes
 	dash.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
@@ -157,25 +166,38 @@ func SaveState(filePath string, db *application.Dashboard, frr repo.FlightrouteR
 	return nil
 }
 
-func LoadState(
-	filePath string,
-	dashboard *application.Dashboard,
-	frr repo.FlightrouteRepository,
-) error {
+func LoadState(filePath string) (AirspottrState, error) {
 	data, readFileErr := os.ReadFile(filePath)
 	if readFileErr != nil {
 		if os.IsNotExist(readFileErr) {
-			return nil
+			return AirspottrState{}, nil
 		}
-		return fmt.Errorf("load state: unable to read file: %w", readFileErr)
+		return AirspottrState{}, fmt.Errorf("load state: unable to read file: %w", readFileErr)
 	}
-	var state persistentState
-	if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr != nil {
-		return fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
+	var internalState persistentState
+	if unmarshalErr := json.Unmarshal(data, &internalState); unmarshalErr != nil {
+		return AirspottrState{}, fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
-	if restoreErr := restoreDashboardState(dashboard, state.Dashboard); restoreErr != nil {
+
+	state := AirspottrState{
+		internalState: internalState,
+	}
+
+	return state, nil
+}
+
+func (as *AirspottrState) LoadDashboardState(
+	dashboard *application.Dashboard,
+) error {
+	if restoreErr := restoreDashboardState(dashboard, as.internalState.DashboardState); restoreErr != nil {
 		return fmt.Errorf("load state: %w", restoreErr)
 	}
-	frr.RestorePendingCallsigns(state.FlightrouteRepo.PendingCallsigns)
+	return nil
+}
+
+func (as *AirspottrState) LoadFlightrouteRepoState(
+	frr repo.FlightrouteRepository,
+) error {
+	frr.RestorePendingCallsigns(as.internalState.FlightrouteRepoState.PendingCallsigns)
 	return nil
 }

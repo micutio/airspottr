@@ -23,17 +23,18 @@ import (
 
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
-	appName      string
-	options      adsb.RequestOptions
-	logger       *slog.Logger
-	request      *adsb.Request
-	typeRepo     rep.AircraftTypeRepo
-	operatorRepo rep.OperatorRepository
-	countryRepo  rep.CountryRepository
-	dashboard    *application.Dashboard
-	notify       *noti.Notify
-	done         chan bool
-	wg           sync.WaitGroup
+	appName            string
+	options            adsb.RequestOptions
+	logger             *slog.Logger
+	aircraftRequest    *adsb.AircraftRequest
+	flightrouteRequest *adsb.FlightrouteRequest
+	typeRepo           rep.AircraftTypeRepo
+	operatorRepo       rep.OperatorRepository
+	countryRepo        rep.CountryRepository
+	dashboard          *application.Dashboard
+	notify             *noti.Notify
+	done               chan bool
+	wg                 sync.WaitGroup
 }
 
 // New creates and initializes a new TickerApp.
@@ -41,15 +42,28 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	logger := slog.Default() // Or a custom logger
 	notify := noti.NewNotify(appName, &stdout)
 
-	dashboard := application.NewDashboard(options.Lat, options.Lon, &stderr)
-
-	request, requestErr := adsb.NewRequest(options, &stderr)
-	if requestErr != nil {
-		return nil, fmt.Errorf("unable to create request: %w", requestErr)
+	appState, appStateErr := pers.LoadState(pers.StateFilePath())
+	if appStateErr != nil {
+		return nil, fmt.Errorf("failed to load app state: %w", appStateErr)
 	}
 
-	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
-		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
+	dashboard := application.NewDashboard(options.Lat, options.Lon, &stderr)
+	if dashboardLoadErr := appState.LoadDashboardState(dashboard); dashboardLoadErr != nil {
+		return nil, fmt.Errorf("failed to load app dashboard state: %w", dashboardLoadErr)
+	}
+
+	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, &stderr)
+	if aircraftRequestErr != nil {
+		return nil, fmt.Errorf("unable to create request: %w", aircraftRequestErr)
+	}
+
+	flightrouteRequest, flightrouteRequestErr := adsb.NewFlightrouteRequest(&stderr)
+	if flightrouteRequestErr != nil {
+		return nil, fmt.Errorf("unable to create request: %w", flightrouteRequestErr)
+	}
+
+	if loadErr := appState.LoadFlightrouteRepoState(flightrouteRequest); loadErr != nil {
+		return nil, fmt.Errorf("warning: unable to load flightroute state: %w", loadErr)
 	}
 
 	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
@@ -67,16 +81,17 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	}
 
 	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
-		appName:      appName,
-		options:      options,
-		logger:       logger,
-		request:      request,
-		typeRepo:     typeRepo,
-		operatorRepo: operatorRepo,
-		countryRepo:  countryRepo,
-		dashboard:    dashboard,
-		notify:       notify,
-		done:         make(chan bool),
+		appName:            appName,
+		options:            options,
+		logger:             logger,
+		aircraftRequest:    aircraftRequest,
+		flightrouteRequest: flightrouteRequest,
+		typeRepo:           typeRepo,
+		operatorRepo:       operatorRepo,
+		countryRepo:        countryRepo,
+		dashboard:          dashboard,
+		notify:             notify,
+		done:               make(chan bool),
 	}, nil
 }
 
@@ -111,7 +126,7 @@ func (app *TickerApp) start() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				aircraftRecords := app.request.RequestAircraft()
+				aircraftRecords := app.aircraftRequest.RequestAircraft()
 				app.dashboard.ProcessAircraftRecords(
 					app.typeRepo,
 					app.operatorRepo,
@@ -126,7 +141,7 @@ func (app *TickerApp) start() {
 				callsignsWithoutRoute := app.dashboard.TryMatchCallsignRoutes()
 				if len(callsignsWithoutRoute) > 0 {
 					// For flights without known route we query data from adsbdb.com.
-					routes := app.request.RequestFlightroutesForCallsigns(callsignsWithoutRoute)
+					routes := app.flightrouteRequest.RequestFlightroutesForCallsigns(callsignsWithoutRoute)
 					app.dashboard.AssignFlightRoutes(routes)
 				}
 			case <-summaryTicker.C:
@@ -149,7 +164,7 @@ func (app *TickerApp) waitForShutdown() {
 	close(app.done)
 	// Wait for the main goroutine to finish.
 	app.wg.Wait()
-	if saveErr := pers.SaveState(pers.StateFilePath(), app.dashboard, app.request); saveErr != nil {
+	if saveErr := pers.SaveState(pers.StateFilePath(), app.dashboard, app.flightrouteRequest); saveErr != nil {
 		app.logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }

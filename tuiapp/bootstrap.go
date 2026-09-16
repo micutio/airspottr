@@ -23,23 +23,48 @@ func setupLogger() (*os.File, error) {
 	return errLogFile, nil
 }
 
-// setupRequestAndDashboard initializes the dashboard and notification system.
-func setupRequestAndDashboard(
+// setupRequestsAndDashboard initializes the dashboard and notification system.
+func setupAircraftRequest(
 	requestOptions adsb.RequestOptions,
 	errWriter io.Writer,
-) (*adsb.Request, *internal.Dashboard, error) {
-	request, reqErr := adsb.NewRequest(requestOptions, &errWriter)
-	if reqErr != nil {
-		return nil, nil, fmt.Errorf("failed to create request: %w", reqErr)
+) (*adsb.AircraftRequest, error) {
+	aircraftReq, aircraftReqErr := adsb.NewAircraftRequest(requestOptions, &errWriter)
+	if aircraftReqErr != nil {
+		return nil, fmt.Errorf("failed to create aircraft request: %w", aircraftReqErr)
 	}
 
+	return aircraftReq, nil
+}
+
+// setupRequestsAndDashboard initializes the dashboard and notification system.
+func setupFlightrouteRequest(
+	state pers.AirspottrState,
+	errWriter io.Writer,
+) (*adsb.FlightrouteRequest, error) {
+	flightrouteReq, flightrouteReqErr := adsb.NewFlightrouteRequest(&errWriter)
+	if flightrouteReqErr != nil {
+		return nil, fmt.Errorf("failed to create flight request: %w", flightrouteReqErr)
+	}
+
+	if loadErr := state.LoadFlightrouteRepoState(flightrouteReq); loadErr != nil {
+		return nil, fmt.Errorf("failed to flightrouteRequest state: %w", loadErr)
+	}
+
+	return flightrouteReq, nil
+}
+
+// setupRequestsAndDashboard initializes the dashboard and notification system.
+func setupDashboard(
+	requestOptions adsb.RequestOptions,
+	state pers.AirspottrState,
+	errWriter io.Writer,
+) (*internal.Dashboard, error) {
 	dashboard := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
-
-	if loadErr := pers.LoadState(pers.StateFilePath(), dashboard, request); loadErr != nil {
-		return nil, nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
+	if loadErr := state.LoadDashboardState(dashboard); loadErr != nil {
+		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 
-	return request, dashboard, nil
+	return dashboard, nil
 }
 
 type tableSetup struct {

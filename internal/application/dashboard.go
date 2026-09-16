@@ -15,6 +15,7 @@ import (
 )
 
 // TODO: Remove and privatise as many fields as possible.
+
 type Dashboard struct {
 	IsWarmup              bool
 	Lat                   float64
@@ -385,8 +386,7 @@ func (db *Dashboard) updateHighest(aircraft *obs.AircraftRecord) {
 		return
 	}
 
-	//nolint:errcheck // If highest is initialized the altBaro is always valid.
-	if db.Highest != nil && db.Highest.AltBaro.(float64) > thisAltitude {
+	if db.Highest != nil && db.Highest.AltBaro != nil && db.Highest.AltBaro.(float64) > thisAltitude {
 		return
 	}
 

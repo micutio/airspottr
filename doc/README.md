@@ -64,7 +64,7 @@ go test ./...
   - `flightroute.go` - Flight route data model and default placeholders.
   - `notification.go` - Desktop and summary notifications using `beeep`.
   - `persistence.go` - Persistent state serialization and restore.
-  - `request.go` - HTTP request layer for ADS-B and flight route APIs.
+  - `aircraft_request.go` - HTTP request layer for ADS-B and flight route APIs.
   - `rarity.go`, `sighting.go`, `sort.go` - Supporting types and utility logic.
   - `dash/` - CSV-backed data loaders for ICAO, registration prefixes, country lookup, and distance utilities.
 - `tuiapp/` - Bubble Tea-based interactive terminal UI.

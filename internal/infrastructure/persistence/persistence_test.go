@@ -28,7 +28,7 @@ func TestSaveAndLoadState(t *testing.T) {
 
 	dashboard := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 
-	request, reqErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	request, reqErr := adsb.NewFlightrouteRequest(new(io.Discard))
 	if reqErr != nil {
 		t.Fatal(reqErr)
 	}
@@ -70,13 +70,22 @@ func TestSaveAndLoadState(t *testing.T) {
 
 	dashboard2 := internal.NewDashboard(1.0, 2.0, new(io.Discard))
 
-	request2, requestErr := adsb.NewRequest(adsb.RequestOptions{Lat: 1.0, Lon: 2.0}, new(io.Discard))
+	request2, requestErr := adsb.NewFlightrouteRequest(new(io.Discard))
 	if requestErr != nil {
 		t.Fatal(requestErr)
 	}
 
-	if err := LoadState(statePath, dashboard2, request2); err != nil {
-		t.Fatal(err)
+	appState, appStateErr := LoadState(statePath)
+	if appStateErr != nil {
+		t.Fatal(appStateErr)
+	}
+
+	if loadDashboardErr := appState.LoadDashboardState(dashboard2); loadDashboardErr != nil {
+		t.Fatal(loadDashboardErr)
+	}
+
+	if loadFlightrouteReqErr := appState.LoadFlightrouteRepoState(request2); loadFlightrouteReqErr != nil {
+		t.Fatal(loadFlightrouteReqErr)
 	}
 
 	if got, want := len(request2.PendingCallsigns), 2; got != want {

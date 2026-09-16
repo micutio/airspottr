@@ -61,7 +61,7 @@ Implementation details for external systems should live here.
 Suggested packages:
 
 - `infrastructure/adsb`
-  - `request.go` - ADS-B and flight route HTTP client implementations.
+  - `aircraft_request.go` - ADS-B and flight route HTTP client implementations.
   - `request_test.go` - tests for URL generation and response handling.
 - `infrastructure/data`
   - `csv_loader.go` - CSV data loaders for ICAO list, airline list, registration prefixes, hex ranges, and military code lookup.

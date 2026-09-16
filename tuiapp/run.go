@@ -31,7 +31,22 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 
 	notify := noti.NewNotify(appName, new(io.Discard))
 
-	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
+	aircraftReq, err := setupAircraftRequest(requestOptions, errLogFile)
+	if err != nil {
+		log.Printf("failed to setup aircraft request: %v", err)
+	}
+
+	appState, err := pers.LoadState(pers.StateFilePath())
+	if err != nil {
+		log.Printf("failed to load app state: %v", err)
+	}
+
+	flightrouteReq, err := setupFlightrouteRequest(appState, errLogFile)
+	if err != nil {
+		log.Printf("failed to setup flightroute request: %v", err)
+	}
+
+	dashboard, err := setupDashboard(requestOptions, appState, errLogFile)
 	if err != nil {
 		log.Printf("failed to set up dashboard and request: %v", err)
 		return
@@ -76,8 +91,8 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		uiState:           mainPage,
 		startTime:         time.Now(),
 		lastUpdate:        time.Unix(0, 0),
-		aircraftRepo:      request,
-		flightrouteRepo:   request,
+		aircraftRepo:      aircraftReq,
+		flightrouteRepo:   flightrouteReq,
 		typeRepo:          typeRepo,
 		operatorRepo:      operatorRepo,
 		countryRepo:       countryRepo,
@@ -95,7 +110,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 	if _, progErr := p.Run(); progErr != nil {
 		log.Printf("error running program: %v", progErr)
 	}
-	if saveErr := pers.SaveState(pers.StateFilePath(), dashboard, request); saveErr != nil {
+	if saveErr := pers.SaveState(pers.StateFilePath(), dashboard, flightrouteReq); saveErr != nil {
 		log.Printf("failed to save persistent state: %v", saveErr)
 	}
 }
