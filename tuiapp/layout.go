@@ -36,8 +36,8 @@ func (m *model) applySortHeadersAfterResize() {
 }
 
 func (m *model) updateAllTables() {
-	records := filteredSortedAircraft(m.dashboard, m.typeRepo, m.aircraftSortCol, m.aircraftSortDesc)
-	rows := buildAircraftRows(m.dashboard, records)
+	records := filteredSortedSightings(m.dashboard, m.typeRepo, m.aircraftSortCol, m.aircraftSortDesc)
+	rows := buildAircraftRows(records)
 	m.tables.aircraft.table.SetRows(rows)
 	applyAircraftSortHeaders(&m.tables.aircraft.table, m.aircraftSortCol, m.aircraftSortDesc)
 

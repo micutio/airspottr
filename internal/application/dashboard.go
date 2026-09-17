@@ -5,7 +5,6 @@ import (
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
 	"math"
-	"sort"
 	"strings"
 	"time"
 
@@ -15,16 +14,16 @@ import (
 )
 
 // TODO: Remove and privatise as many fields as possible.
+// TODO: Create specialized type for highest and fastest.
 
 type Dashboard struct {
 	IsWarmup              bool
 	Lat                   float64
 	Lon                   float64
-	Fastest               *obs.AircraftRecord
-	Highest               *obs.AircraftRecord
-	CurrentAircraft       []obs.AircraftRecord
-	RareSightings         []obs.RareSighting
-	AircraftSightings     map[string]*obs.AircraftSighting
+	Fastest               obs.AircraftRecord
+	Highest               obs.AircraftRecord
+	CurrentSightings      []obs.AircraftSighting
+	Sightings             map[string]obs.AircraftSighting
 	SightedTypesCount     int            // total count of unique sighted types
 	SightedOperatorsCount int            // total count of unique sighted operators
 	SightedCountriesCount int            // total count of unique sighted countries of origin
@@ -39,11 +38,10 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) *Dashboard {
 		IsWarmup:              true,
 		Lat:                   lat,
 		Lon:                   lon,
-		Fastest:               nil,
-		Highest:               nil,
-		CurrentAircraft:       nil,
-		RareSightings:         nil,
-		AircraftSightings:     make(map[string]*obs.AircraftSighting),
+		Fastest:               obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
+		Highest:               obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
+		CurrentSightings:      nil,
+		Sightings:             make(map[string]obs.AircraftSighting),
 		SightedTypesCount:     0,
 		SightedOperatorsCount: 0,
 		SightedCountriesCount: 0,
@@ -80,23 +78,20 @@ func (db *Dashboard) ProcessAircraftRecords(
 	countryRepo rep.CountryRepository,
 	aircraftRecords []obs.AircraftRecord,
 ) {
-	db.CurrentAircraft = aircraftRecords
-	// TODO: Remove unnecessary sorting.
-	sort.Sort(obs.ByFlight(db.CurrentAircraft))
-	// TODO: Cache position.
 	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
-	var rareSightings []obs.RareSighting
+	currentSightings := make([]obs.AircraftSighting, len(aircraftRecords))
 
-	for idx := range len(db.CurrentAircraft) {
+	for idx := range aircraftRecords {
 		// Get aircraft and time of sighting
-		aircraft := &db.CurrentAircraft[idx]
+		aircraft := aircraftRecords[idx]
 		lastSeenMsBeforeNow := time.Duration(aircraft.Seen) * time.Second
 		lastSeenTime := time.Now().Add(-lastSeenMsBeforeNow)
 
 		// Retrieve previous sighting or create new one.
-		sighting, exists := db.AircraftSightings[aircraft.Hex]
+		sighting, exists := db.Sightings[aircraft.Hex]
 		if !exists {
-			sighting = &obs.AircraftSighting{
+			sighting = obs.AircraftSighting{
+				Rarities:     obs.NoRarity,
 				LastSeen:     lastSeenTime,
 				LastFlightNo: obs.FlightUnknown,
 				Registration: aircraft.Registration,
@@ -109,8 +104,11 @@ func (db *Dashboard) ProcessAircraftRecords(
 				Operator:     obs.OperatorUnknown,
 				Country:      ref.CountryUnknown,
 				Info:         "",
-				Flightroute:  nil,
+				Flightroute:  ref.FlightrouteRecord{}, //nolint:exhaustruct_v5 // using default values
+				LastRecord:   aircraft,
 			}
+		} else {
+			sighting.LastRecord = aircraft
 		}
 
 		if sighting.Registration == "" {
@@ -133,36 +131,31 @@ func (db *Dashboard) ProcessAircraftRecords(
 
 		// Update distance
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
-		db.CurrentAircraft[idx].CachedDist = ref.Distance(thisPos, acPos).Kilometers()
-		aircraft.CachedDist = ref.Distance(thisPos, acPos).Kilometers()
-		sighting.Distance = aircraft.CachedDist
+		dist := ref.Distance(thisPos, acPos).Kilometers()
+		sighting.Distance = dist
 
 		// Update all aircraft, type, operator and country statistics
 		db.updateHighest(aircraft)
 		db.updateFastest(aircraft)
 
 		newRarities := obs.NoRarity
-		rareTypeFlag := db.updateType(aircraftSpecRepo, sighting, aircraft, isNewFlight)
-		rareOperatorFlag := db.updateOperator(operatorRepo, sighting, aircraft, isNewFlight)
+		rareTypeFlag := db.updateType(aircraftSpecRepo, &sighting, &aircraft, isNewFlight)
+		rareOperatorFlag := db.updateOperator(operatorRepo, &sighting, &aircraft, isNewFlight)
 		rareCountryFlag := db.updateCountry(
-			operatorRepo, countryRepo, sighting, aircraft, isNewFlight)
+			operatorRepo, countryRepo, &sighting, &aircraft, isNewFlight)
 
 		newRarities |= rareTypeFlag << 0
 		newRarities |= rareOperatorFlag << 1
 		newRarities |= rareCountryFlag << 2 //nolint:mnd // okay for bit shifting
 
-		if newRarities != obs.NoRarity {
-			rareSightings = append(rareSightings, obs.RareSighting{
-				Rarities: newRarities,
-				Sighting: sighting,
-			})
-		}
+		sighting.Rarities = newRarities
+		currentSightings[idx] = sighting
 
 		// Finally, update the records
-		sighting.Info = aircraft.AircraftToString()
-		db.AircraftSightings[aircraft.Hex] = sighting
+		sighting.Info = sighting.SightingToString()
+		db.Sightings[aircraft.Hex] = sighting
 	}
-	db.RareSightings = rareSightings
+	db.CurrentSightings = currentSightings
 }
 
 func (db *Dashboard) updateType(
@@ -179,7 +172,6 @@ func (db *Dashboard) updateType(
 	isTypeKnown := sighting.TypeDesc != obs.TypeUnknown
 	isFlightKnown := !isNewFlight
 	if isTypeKnown && isFlightKnown {
-		aircraft.CachedType = sighting.TypeDesc
 		return 0
 	}
 
@@ -192,7 +184,6 @@ func (db *Dashboard) updateType(
 	aType := spec.Make
 
 	sighting.TypeDesc = aType
-	aircraft.CachedType = aType
 
 	// Valid type found! Record type and update type rarities.
 	thisTypeCountNew := db.SeenTypeCount[aType] + 1
@@ -378,21 +369,22 @@ func (db *Dashboard) updateCountry(
 	return 1
 }
 
-func (db *Dashboard) updateHighest(aircraft *obs.AircraftRecord) {
+func (db *Dashboard) updateHighest(aircraft obs.AircraftRecord) {
 	thisAltitude, thisAltOk := aircraft.AltBaro.(float64)
 	if !thisAltOk {
 		return
 	}
 
-	if db.Highest != nil && db.Highest.AltBaro != nil && db.Highest.AltBaro.(float64) > thisAltitude {
+	highestAltitude, highestAltOk := aircraft.AltBaro.(float64)
+	if !highestAltOk || highestAltitude > thisAltitude {
 		return
 	}
 
 	db.Highest = aircraft
 }
 
-func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
-	if db.Fastest != nil && db.Fastest.GroundSpeed > aircraft.GroundSpeed {
+func (db *Dashboard) updateFastest(aircraft obs.AircraftRecord) {
+	if db.Fastest.GroundSpeed > aircraft.GroundSpeed {
 		return
 	}
 
@@ -404,14 +396,16 @@ func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
 // It returns a list of callsigns without known routes, to allow querying
 // online for these cases.
 func (db *Dashboard) GetCallsignsRequiringRoutes() []string {
+	defaultFlightrouteRecord := *ref.GetDefaultFlightrouteRecord()
 	var callsignsWithoutRoute []string
-	for _, sighting := range db.AircraftSightings {
+	for _, sighting := range db.CurrentSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
-		if sighting.Flightroute != nil {
+		// TODO: Verify struct comparison.
+		if sighting.Flightroute != defaultFlightrouteRecord {
 			// A Flight route is already set.
 			continue
 		}
@@ -424,19 +418,20 @@ func (db *Dashboard) GetCallsignsRequiringRoutes() []string {
 
 // AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
 func (db *Dashboard) AssignFlightRoutes(flightRouteRecords map[string]ref.FlightrouteRecord) {
-	for _, sighting := range db.AircraftSightings {
+	defaultFlightrouteRecord := *ref.GetDefaultFlightrouteRecord()
+	for _, sighting := range db.Sightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
-		if sighting.Flightroute != nil {
+		if sighting.Flightroute != defaultFlightrouteRecord {
 			// A Flight route is already set.
 			continue
 		}
 
 		if flightRoute, ok := flightRouteRecords[sighting.LastFlightNo]; ok {
-			sighting.Flightroute = &flightRoute
+			sighting.Flightroute = flightRoute
 			continue
 		}
 	}

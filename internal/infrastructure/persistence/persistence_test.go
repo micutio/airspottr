@@ -40,9 +40,9 @@ func TestSaveAndLoadState(t *testing.T) {
 	dashboard.SightedTypesCount = 1
 	dashboard.SightedOperatorsCount = 2
 	dashboard.SightedCountriesCount = 3
-	dashboard.CachedFlightroutes["TEST123"] = ref.GetDefaultFlightrouteRecord()
 
-	sighting := &obs.AircraftSighting{
+	sighting := obs.AircraftSighting{
+		Rarities:     obs.RareType,
 		LastSeen:     now(),
 		LastFlightNo: "TEST123",
 		Registration: "N12345",
@@ -55,10 +55,11 @@ func TestSaveAndLoadState(t *testing.T) {
 		Operator:     "TestAir",
 		Country:      "US",
 		Info:         "test info",
-		Flightroute:  ref.GetDefaultFlightrouteRecord(),
+		Flightroute:  *ref.GetDefaultFlightrouteRecord(),
+		LastRecord:   obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
 	}
-	dashboard.AircraftSightings["ABC123"] = sighting
-	dashboard.RareSightings = []obs.RareSighting{{Rarities: obs.RareType, Sighting: sighting}}
+	dashboard.Sightings["ABC123"] = sighting
+	dashboard.CurrentSightings = []obs.AircraftSighting{sighting}
 
 	request.RestorePendingCallsigns([]string{"TEST123", "OTHER456"})
 
@@ -67,11 +68,6 @@ func TestSaveAndLoadState(t *testing.T) {
 	}
 
 	dashboard2 := internal.NewDashboard(1.0, 2.0, new(io.Discard))
-
-	request2, requestErr := adsb.NewFlightrouteRequest(new(io.Discard))
-	if requestErr != nil {
-		t.Fatal(requestErr)
-	}
 
 	appState, appStateErr := LoadState(statePath)
 	if appStateErr != nil {
@@ -82,16 +78,6 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(loadDashboardErr)
 	}
 
-	if loadFlightrouteReqErr := appState.LoadFlightrouteRepoState(request2); loadFlightrouteReqErr != nil {
-		t.Fatal(loadFlightrouteReqErr)
-	}
-
-	if got, want := len(request2.GetPendingCallsigns()), 2; got != want {
-		t.Fatalf("expected %d pending callsigns, got %d", want, got)
-	}
-	if got := request2.GetPendingCallsigns()[0]; got != "TEST123" {
-		t.Fatalf("expected first pending callsign TEST123, got %s", got)
-	}
 	if got := dashboard2.SeenTypeCount["A"]; got != 1 {
 		t.Fatalf("expected SeenTypeCount A=1, got %d", got)
 	}
@@ -101,17 +87,11 @@ func TestSaveAndLoadState(t *testing.T) {
 	if got := dashboard2.SeenCountryCount["US"]; got != 3 {
 		t.Fatalf("expected SeenCountryCount US=3, got %d", got)
 	}
-	if got := len(dashboard2.AircraftSightings); got != 1 {
+	if got := len(dashboard2.Sightings); got != 1 {
 		t.Fatalf("expected 1 aircraft sighting, got %d", got)
 	}
-	if got := dashboard2.AircraftSightings["ABC123"].LastFlightNo; got != "TEST123" {
+	if got := dashboard2.Sightings["ABC123"].LastFlightNo; got != "TEST123" {
 		t.Fatalf("expected restored sighting flight TEST123, got %s", got)
-	}
-	if len(dashboard2.RareSightings) != 1 {
-		t.Fatalf("expected 1 rare sighting, got %d", len(dashboard2.RareSightings))
-	}
-	if got := dashboard2.RareSightings[0].Sighting.LastFlightNo; got != "TEST123" {
-		t.Fatalf("expected rare sighting to reference restored sighting, got %s", got)
 	}
 }
 

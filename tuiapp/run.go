@@ -41,7 +41,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		log.Printf("failed to load app state: %v", err)
 	}
 
-	flightrouteReq, err := setupFlightrouteRequest(appState, errLogFile)
+	flightrouteReq, err := setupFlightrouteRequest(errLogFile)
 	if err != nil {
 		log.Printf("failed to setup flightroute request: %v", err)
 	}

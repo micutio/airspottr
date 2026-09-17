@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5
 package tuiapp
 
 import (
@@ -20,26 +21,40 @@ func (mock *TypeRepoMock) GetAircraftType(icaoCode string) (ref.IcaoAircraftSpec
 	}, true
 }
 
-func TestFilteredSortedAircraftByDistance(t *testing.T) {
+func TestFilteredSortedSightingsByDistance(t *testing.T) {
 	t.Parallel()
-	dashboard := &application.Dashboard{ //nolint:exhaustruct // just for testing
-		CurrentAircraft: []obs.AircraftRecord{
-			{Hex: "a", CachedDist: 100, Flight: "B"}, //nolint:exhaustruct // just for testing
-			{Hex: "b", CachedDist: 10, Flight: "A"},  //nolint:exhaustruct // just for testing
+	dashboard := &application.Dashboard{
+		CurrentSightings: []obs.AircraftSighting{
+			{
+				LastRecord: obs.AircraftRecord{
+					Hex:    "a",
+					Flight: "B",
+				},
+				Distance:     100,
+				LastFlightNo: "B",
+			},
+			{
+				LastRecord: obs.AircraftRecord{
+					Hex:    "b",
+					Flight: "A",
+				},
+				Distance:     10,
+				LastFlightNo: "A",
+			},
 		},
 	}
 	typeRepo := TypeRepoMock{}
 
-	out := filteredSortedAircraft(dashboard, &typeRepo, 0, false) // DST asc
+	out := filteredSortedSightings(dashboard, &typeRepo, 0, false) // DST asc
 	if len(out) != 2 {
 		t.Fatalf("len %d", len(out))
 	}
-	if out[0].Hex != "b" || out[1].Hex != "a" {
+	if out[0].LastRecord.Hex != "b" || out[1].LastRecord.Hex != "a" {
 		t.Errorf("order %+v", out)
 	}
-	out = filteredSortedAircraft(dashboard, &typeRepo, 0, true)
-	if out[0].Hex != "a" {
-		t.Errorf("desc first want a got %s", out[0].Hex)
+	out = filteredSortedSightings(dashboard, &typeRepo, 0, true)
+	if out[0].LastRecord.Hex != "a" {
+		t.Errorf("desc first want a got %s", out[0].LastRecord.Hex)
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 func TestHandleKeyQuit(t *testing.T) {
 	t.Parallel()
 	var m model
-	//nolint:exhaustruct // just for testing
+	//nolint:exhaustruct_v5 // just for testing
 	cmd := m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
 		t.Fatal("expected non-nil quit command")
@@ -19,7 +19,7 @@ func TestHandleKeyQuit(t *testing.T) {
 func TestHandleKeyCtrlC(t *testing.T) {
 	t.Parallel()
 	var m model
-	//nolint:exhaustruct // just for testing
+	//nolint:exhaustruct_v5 // just for testing
 	cmd := m.handleKey(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
 		t.Fatal("expected non-nil quit command")

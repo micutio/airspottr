@@ -8,7 +8,6 @@ import (
 	"github.com/micutio/airspottr/internal"
 	"github.com/micutio/airspottr/internal/application"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	ref "github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/domain/repositories"
 )
 
@@ -63,31 +62,22 @@ func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool)
 	tbl.SetColumns(cols)
 }
 
-func routeFor(db *application.Dashboard, ac *obs.AircraftRecord) *ref.FlightrouteRecord {
-	r, ok := db.CachedFlightroutes[ac.GetFlightNoAsStr()]
-	if !ok {
-		return ref.GetDefaultFlightrouteRecord()
-	}
-	return r
-}
-
-func altitudeSortKey(aircraftRecord *obs.AircraftRecord) float64 {
-	if n, ok := aircraftRecord.AltBaro.(float64); ok {
+func altitudeSortKey(aircraftSighting obs.AircraftSighting) float64 {
+	if n, ok := aircraftSighting.LastRecord.AltBaro.(float64); ok {
 		return n
 	}
-	if s, ok := aircraftRecord.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
+	if s, ok := aircraftSighting.LastRecord.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
 		return groundAltitudeZone
 	}
 	return infinity
 }
 
-// compareAircraftAscending reports whether a should sort before b (ascending).
+// compareSightingsAscending reports whether a should sort before b (ascending).
 //
 //nolint:gocognit
-func compareAircraftAscending(
-	recordA, recordB *obs.AircraftRecord,
+func compareSightingsAscending(
+	sightingA, sightingB obs.AircraftSighting,
 	col int,
-	dashboard *application.Dashboard,
 	typeRepo repositories.AircraftTypeRepo,
 ) bool {
 	dstCol := 0
@@ -98,23 +88,24 @@ func compareAircraftAscending(
 	altCol := 5
 	spdCol := 6
 	hdgCol := 7
-	routeA, routeB := routeFor(dashboard, recordA), routeFor(dashboard, recordB)
+	routeA, routeB := sightingA.Flightroute, sightingB.Flightroute
 	switch col {
 	case dstCol: // DST
-		if recordA.CachedDist != recordB.CachedDist {
-			return recordA.CachedDist < recordB.CachedDist
+		if sightingA.Distance != sightingB.Distance {
+			return sightingA.Distance < sightingB.Distance
 		}
 	case fnoCol: // FNO
-		sa, sb := recordA.GetFlightNoAsStr(), recordB.GetFlightNoAsStr()
+		sa, sb := sightingA.LastFlightNo, sightingB.LastFlightNo
 		if sa != sb {
 			return sa < sb
 		}
 	case tidCol: // TID
-		typeA, taExists := typeRepo.GetAircraftType(recordA.IcaoType)
+		// TODO: Can we cache AircraftType somewhere?
+		typeA, taExists := typeRepo.GetAircraftType(sightingA.LastRecord.IcaoType)
 		if !taExists {
 			return false
 		}
-		typeB, tbExists := typeRepo.GetAircraftType(recordB.IcaoType)
+		typeB, tbExists := typeRepo.GetAircraftType(sightingB.LastRecord.IcaoType)
 		if !tbExists {
 			return false
 		}
@@ -132,38 +123,38 @@ func compareAircraftAscending(
 			return da < dbi
 		}
 	case altCol: // ALT
-		ka, kb := altitudeSortKey(recordA), altitudeSortKey(recordB)
+		ka, kb := altitudeSortKey(sightingA), altitudeSortKey(sightingB)
 		if ka != kb {
 			return ka < kb
 		}
 	case spdCol: // SPD
-		if recordA.GroundSpeed != recordB.GroundSpeed {
-			return recordA.GroundSpeed < recordB.GroundSpeed
+		if sightingA.LastRecord.GroundSpeed != sightingB.LastRecord.GroundSpeed {
+			return sightingA.LastRecord.GroundSpeed < sightingB.LastRecord.GroundSpeed
 		}
 	case hdgCol: // HDG
-		if recordA.NavHeading != recordB.NavHeading {
-			return recordA.NavHeading < recordB.NavHeading
+		if sightingA.LastRecord.NavHeading != sightingB.LastRecord.NavHeading {
+			return sightingA.LastRecord.NavHeading < sightingB.LastRecord.NavHeading
 		}
 	}
-	return recordA.Hex < recordB.Hex
+	return sightingA.LastRecord.Hex < sightingB.LastRecord.Hex
 }
 
-func filteredSortedAircraft(
+func filteredSortedSightings(
 	dashboard *application.Dashboard,
 	typeRepo repositories.AircraftTypeRepo,
 	sortCol int,
 	desc bool,
-) []obs.AircraftRecord {
-	var rows []obs.AircraftRecord
-	for _, ac := range dashboard.CurrentAircraft {
-		aircraftType, atExists := typeRepo.GetAircraftType(ac.IcaoType)
-		if !atExists || (ac.GetFlightNoAsStr() == "" && aircraftType.Make == "") {
+) []obs.AircraftSighting {
+	var rows []obs.AircraftSighting
+	for _, ac := range dashboard.CurrentSightings {
+		aircraftType, atExists := typeRepo.GetAircraftType(ac.LastRecord.IcaoType)
+		if !atExists || (ac.LastFlightNo == "" && aircraftType.Make == "") {
 			continue
 		}
 		rows = append(rows, ac)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, dashboard, typeRepo)
+		less := compareSightingsAscending(rows[i], rows[j], sortCol, typeRepo)
 		if desc {
 			return !less
 		}
@@ -222,11 +213,11 @@ func (m *model) toggleSortDirection() {
 	m.updateAllTables()
 }
 
-func buildAircraftRows(db *application.Dashboard, records []obs.AircraftRecord) []table.Row {
+func buildAircraftRows(records []obs.AircraftSighting) []table.Row {
 	rows := make([]table.Row, 0, len(records))
 	for i := range records {
-		ac := &records[i]
-		route := routeFor(db, ac)
+		ac := records[i]
+		route := ac.Flightroute
 		rows = append(rows, aircraftToRow(ac, route))
 	}
 	return rows

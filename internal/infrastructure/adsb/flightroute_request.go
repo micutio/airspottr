@@ -24,19 +24,20 @@ const (
 // Should implement:
 //   - application.FlightrouteRepository
 type FlightrouteRequest struct {
-	apiClient          *http.Client
-	waitGroup          sync.WaitGroup
-	errOut             log.Logger
-	pendingCallsigns   []string
-	pendingCallsignsMu sync.Mutex
-	cachedFlightroutes map[string]ref.FlightrouteRecord
+	apiClient            *http.Client
+	waitGroup            sync.WaitGroup
+	errOut               log.Logger
+	pendingCallsigns     []string
+	pendingCallsignsMu   sync.Mutex
+	cachedFlightroutes   map[string]ref.FlightrouteRecord
+	cachedFlightroutesMu sync.Mutex
 }
 
 func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 	client := &http.Client{
 		Timeout: reqTimeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{ //nolint:exhaustruct // too large
+			TLSClientConfig: &tls.Config{ //nolint:exhaustruct_v5 // too large
 				MinVersion: tls.VersionTLS13,
 				MaxVersion: tls.VersionTLS13,
 			},
@@ -44,12 +45,13 @@ func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 	}
 
 	request := &FlightrouteRequest{
-		apiClient:          client,
-		waitGroup:          sync.WaitGroup{},
-		errOut:             *log.New(*stderr, "request ", log.LstdFlags),
-		pendingCallsigns:   []string{},
-		pendingCallsignsMu: sync.Mutex{},
-		cachedFlightroutes: make(map[string]ref.FlightrouteRecord),
+		apiClient:            client,
+		waitGroup:            sync.WaitGroup{},
+		errOut:               *log.New(*stderr, "request ", log.LstdFlags),
+		pendingCallsigns:     []string{},
+		pendingCallsignsMu:   sync.Mutex{},
+		cachedFlightroutes:   make(map[string]ref.FlightrouteRecord),
+		cachedFlightroutesMu: sync.Mutex{},
 	}
 
 	request.errOut.Println("Request init")
@@ -59,6 +61,7 @@ func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 
 func (r *FlightrouteRequest) GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord {
 	// Retrieve routes from cache first, if available.
+	r.cachedFlightroutesMu.Lock()
 	flightrouteRecords := make(map[string]ref.FlightrouteRecord)
 	var callsignsWithoutRoute []string
 	for _, callsign := range callsigns {
@@ -68,6 +71,7 @@ func (r *FlightrouteRequest) GetFlightroutes(callsigns []string) map[string]ref.
 			callsignsWithoutRoute = append(callsignsWithoutRoute, callsign)
 		}
 	}
+	r.cachedFlightroutesMu.Unlock()
 
 	// Best case: all routes have been found, return right here
 	if len(callsignsWithoutRoute) == 0 {
@@ -108,7 +112,9 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	// 0. Put dummies for the selected callsigns into the cache, so that we do not query for them
 	// again if the database does not have them.
 	for _, callsign := range selectedCallsigns {
+		r.cachedFlightroutesMu.Lock()
 		r.cachedFlightroutes[callsign] = *ref.GetDefaultFlightrouteRecord()
+		r.cachedFlightroutesMu.Unlock()
 	}
 
 	// 1. Build input urls for selected callsigns
@@ -152,7 +158,9 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 		}
 		flightrouteRecords[flightrouteRecord.Callsign] = flightrouteRecord
 		// Cache the found flightroutes.
+		r.cachedFlightroutesMu.Lock()
 		r.cachedFlightroutes[flightrouteRecord.Callsign] = flightrouteRecord
+		r.cachedFlightroutesMu.Unlock()
 	}
 	r.errOut.Printf(
 		"RequestFlightRoutesForCallsigns: %d callsigns processed, %d routes found\n",

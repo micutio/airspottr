@@ -16,7 +16,7 @@ func getTestFlights() []testFlight {
 
 func TestFlightToAirlineConversion(t *testing.T) {
 	for _, flight := range getTestFlights() {
-		aircraft := AircraftRecord{ //nolint:exhaustruct // convenience for testing
+		aircraft := AircraftRecord{ //nolint:exhaustruct_v5 // convenience for testing
 			Flight: flight.flightNo,
 		}
 

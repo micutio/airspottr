@@ -21,7 +21,7 @@ func validateURL(targetURL string) (string, error) {
 		return "", ErrInvalidURL
 	}
 
-	if parsed.Host != reqHostAircraft {
+	if parsed.Host != reqHostAircraft && parsed.Host != reqHostFlightroute {
 		return "", ErrUnauthorizedHost
 	}
 

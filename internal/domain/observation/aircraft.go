@@ -94,9 +94,6 @@ type AircraftRecord struct {
 	// found by my own investigation
 	OwnOp       string `json:"ownOp"` // owner or operator, only rarely set
 	Description string `json:"desc"`  // aircraft type description
-	// cached data
-	CachedDist float64
-	CachedType string
 }
 
 // GetAltitudeAsStr reads the altitude of an aircraft and returns it as a string.
@@ -118,6 +115,7 @@ func (ac *AircraftRecord) GetAltitudeAsStr() string {
 
 // GetFlightNoAsStr converts the Flight number to a string.
 // Returns either the full Flight number or 'unknown ' if it was not transmitted.
+// TODO: Move or copy this to sighting!
 func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	if ac.Flight == "" {
 		return FlightUnknown
@@ -165,32 +163,13 @@ func (ac *AircraftRecord) AircraftToString() string {
 	var aType string
 	if ac.Description != "" {
 		aType = ac.Description
-	} else {
-		aType = ac.CachedType
 	}
 
-	return fmt.Sprintf("FNO %s DST %4.0f km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
+	return fmt.Sprintf("FNO %s km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
 		flight,
-		ac.CachedDist,
 		altitude,
 		ac.GroundSpeed,
 		ac.NavHeading,
 		aType,
 		ac.Registration)
 }
-
-// ByFlight implements the comparator interface and allows sorting a list of aircraft records
-// by Flight.
-type ByFlight []AircraftRecord
-
-func (a ByFlight) Len() int           { return len(a) }
-func (a ByFlight) Less(i, j int) bool { return a[i].Flight < a[j].Flight }
-func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-// ByDistance implements the comparator interface and allows sorting a list of aircraft records.
-// by distance to a given lon,lat coordinate.
-type ByDistance []AircraftRecord
-
-func (a ByDistance) Len() int           { return len(a) }
-func (a ByDistance) Less(i, j int) bool { return a[i].CachedDist < a[j].CachedDist }
-func (a ByDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

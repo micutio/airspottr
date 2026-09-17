@@ -61,7 +61,7 @@ func NewAircraftRequest(opts RequestOptions, stderr *io.Writer) (*AircraftReques
 	client := &http.Client{
 		Timeout: reqTimeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{ //nolint:exhaustruct // too large
+			TLSClientConfig: &tls.Config{ //nolint:exhaustruct_v5 // too large
 				MinVersion: tls.VersionTLS13,
 				MaxVersion: tls.VersionTLS13,
 			},

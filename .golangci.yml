@@ -129,7 +129,7 @@ linters:
     ## you may want to enable
     #- arangolint # opinionated best practices for arangodb client
     - decorder # checks declaration order and count of types, constants, variables and functions
-    - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
+    - exhaustruct_v5 # [highly recommend to enable] checks if all structure fields are initialized
     #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
     #- godox # detects usage of FIXME, TODO and other keywords inside comments
     - goheader # checks is file header matches to pattern
@@ -242,11 +242,11 @@ linters:
         - switch
         - map
 
-    exhaustruct:
+    exhaustruct_v5:
       # List of regular expressions to exclude struct packages and their names from checks.
       # Regular expressions must match complete canonical struct package/name/structname.
       # Default: []
-      exclude:
+      ignore-patterns:
         # std libs
         - ^net/http.Client$
         - ^net/http.Cookie$
@@ -359,7 +359,7 @@ linters:
     nolintlint:
       # Exclude following linters from requiring an explanation.
       # Default: []
-      allow-no-explanation: [ funlen, gocognit, golines ]
+      allow-no-explanation: [funlen, gocognit, golines, exhaustruct_v5]
       # Enable to require an explanation of nonzero length after each nolint directive.
       # Default: false
       require-explanation: true
@@ -435,18 +435,18 @@ linters:
       - common-false-positives
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
-      - source: 'TODO'
-        linters: [ godot ]
-      - text: 'should have a package comment'
-        linters: [ revive ]
+      - source: "TODO"
+        linters: [godot]
+      - text: "should have a package comment"
+        linters: [revive]
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
-        linters: [ revive ]
+        linters: [revive]
       - text: 'package comment should be of the form ".+"'
-        source: '// ?(nolint|TODO)'
-        linters: [ revive ]
+        source: "// ?(nolint|TODO)"
+        linters: [revive]
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
-        source: '// ?(nolint|TODO)'
-        linters: [ revive, staticcheck ]
+        source: "// ?(nolint|TODO)"
+        linters: [revive, staticcheck]
       - path: '_test\.go'
         linters:
           - bodyclose

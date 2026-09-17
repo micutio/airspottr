@@ -38,16 +38,11 @@ func setupAircraftRequest(
 
 // setupRequestsAndDashboard initializes the dashboard and notification system.
 func setupFlightrouteRequest(
-	state pers.AirspottrState,
 	errWriter io.Writer,
 ) (*adsb.FlightrouteRequest, error) {
 	flightrouteReq, flightrouteReqErr := adsb.NewFlightrouteRequest(&errWriter)
 	if flightrouteReqErr != nil {
 		return nil, fmt.Errorf("failed to create flight request: %w", flightrouteReqErr)
-	}
-
-	if loadErr := state.LoadFlightrouteRepoState(flightrouteReq); loadErr != nil {
-		return nil, fmt.Errorf("failed to flightrouteRequest state: %w", loadErr)
 	}
 
 	return flightrouteReq, nil

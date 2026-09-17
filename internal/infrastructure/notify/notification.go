@@ -59,22 +59,25 @@ func DefaultRarityNotifyToggles() obs.RarityNotifyToggles {
 // EmitRarityNotifications sends desktop notifications for sightings, respecting toggles.
 // Combined rarities (e.g. type+operator) degrade to the best matching template for the enabled subset.
 func (notify *Notify) EmitRarityNotifications(
-	sightings []obs.RareSighting,
+	sightings []obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
 	for i := range sightings {
-		notify.emitRarityWithToggles(&sightings[i], toggles)
+		if sightings[i].Rarities == obs.NoRarity {
+			continue
+		}
+		notify.emitRarityWithToggles(sightings[i], toggles)
 	}
 }
 
 func (notify *Notify) emitRarityWithToggles(
-	rareSighting *obs.RareSighting,
+	sighting obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
-	if rareSighting.Rarities == obs.NoRarity || rareSighting.Sighting == nil {
+	if sighting.Rarities == obs.NoRarity {
 		return
 	}
-	f := rareSighting.Rarities
+	f := sighting.Rarities
 	hasT := f&obs.RareType != 0
 	hasO := f&obs.RareOperator != 0
 	hasC := f&obs.RareCountry != 0
@@ -97,7 +100,6 @@ func (notify *Notify) emitRarityWithToggles(
 		return
 	}
 
-	sighting := rareSighting.Sighting
 	switch rarityFlag { //nolint:exhaustive // By definition noFlag is false when this is called.
 	case obs.RareType:
 		notify.Stdout.Printf("found rare type %sighting\n", sighting.Info)
@@ -132,7 +134,7 @@ func (notify *Notify) emitRarityWithToggles(
 	}
 }
 
-func notifyRareType(sighting *obs.AircraftSighting) {
+func notifyRareType(sighting obs.AircraftSighting) {
 	msgTitle := "Rare Aircraft Type Spotted"
 	msgBody := fmt.Sprintf(
 		"%s (%s)\n%3.0f %s",
@@ -146,7 +148,7 @@ func notifyRareType(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareOperator(sighting *obs.AircraftSighting) {
+func notifyRareOperator(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	msgTitle := "Rare Operator Spotted"
 	msgBody := fmt.Sprintf(
@@ -162,7 +164,7 @@ func notifyRareOperator(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareCountry(sighting *obs.AircraftSighting) {
+func notifyRareCountry(sighting obs.AircraftSighting) {
 	country := sighting.Country
 	msgTitle := "Rare Aircraft Country Spotted"
 	msgBody := fmt.Sprintf(
@@ -178,7 +180,7 @@ func notifyRareCountry(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareTypeAndOperator(sighting *obs.AircraftSighting) {
+func notifyRareTypeAndOperator(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	msgTitle := "Rare Type & Operator Spotted"
 	msgBody := fmt.Sprintf(
@@ -194,7 +196,7 @@ func notifyRareTypeAndOperator(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareTypeAndCountry(sighting *obs.AircraftSighting) {
+func notifyRareTypeAndCountry(sighting obs.AircraftSighting) {
 	country := sighting.Country
 	msgTitle := "Rare Type & Country Spotted"
 	msgBody := fmt.Sprintf(
@@ -210,7 +212,7 @@ func notifyRareTypeAndCountry(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareOperatorAndCountry(sighting *obs.AircraftSighting) {
+func notifyRareOperatorAndCountry(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	country := sighting.Country
 	msgTitle := "Rare Operator & Country Spotted"
@@ -226,7 +228,7 @@ func notifyRareOperatorAndCountry(sighting *obs.AircraftSighting) {
 	}
 }
 
-func notifyRareTypeOperatorCountry(sighting *obs.AircraftSighting) {
+func notifyRareTypeOperatorCountry(sighting obs.AircraftSighting) {
 	var aType string
 	if sighting.TypeShort != "" {
 		aType = sighting.TypeShort

@@ -22,7 +22,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 	case AircraftResponseMsg:
 		return m, m.processAircraftResponse(thisMsg)
 	case FlightRoutesResponseMsg:
-		return m, m.processFlightRouteResponse(thisMsg)
+		m.processFlightRouteResponse(thisMsg)
 	}
 	return m, nil
 }
@@ -35,7 +35,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 		m.operatorRepo,
 		m.countryRepo,
 		aircraftRecords)
-	m.notify.EmitRarityNotifications(m.dashboard.RareSightings, obs.RarityNotifyToggles{
+	m.notify.EmitRarityNotifications(m.dashboard.CurrentSightings, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
 		Country:  m.notifyOnCountry,
@@ -50,16 +50,8 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	return nil
 }
 
-func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd {
+func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) {
 	flightRoutes := msg
 	m.dashboard.AssignFlightRoutes(flightRoutes)
-
-	// Check if there are more callsigns without routes and request them
-	callsignsWithoutRoute := m.dashboard.GetCallsignsRequiringRoutes()
-	if callsignsWithoutRoute != nil {
-		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
-	}
-
 	m.updateAllTables()
-	return nil
 }

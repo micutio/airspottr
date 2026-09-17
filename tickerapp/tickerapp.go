@@ -62,10 +62,6 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		return nil, fmt.Errorf("unable to create request: %w", flightrouteRequestErr)
 	}
 
-	if loadErr := appState.LoadFlightrouteRepoState(flightrouteRequest); loadErr != nil {
-		return nil, fmt.Errorf("warning: unable to load flightroute state: %w", loadErr)
-	}
-
 	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
 	if typeRepoErr != nil {
 		return nil, fmt.Errorf("unable to create aircraft type repository: %w", typeRepoErr)
@@ -80,7 +76,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
 	}
 
-	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
+	return &TickerApp{ //nolint:exhaustruct_v5 // no need to init waitgroup
 		appName:            appName,
 		options:            options,
 		logger:             logger,
@@ -133,7 +129,7 @@ func (app *TickerApp) start() {
 					app.countryRepo,
 					aircraftRecords)
 				app.notify.EmitRarityNotifications(
-					app.dashboard.RareSightings,
+					app.dashboard.CurrentSightings,
 					noti.DefaultRarityNotifyToggles(),
 				)
 
