@@ -27,8 +27,9 @@ type FlightrouteRequest struct {
 	apiClient          *http.Client
 	waitGroup          sync.WaitGroup
 	errOut             log.Logger
-	PendingCallsigns   []string
-	PendingCallsignsMu sync.Mutex
+	pendingCallsigns   []string
+	pendingCallsignsMu sync.Mutex
+	cachedFlightroutes map[string]ref.FlightrouteRecord
 }
 
 func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
@@ -46,8 +47,9 @@ func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 		apiClient:          client,
 		waitGroup:          sync.WaitGroup{},
 		errOut:             *log.New(*stderr, "request ", log.LstdFlags),
-		PendingCallsigns:   []string{},
-		PendingCallsignsMu: sync.Mutex{},
+		pendingCallsigns:   []string{},
+		pendingCallsignsMu: sync.Mutex{},
+		cachedFlightroutes: make(map[string]ref.FlightrouteRecord),
 	}
 
 	request.errOut.Println("Request init")
@@ -55,28 +57,59 @@ func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 	return request, nil
 }
 
-func (r *FlightrouteRequest) RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightrouteRecord {
-	r.PendingCallsignsMu.Lock()
+func (r *FlightrouteRequest) GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord {
+	// Retrieve routes from cache first, if available.
+	flightrouteRecords := make(map[string]ref.FlightrouteRecord)
+	var callsignsWithoutRoute []string
+	for _, callsign := range callsigns {
+		if route, exists := r.cachedFlightroutes[callsign]; exists {
+			flightrouteRecords[callsign] = route
+		} else {
+			callsignsWithoutRoute = append(callsignsWithoutRoute, callsign)
+		}
+	}
+
+	// Best case: all routes have been found, return right here
+	if len(callsignsWithoutRoute) == 0 {
+		return flightrouteRecords
+	}
+
+	// For missing routes make a web request to adsbdb.
+	r.requestFlightroutesFromWeb(flightrouteRecords, callsignsWithoutRoute)
+	return flightrouteRecords
+}
+
+func (r *FlightrouteRequest) requestFlightroutesFromWeb(
+	flightrouteRecords map[string]ref.FlightrouteRecord,
+	callsigns []string,
+) {
+	r.pendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
-	r.PendingCallsigns = append(r.PendingCallsigns, callsigns...)
+	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
 	r.errOut.Printf(
 		"RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n",
 		len(callsigns),
-		len(r.PendingCallsigns),
+		len(r.pendingCallsigns),
 	)
 
 	// Determine how many to process this time
-	toProcess := min(len(r.PendingCallsigns), FlightRouteQueryThreshold)
+	toProcess := min(len(r.pendingCallsigns), FlightRouteQueryThreshold)
 
 	// Take the first 'toProcess' callsigns from the queue
 	selectedCallsigns := make([]string, toProcess)
-	copy(selectedCallsigns, r.PendingCallsigns[:toProcess])
+	copy(selectedCallsigns, r.pendingCallsigns[:toProcess])
 
 	// Remove the processed callsigns from the queue
-	r.PendingCallsigns = r.PendingCallsigns[toProcess:]
-	r.PendingCallsignsMu.Unlock()
+	r.pendingCallsigns = r.pendingCallsigns[toProcess:]
+	r.pendingCallsignsMu.Unlock()
 
 	r.errOut.Printf("RequestFlightRoutesForCallsigns: processing %d callsigns this batch\n", len(selectedCallsigns))
+
+	// 0. Put dummies for the selected callsigns into the cache, so that we do not query for them
+	// again if the database does not have them.
+	for _, callsign := range selectedCallsigns {
+		r.cachedFlightroutes[callsign] = *ref.GetDefaultFlightrouteRecord()
+	}
 
 	// 1. Build input urls for selected callsigns
 	urls := r.createFlightrouteRequestURLs(selectedCallsigns)
@@ -109,7 +142,6 @@ func (r *FlightrouteRequest) RequestFlightroutesForCallsigns(callsigns []string)
 	}()
 
 	// 4. Fan-in: Collect and process results
-	var flightrouteRecords []ref.FlightrouteRecord
 	for result := range results {
 		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
 		if err != nil {
@@ -118,12 +150,17 @@ func (r *FlightrouteRequest) RequestFlightroutesForCallsigns(callsigns []string)
 					err))
 			continue
 		}
-		flightrouteRecords = append(flightrouteRecords, flightrouteRecord)
+		flightrouteRecords[flightrouteRecord.Callsign] = flightrouteRecord
+		// Cache the found flightroutes.
+		r.cachedFlightroutes[flightrouteRecord.Callsign] = flightrouteRecord
 	}
 	r.errOut.Printf(
 		"RequestFlightRoutesForCallsigns: %d callsigns processed, %d routes found\n",
-		len(callsigns), len(flightrouteRecords))
-	return flightrouteRecords
+		len(callsigns),
+		len(flightrouteRecords))
+	r.errOut.Printf(
+		"RequestFlightRoutesForCallsigns: total flightroutes cached: %d\n",
+		len(r.cachedFlightroutes))
 }
 
 func (r *FlightrouteRequest) createFlightrouteRequestURLs(selectedCallsigns []string) []string {
@@ -179,16 +216,20 @@ func (r *FlightrouteRequest) sendRequest(targetURL string) ([]byte, error) {
 	return body, nil
 }
 
+func (r *FlightrouteRequest) ClearFlightrouteCache() {
+	r.cachedFlightroutes = make(map[string]ref.FlightrouteRecord)
+}
+
 func (r *FlightrouteRequest) GetPendingCallsigns() []string {
-	r.PendingCallsignsMu.Lock()
-	defer r.PendingCallsignsMu.Unlock()
-	cp := make([]string, len(r.PendingCallsigns))
-	copy(cp, r.PendingCallsigns)
+	r.pendingCallsignsMu.Lock()
+	defer r.pendingCallsignsMu.Unlock()
+	cp := make([]string, len(r.pendingCallsigns))
+	copy(cp, r.pendingCallsigns)
 	return cp
 }
 
 func (r *FlightrouteRequest) RestorePendingCallsigns(pendingCallsigns []string) {
-	r.PendingCallsignsMu.Lock()
-	defer r.PendingCallsignsMu.Unlock()
-	r.PendingCallsigns = append([]string(nil), pendingCallsigns...)
+	r.pendingCallsignsMu.Lock()
+	defer r.pendingCallsignsMu.Unlock()
+	r.pendingCallsigns = append([]string(nil), pendingCallsigns...)
 }

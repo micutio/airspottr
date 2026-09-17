@@ -68,7 +68,10 @@ type flightrouteRepoState struct {
 	PendingCallsigns []string `json:"pending_callsigns"`
 }
 
-func saveState(dash *application.Dashboard, pendingCallsigns []string) *persistentState {
+func saveState(dash *application.Dashboard,
+	frr repo.FlightrouteRepository,
+	pendingCallsigns []string,
+) *persistentState {
 	aircraftSightings := make(map[string]obs.AircraftSighting, len(dash.AircraftSightings))
 	sightingKeys := make(map[*obs.AircraftSighting]string, len(dash.AircraftSightings))
 	for hex, sighting := range dash.AircraftSightings {
@@ -101,7 +104,6 @@ func saveState(dash *application.Dashboard, pendingCallsigns []string) *persiste
 			Highest:            dash.Highest,
 			CurrentAircraft:    dash.CurrentAircraft,
 			RareSightings:      raceSightings,
-			CachedFlightRoutes: dash.CachedFlightroutes,
 			AircraftSightings:  aircraftSightings,
 			TotalTypeCount:     dash.SightedTypesCount,
 			TotalOperatorCount: dash.SightedOperatorsCount,
@@ -125,7 +127,6 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 	dash.Fastest = state.Fastest
 	dash.Highest = state.Highest
 	dash.CurrentAircraft = state.CurrentAircraft
-	dash.CachedFlightroutes = state.CachedFlightRoutes
 	dash.AircraftSightings = make(map[string]*obs.AircraftSighting, len(state.AircraftSightings))
 	for hex, persisted := range state.AircraftSightings {
 		dash.AircraftSightings[hex] = &persisted
@@ -152,7 +153,7 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 
 func SaveState(filePath string, db *application.Dashboard, frr repo.FlightrouteRepository) error {
 	pendingCallsigns := frr.GetPendingCallsigns()
-	state := saveState(db, pendingCallsigns)
+	state := saveState(db, frr, pendingCallsigns)
 	data, marshallErr := json.MarshalIndent(state, "", "  ")
 	if marshallErr != nil {
 		return fmt.Errorf("save state: marshal failed: %w", marshallErr)

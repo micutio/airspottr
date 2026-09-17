@@ -24,7 +24,6 @@ type Dashboard struct {
 	Highest               *obs.AircraftRecord
 	CurrentAircraft       []obs.AircraftRecord
 	RareSightings         []obs.RareSighting
-	CachedFlightroutes    map[string]*ref.FlightrouteRecord
 	AircraftSightings     map[string]*obs.AircraftSighting
 	SightedTypesCount     int            // total count of unique sighted types
 	SightedOperatorsCount int            // total count of unique sighted operators
@@ -44,7 +43,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) *Dashboard {
 		Highest:               nil,
 		CurrentAircraft:       nil,
 		RareSightings:         nil,
-		CachedFlightroutes:    make(map[string]*ref.FlightrouteRecord),
 		AircraftSightings:     make(map[string]*obs.AircraftSighting),
 		SightedTypesCount:     0,
 		SightedOperatorsCount: 0,
@@ -401,11 +399,11 @@ func (db *Dashboard) updateFastest(aircraft *obs.AircraftRecord) {
 	db.Fastest = aircraft
 }
 
-// TryMatchCallsignRoutes attempts to assign cached route information to all
+// GetCallsignsRequiringRoutes attempts to assign cached route information to all
 // sightings.
 // It returns a list of callsigns without known routes, to allow querying
 // online for these cases.
-func (db *Dashboard) TryMatchCallsignRoutes() []string {
+func (db *Dashboard) GetCallsignsRequiringRoutes() []string {
 	var callsignsWithoutRoute []string
 	for _, sighting := range db.AircraftSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
@@ -418,12 +416,6 @@ func (db *Dashboard) TryMatchCallsignRoutes() []string {
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightroutes[sighting.LastFlightNo]; ok {
-			// Found a cached route for this Flight, reuse it!
-			sighting.Flightroute = flightRoute
-			continue
-		}
-
 		// No routes found, record this callsign to request route from adsbdb
 		callsignsWithoutRoute = append(callsignsWithoutRoute, sighting.LastFlightNo)
 	}
@@ -431,11 +423,7 @@ func (db *Dashboard) TryMatchCallsignRoutes() []string {
 }
 
 // AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
-func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightrouteRecord) {
-	for _, flightrouteRecord := range flightRouteRecords {
-		callsign := flightrouteRecord.Callsign
-		db.CachedFlightroutes[callsign] = &flightrouteRecord
-	}
+func (db *Dashboard) AssignFlightRoutes(flightRouteRecords map[string]ref.FlightrouteRecord) {
 	for _, sighting := range db.AircraftSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
@@ -447,15 +435,9 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords []ref.FlightrouteReco
 			continue
 		}
 
-		if flightRoute, ok := db.CachedFlightroutes[sighting.LastFlightNo]; ok {
-			// Found a cached route for this Flight, reuse it!
-			sighting.Flightroute = flightRoute
+		if flightRoute, ok := flightRouteRecords[sighting.LastFlightNo]; ok {
+			sighting.Flightroute = &flightRoute
 			continue
 		}
-
-		// Route cannot be found: use a dummy and also cache a dummy to prevent unnecessary requests
-		// for the same callsign again.
-		sighting.Flightroute = ref.GetDefaultFlightrouteRecord()
-		db.CachedFlightroutes[sighting.LastFlightNo] = ref.GetDefaultFlightrouteRecord()
 	}
 }

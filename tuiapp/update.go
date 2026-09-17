@@ -5,7 +5,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // tea.Model interface
@@ -42,7 +41,7 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 		Country:  m.notifyOnCountry,
 	})
 
-	callsignsWithoutRoute := m.dashboard.TryMatchCallsignRoutes()
+	callsignsWithoutRoute := m.dashboard.GetCallsignsRequiringRoutes()
 	if callsignsWithoutRoute != nil {
 		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}
@@ -52,11 +51,11 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 }
 
 func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) tea.Cmd {
-	flightRoutes := []ref.FlightrouteRecord(msg)
+	flightRoutes := msg
 	m.dashboard.AssignFlightRoutes(flightRoutes)
 
 	// Check if there are more callsigns without routes and request them
-	callsignsWithoutRoute := m.dashboard.TryMatchCallsignRoutes()
+	callsignsWithoutRoute := m.dashboard.GetCallsignsRequiringRoutes()
 	if callsignsWithoutRoute != nil {
 		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}

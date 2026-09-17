@@ -16,7 +16,7 @@ These are the places where infrastructure or I/O is currently mixed with busines
     - distance calculation,
     - route assignment,
     - and mutation of shared Dashboard state.
-  - `Dashboard.updateType`, `Dashboard.updateOperator`, `Dashboard.updateCountry`, `TryMatchCallsignRoutes`, `AssignFlightRoutes`, and `recomputeFastestAndHighest` are all part of the same crowded responsibility cluster.
+  - `Dashboard.updateType`, `Dashboard.updateOperator`, `Dashboard.updateCountry`, `GetCallsignsRequiringRoutes`, `AssignFlightRoutes`, and `recomputeFastestAndHighest` are all part of the same crowded responsibility cluster.
 
 - [internal/request.go](../internal/request.go)
   - `Request.RequestAircraft`, `Request.RequestFlightRoutesForCallsigns`, `createAircraftReqURL`, `createFlightRouteRequestURL`, and `sendRequest` combine:

@@ -60,9 +60,7 @@ func TestSaveAndLoadState(t *testing.T) {
 	dashboard.AircraftSightings["ABC123"] = sighting
 	dashboard.RareSightings = []obs.RareSighting{{Rarities: obs.RareType, Sighting: sighting}}
 
-	request.PendingCallsignsMu.Lock()
-	request.PendingCallsigns = []string{"TEST123", "OTHER456"}
-	request.PendingCallsignsMu.Unlock()
+	request.RestorePendingCallsigns([]string{"TEST123", "OTHER456"})
 
 	if saveErr := SaveState(statePath, dashboard, request); saveErr != nil {
 		t.Fatal(saveErr)
@@ -88,10 +86,10 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(loadFlightrouteReqErr)
 	}
 
-	if got, want := len(request2.PendingCallsigns), 2; got != want {
+	if got, want := len(request2.GetPendingCallsigns()), 2; got != want {
 		t.Fatalf("expected %d pending callsigns, got %d", want, got)
 	}
-	if got := request2.PendingCallsigns[0]; got != "TEST123" {
+	if got := request2.GetPendingCallsigns()[0]; got != "TEST123" {
 		t.Fatalf("expected first pending callsign TEST123, got %s", got)
 	}
 	if got := dashboard2.SeenTypeCount["A"]; got != 1 {

@@ -7,9 +7,13 @@ import ref "github.com/micutio/airspottr/internal/domain/reference"
 type FlightrouteRepository interface {
 	// TODO: Dedicated type for callsigns, maybe `VerifiedCallsigns`.
 
-	// RequestFlightroutesForCallsigns collects known flight routes for the given callsigns.
+	// GetFlightroutes collects known flight routes for the given callsigns.
 	// a.k.a. flight numbers.
-	RequestFlightroutesForCallsigns(callsigns []string) []ref.FlightrouteRecord
+	GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord
+
+	// ClearFlightrouteCache clears the locally cached flight routes to allow refreshing them
+	// from the web API.
+	ClearFlightrouteCache()
 
 	// The following methods should be used only for saving and loading application state in-between
 	// program shutdowns and starts.

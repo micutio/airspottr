@@ -41,11 +41,11 @@ func requestAircraftDataCmd(frr repo.AircraftRepository) tea.Cmd {
 	}
 }
 
-type FlightRoutesResponseMsg []ref.FlightrouteRecord
+type FlightRoutesResponseMsg map[string]ref.FlightrouteRecord
 
 func requestFlightRouteDataCmd(frr repo.FlightrouteRepository, callsigns []string) tea.Cmd {
 	return func() tea.Msg {
-		flightRoutes := frr.RequestFlightroutesForCallsigns(callsigns)
+		flightRoutes := frr.GetFlightroutes(callsigns)
 		return FlightRoutesResponseMsg(flightRoutes)
 	}
 }
