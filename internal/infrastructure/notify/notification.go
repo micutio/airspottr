@@ -7,7 +7,7 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/micutio/airspottr/internal"
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
 
@@ -30,7 +30,7 @@ func NewNotify(appName string, consoleOut *io.Writer) *Notify {
 // TODO: Extract these console printing methods into a separate context.
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
-func (notify *Notify) PrintSummary(dash *application.Dashboard) {
+func (notify *Notify) PrintSummary(dash *srv.Dashboard) {
 	notify.Stdout.Println("=== Summary ===")
 	notify.listByRarity("aircraft", dash.SeenTypeCount)
 	notify.listByRarity("operator", dash.SeenOperatorCount)

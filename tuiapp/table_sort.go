@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/micutio/airspottr/internal"
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	"github.com/micutio/airspottr/internal/domain/repositories"
 )
@@ -140,7 +140,7 @@ func compareSightingsAscending(
 }
 
 func filteredSortedSightings(
-	dashboard *application.Dashboard,
+	dashboard *srv.Dashboard,
 	typeRepo repositories.AircraftTypeRepo,
 	sortCol int,
 	desc bool,

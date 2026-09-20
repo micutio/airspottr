@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/notify"
@@ -38,7 +38,7 @@ type model struct {
 	typeRepo        repo.AircraftTypeRepo
 	operatorRepo    repo.OperatorRepository
 	countryRepo     repo.CountryRepository
-	dashboard       *application.Dashboard
+	dashboard       *srv.Dashboard
 	notify          *notify.Notify
 	options         adsb.RequestOptions
 

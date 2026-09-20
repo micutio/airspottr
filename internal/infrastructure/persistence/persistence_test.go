@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	internal "github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
@@ -26,7 +26,7 @@ func TestSaveAndLoadState(t *testing.T) {
 	}()
 	t.Chdir(findRepoRoot(t))
 
-	dashboard := internal.NewDashboard(1.0, 2.0, new(io.Discard))
+	dashboard := srv.NewDashboard(1.0, 2.0, new(io.Discard))
 
 	request, reqErr := adsb.NewFlightrouteRequest(new(io.Discard))
 	if reqErr != nil {
@@ -67,7 +67,7 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(saveErr)
 	}
 
-	dashboard2 := internal.NewDashboard(1.0, 2.0, new(io.Discard))
+	dashboard2 := srv.NewDashboard(1.0, 2.0, new(io.Discard))
 
 	appState, appStateErr := LoadState(statePath)
 	if appStateErr != nil {

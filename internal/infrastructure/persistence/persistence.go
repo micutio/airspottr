@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 	repo "github.com/micutio/airspottr/internal/domain/repositories"
@@ -70,7 +70,7 @@ type flightrouteRepoState struct {
 	PendingCallsigns []string `json:"pending_callsigns"`
 }
 
-func saveState(dash *application.Dashboard,
+func saveState(dash *srv.Dashboard,
 	pendingCallsigns []string,
 ) *persistentState {
 	aircraftSightings := make(map[string]obs.AircraftSighting, len(dash.Sightings))
@@ -102,7 +102,7 @@ func saveState(dash *application.Dashboard,
 	}
 }
 
-func restoreDashboardState(dash *application.Dashboard, state dashboardState) error {
+func restoreDashboardState(dash *srv.Dashboard, state dashboardState) error {
 	if state.Lat != dash.Lat || state.Lon != dash.Lon {
 		return errCoordMismatch
 	}
@@ -123,7 +123,7 @@ func restoreDashboardState(dash *application.Dashboard, state dashboardState) er
 	return nil
 }
 
-func SaveState(filePath string, db *application.Dashboard, frr repo.FlightrouteRepository) error {
+func SaveState(filePath string, db *srv.Dashboard, frr repo.FlightrouteRepository) error {
 	pendingCallsigns := frr.GetPendingCallsigns()
 	state := saveState(db, pendingCallsigns)
 	data, marshallErr := json.MarshalIndent(state, "", "  ")
@@ -161,7 +161,7 @@ func LoadState(filePath string) (AirspottrState, error) {
 }
 
 func (as *AirspottrState) LoadDashboardState(
-	dashboard *application.Dashboard,
+	dashboard *srv.Dashboard,
 ) error {
 	if restoreErr := restoreDashboardState(dashboard, as.internalState.DashboardState); restoreErr != nil {
 		return fmt.Errorf("load state: %w", restoreErr)

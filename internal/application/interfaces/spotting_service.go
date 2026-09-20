@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	obs "github.com/micutio/airspottr/internal/domain/observation"
+	rep "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 // Example workflow
@@ -20,5 +21,9 @@ import (
 // - saving state
 // - emitting notifications.
 type SpottingService interface {
-	UpdateSightings(aircraftRecords []obs.AircraftRecord) obs.AircraftSighting
+	ProcessAircraftRecords(
+		aircraftSpecRepo rep.AircraftTypeRepo,
+		operatorRepo rep.OperatorRepository,
+		countryRepo rep.CountryRepository,
+		aircraftRecords []obs.AircraftRecord)
 }

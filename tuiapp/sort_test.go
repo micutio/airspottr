@@ -4,7 +4,7 @@ package tuiapp
 import (
 	"testing"
 
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
@@ -23,7 +23,7 @@ func (mock *TypeRepoMock) GetAircraftType(icaoCode string) (ref.IcaoAircraftSpec
 
 func TestFilteredSortedSightingsByDistance(t *testing.T) {
 	t.Parallel()
-	dashboard := &application.Dashboard{
+	dashboard := &srv.Dashboard{
 		CurrentSightings: []obs.AircraftSighting{
 			{
 				LastRecord: obs.AircraftRecord{

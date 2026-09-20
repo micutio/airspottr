@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
-	internal "github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
@@ -53,8 +53,8 @@ func setupDashboard(
 	requestOptions adsb.RequestOptions,
 	state pers.AirspottrState,
 	errWriter io.Writer,
-) (*internal.Dashboard, error) {
-	dashboard := internal.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
+) (*srv.Dashboard, error) {
+	dashboard := srv.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
 	if loadErr := state.LoadDashboardState(dashboard); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}

@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/micutio/airspottr/internal/application"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
@@ -31,7 +31,7 @@ type TickerApp struct {
 	typeRepo           rep.AircraftTypeRepo
 	operatorRepo       rep.OperatorRepository
 	countryRepo        rep.CountryRepository
-	dashboard          *application.Dashboard
+	dashboard          *srv.Dashboard
 	notify             *noti.Notify
 	done               chan bool
 	wg                 sync.WaitGroup
@@ -47,7 +47,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		return nil, fmt.Errorf("failed to load app state: %w", appStateErr)
 	}
 
-	dashboard := application.NewDashboard(options.Lat, options.Lon, &stderr)
+	dashboard := srv.NewDashboard(options.Lat, options.Lon, &stderr)
 	if dashboardLoadErr := appState.LoadDashboardState(dashboard); dashboardLoadErr != nil {
 		return nil, fmt.Errorf("failed to load app dashboard state: %w", dashboardLoadErr)
 	}

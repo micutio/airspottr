@@ -1,5 +1,5 @@
-// Package application provides the Dashboard type and all associated program logic.
-package application
+// Package services provides the Dashboard type and all associated program logic.
+package services
 
 import (
 	"io"
