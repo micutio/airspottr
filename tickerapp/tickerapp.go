@@ -123,18 +123,18 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.aircraftRequest.RequestAircraft()
-				app.dashboard.ProcessAircraftRecords(
+				currentSightings := app.dashboard.ProcessAircraftRecords(
 					app.typeRepo,
 					app.operatorRepo,
 					app.countryRepo,
 					aircraftRecords)
 				app.notify.EmitRarityNotifications(
-					app.dashboard.CurrentSightings,
+					currentSightings,
 					noti.DefaultRarityNotifyToggles(),
 				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.
-				callsignsWithoutRoute := app.dashboard.GetCallsignsRequiringRoutes()
+				callsignsWithoutRoute := srv.GetCallsignsRequiringRoutes(currentSightings)
 				if len(callsignsWithoutRoute) > 0 {
 					// For flights without known route we query data from adsbdb.com.
 					routes := app.flightrouteRequest.GetFlightroutes(callsignsWithoutRoute)

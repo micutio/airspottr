@@ -99,6 +99,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		dashboard:         dashboard,
 		notify:            notify,
 		options:           requestOptions,
+		currentSightings:  nil,
 		inputFocus:        focusTable,
 		notifyStripIdx:    notifyType,
 		notifyOnType:      true,

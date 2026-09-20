@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/micutio/airspottr/internal"
-	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	"github.com/micutio/airspottr/internal/domain/repositories"
 )
@@ -140,13 +139,13 @@ func compareSightingsAscending(
 }
 
 func filteredSortedSightings(
-	dashboard *srv.Dashboard,
+	currentSightings []obs.AircraftSighting,
 	typeRepo repositories.AircraftTypeRepo,
 	sortCol int,
 	desc bool,
 ) []obs.AircraftSighting {
 	var rows []obs.AircraftSighting
-	for _, ac := range dashboard.CurrentSightings {
+	for _, ac := range currentSightings {
 		aircraftType, atExists := typeRepo.GetAircraftType(ac.LastRecord.IcaoType)
 		if !atExists || (ac.LastFlightNo == "" && aircraftType.Make == "") {
 			continue

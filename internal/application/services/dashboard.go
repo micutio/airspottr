@@ -22,7 +22,6 @@ type Dashboard struct {
 	Lon                   float64
 	Fastest               obs.AircraftRecord
 	Highest               obs.AircraftRecord
-	CurrentSightings      []obs.AircraftSighting
 	Sightings             map[string]obs.AircraftSighting
 	SightedTypesCount     int            // total count of unique sighted types
 	SightedOperatorsCount int            // total count of unique sighted operators
@@ -40,7 +39,6 @@ func NewDashboard(lat float64, lon float64, stderr *io.Writer) *Dashboard {
 		Lon:                   lon,
 		Fastest:               obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
 		Highest:               obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
-		CurrentSightings:      nil,
 		Sightings:             make(map[string]obs.AircraftSighting),
 		SightedTypesCount:     0,
 		SightedOperatorsCount: 0,
@@ -77,7 +75,7 @@ func (db *Dashboard) ProcessAircraftRecords(
 	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
 	aircraftRecords []obs.AircraftRecord,
-) {
+) []obs.AircraftSighting {
 	thisPos := ref.NewCoordinates(db.Lat, db.Lon)
 	currentSightings := make([]obs.AircraftSighting, len(aircraftRecords))
 
@@ -155,7 +153,7 @@ func (db *Dashboard) ProcessAircraftRecords(
 		sighting.Info = sighting.SightingToString()
 		db.Sightings[aircraft.Hex] = sighting
 	}
-	db.CurrentSightings = currentSightings
+	return currentSightings
 }
 
 func (db *Dashboard) updateType(
@@ -395,10 +393,10 @@ func (db *Dashboard) updateFastest(aircraft obs.AircraftRecord) {
 // sightings.
 // It returns a list of callsigns without known routes, to allow querying
 // online for these cases.
-func (db *Dashboard) GetCallsignsRequiringRoutes() []string {
+func GetCallsignsRequiringRoutes(currentSightings []obs.AircraftSighting) []string {
 	defaultFlightrouteRecord := *ref.GetDefaultFlightrouteRecord()
 	var callsignsWithoutRoute []string
-	for _, sighting := range db.CurrentSightings {
+	for _, sighting := range currentSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue

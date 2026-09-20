@@ -59,7 +59,6 @@ func TestSaveAndLoadState(t *testing.T) {
 		LastRecord:   obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
 	}
 	dashboard.Sightings["ABC123"] = sighting
-	dashboard.CurrentSightings = []obs.AircraftSighting{sighting}
 
 	request.RestorePendingCallsigns([]string{"TEST123", "OTHER456"})
 

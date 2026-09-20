@@ -118,7 +118,6 @@ func restoreDashboardState(dash *srv.Dashboard, state dashboardState) error {
 	dash.SeenTypeCount = state.SeenTypeCount
 	dash.SeenOperatorCount = state.SeenOperatorCount
 	dash.SeenCountryCount = state.SeenCountryCount
-	dash.CurrentSightings = nil
 
 	return nil
 }

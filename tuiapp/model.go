@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	srv "github.com/micutio/airspottr/internal/application/services"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
 	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/notify"
@@ -30,17 +31,18 @@ type model struct {
 	raritySortCol    [rarityTableCount]int
 	raritySortDesc   [rarityTableCount]bool
 
-	uiState         uiState
-	startTime       time.Time
-	lastUpdate      time.Time
-	aircraftRepo    repo.AircraftRepository
-	flightrouteRepo repo.FlightrouteRepository
-	typeRepo        repo.AircraftTypeRepo
-	operatorRepo    repo.OperatorRepository
-	countryRepo     repo.CountryRepository
-	dashboard       *srv.Dashboard
-	notify          *notify.Notify
-	options         adsb.RequestOptions
+	uiState          uiState
+	startTime        time.Time
+	lastUpdate       time.Time
+	aircraftRepo     repo.AircraftRepository
+	flightrouteRepo  repo.FlightrouteRepository
+	typeRepo         repo.AircraftTypeRepo
+	operatorRepo     repo.OperatorRepository
+	countryRepo      repo.CountryRepository
+	dashboard        *srv.Dashboard
+	notify           *notify.Notify
+	options          adsb.RequestOptions
+	currentSightings []obs.AircraftSighting
 
 	inputFocus      inputFocus
 	notifyStripIdx  int // 0=type, 1=operator, 2=country when focusNotifyStrip

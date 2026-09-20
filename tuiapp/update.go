@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
 
@@ -30,18 +31,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []obs.AircraftRecord(msg)
-	m.dashboard.ProcessAircraftRecords(
+	currentSightings := m.dashboard.ProcessAircraftRecords(
 		m.typeRepo,
 		m.operatorRepo,
 		m.countryRepo,
 		aircraftRecords)
-	m.notify.EmitRarityNotifications(m.dashboard.CurrentSightings, obs.RarityNotifyToggles{
+	m.currentSightings = currentSightings
+	m.notify.EmitRarityNotifications(currentSightings, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
 		Country:  m.notifyOnCountry,
 	})
 
-	callsignsWithoutRoute := m.dashboard.GetCallsignsRequiringRoutes()
+	callsignsWithoutRoute := srv.GetCallsignsRequiringRoutes(currentSightings)
 	if callsignsWithoutRoute != nil {
 		return requestFlightRouteDataCmd(m.flightrouteRepo, callsignsWithoutRoute)
 	}
