@@ -95,7 +95,7 @@ func (db *Dashboard) ProcessAircraftRecords(
 				Registration: aircraft.Registration,
 				Latitude:     aircraft.Lat,
 				Longitude:    aircraft.Lon,
-				Direction:    obs.GetDirection(db.Lat, db.Lon, aircraft.Lat, aircraft.Lon),
+				Direction:    ref.GetDirection(db.Lat, db.Lon, aircraft.Lat, aircraft.Lon),
 				Distance:     math.MaxInt,
 				TypeShort:    "",
 				TypeDesc:     obs.TypeUnknown,
@@ -402,7 +402,6 @@ func GetCallsignsRequiringRoutes(currentSightings []obs.AircraftSighting) []stri
 			continue
 		}
 
-		// TODO: Verify struct comparison.
 		if sighting.Flightroute != defaultFlightrouteRecord {
 			// A Flight route is already set.
 			continue

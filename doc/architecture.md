@@ -69,7 +69,7 @@ The `internal/dash/` package provides parsing for CSV-based lookups and distance
 
 ### internal/notification
 
-Located in `../internal/infrastructure/notify/notification.go`, the notification layer handles summary printing and desktop notifications.
+Located in `../internal/application/services/notification_service.go`, the notification layer handles summary printing and desktop notifications.
 
 Notifications are triggered for rare sightings using a combination of rarity flags:
 

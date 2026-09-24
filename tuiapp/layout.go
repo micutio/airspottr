@@ -1,6 +1,8 @@
 package tuiapp
 
-import "github.com/charmbracelet/bubbles/table"
+import (
+	"github.com/charmbracelet/bubbles/table"
+)
 
 // Vertical space reserved above tables (header + stats blocks).
 const layoutHeaderReservedRows = 8

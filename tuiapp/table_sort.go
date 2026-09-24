@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/micutio/airspottr/internal"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
+	"github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/domain/repositories"
 )
 
@@ -162,7 +162,7 @@ func filteredSortedSightings(
 	return rows
 }
 
-func compareRarityAscending(propertyA, propertyB internal.PropertyCountTuple, byProperty bool) bool {
+func compareRarityAscending(propertyA, propertyB reference.PropertyCountTuple, byProperty bool) bool {
 	if byProperty {
 		if propertyA.Property != propertyB.Property {
 			return propertyA.Property < propertyB.Property
@@ -175,10 +175,10 @@ func compareRarityAscending(propertyA, propertyB internal.PropertyCountTuple, by
 	return propertyA.Property < propertyB.Property
 }
 
-func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []internal.PropertyCountTuple {
-	tuples := make([]internal.PropertyCountTuple, 0, len(m))
+func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []reference.PropertyCountTuple {
+	tuples := make([]reference.PropertyCountTuple, 0, len(m))
 	for k, v := range m {
-		tuples = append(tuples, internal.PropertyCountTuple{Property: k, Count: v})
+		tuples = append(tuples, reference.PropertyCountTuple{Property: k, Count: v})
 	}
 	sort.SliceStable(tuples, func(i, j int) bool {
 		less := compareRarityAscending(tuples[i], tuples[j], byProperty)

@@ -1,6 +1,8 @@
 package tuiapp
 
-import "github.com/charmbracelet/bubbles/table"
+import (
+	"github.com/charmbracelet/bubbles/table"
+)
 
 // Rarity table column order on the global-stats row: Type | Operator | Country.
 const (

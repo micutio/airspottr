@@ -8,9 +8,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	noti "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
-	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 

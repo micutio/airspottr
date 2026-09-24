@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/micutio/airspottr/internal"
-
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
@@ -205,6 +203,6 @@ func aircraftToRow(sighting obs.AircraftSighting, route ref.FlightrouteRecord) t
 	}
 }
 
-func propertyCountToRow(propCount internal.PropertyCountTuple) table.Row {
+func propertyCountToRow(propCount ref.PropertyCountTuple) table.Row {
 	return table.Row{fmt.Sprintf("%5d", propCount.Count), propCount.Property}
 }

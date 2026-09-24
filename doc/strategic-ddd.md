@@ -36,7 +36,7 @@ These are the places where infrastructure or I/O is currently mixed with busines
     - and app-state restoration.
   - The persistence layer is also responsible for translating between runtime objects and persisted shapes.
 
-- [internal/notification.go](../internal/infrastructure/notify/notification.go)
+- [internal/notification.go](../internal/application/services/notification_service.go)
   - `Notify.EmitRarityNotifications` and the `notifyRare*` helpers mix:
     - domain event interpretation,
     - formatting,
@@ -79,7 +79,7 @@ A small number of boundaries will be enough for this codebase. I would start wit
 
 4. Presentation / Delivery Context
    - Best fit for:
-     - [internal/notification.go](../internal/infrastructure/notify/notification.go)
+     - [internal/notification.go](../internal/application/services/notification_service.go)
      - [tickerapp/tickerapp.go](../tickerapp/tickerapp.go)
      - [tuiapp/model.go](../tuiapp/model.go)
    - Purpose:
@@ -231,7 +231,7 @@ These types and modules should become pure or much less coupled:
 - Goal: Keep notification delivery outside the core domain.
 
 - Human recipe:
-  - Treat [internal/notification.go](../internal/infrastructure/notify/notification.go) as a delivery-specific layer.
+  - Treat [internal/notification.go](../internal/application/services/notification_service.go) as a delivery-specific layer.
   - Keep the domain side as simple events such as `RareSightingDetected`.
   - Let the notification layer format and emit those events, rather than deciding what counts as rare itself.
 

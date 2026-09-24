@@ -62,10 +62,10 @@ go test ./...
   - `aircraft.go` - Aircraft JSON model and helper methods.
   - `dashboard.go` - Stateful dashboard that tracks seen aircraft, rarity metrics, fastest/highest aircraft, and enriches sightings.
   - `flightroute.go` - Flight route data model and default placeholders.
-  - `notification.go` - Desktop and summary notifications using `beeep`.
+  - `notification_service.go` - Desktop and summary notifications using `beeep`.
   - `persistence.go` - Persistent state serialization and restore.
   - `aircraft_request.go` - HTTP request layer for ADS-B and flight route APIs.
-  - `rarity.go`, `sighting.go`, `sort.go` - Supporting types and utility logic.
+  - `rarity.go`, `sighting.go`, `propertycount_sort.go` - Supporting types and utility logic.
   - `dash/` - CSV-backed data loaders for ICAO, registration prefixes, country lookup, and distance utilities.
 - `tuiapp/` - Bubble Tea-based interactive terminal UI.
 - `tickerapp/` - Simple ticker mode printing updates and scheduled summaries without a full TUI.

@@ -19,7 +19,7 @@ This document analyzes the current architecture of `airspottr` and identifies ho
 The current `internal/` package mixes several concerns:
 
 - Domain entities and behavior: `AircraftRecord`, `Dashboard`, `AircraftSighting`, `RareSighting`, `FlightRouteRecord`.
-- Infrastructure: HTTP request construction and execution (`internal/request.go`), CSV file loading (`internal/dash/`), desktop notification emission (`../internal/infrastructure/notify/notification.go`), JSON persistence (`internal/persistence.go`).
+- Infrastructure: HTTP request construction and execution (`internal/request.go`), CSV file loading (`internal/dash/`), desktop notification emission (`../internal/application/services/notification_service.go`), JSON persistence (`internal/persistence.go`).
 - Application logic: coordination of periodic updates, warmup behavior, route assignment, and notification emission.
 
 This mixture makes it harder to reason about the domain model separately from the technical mechanisms that support it.
@@ -64,7 +64,7 @@ The current code also includes technical responsibilities that should be migrate
 - HTTP fetching and API URL construction (`internal/request.go`)
 - CSV parsing and dataset loading (`internal/dash/`)
 - persistence to the user config directory (`internal/persistence.go`)
-- desktop notifications through `beeep` (`../internal/infrastructure/notify/notification.go`)
+- desktop notifications through `beeep` (`../internal/application/services/notification_service.go`)
 - UI rendering and keyboard handling (`tuiapp/` and `tickerapp/`)
 
 ## Domain boundaries and potential bounded contexts
@@ -92,7 +92,7 @@ The application is small enough that a single bounded context is plausible, but 
 
 - `../internal/application/dashboard.go` depends directly on CSV-backed maps and file-loading semantics, coupling the domain to a specific persistence format.
 - `internal/request.go` validates hosts and performs network calls, but the domain only needs an abstraction that fetches aircraft and route data.
-- `../internal/infrastructure/notify/notification.go` uses desktop notification side effects directly from domain logic, making domain testing difficult.
+- `../internal/application/services/notification_service.go` uses desktop notification side effects directly from domain logic, making domain testing difficult.
 - Persistence and state restoration logic is entangled with domain state shaping.
 
 ## What a DDD-aligned architecture will enable

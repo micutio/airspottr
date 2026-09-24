@@ -269,7 +269,7 @@ To better match the `go-ddd` style without changing the core migration plan, con
 | `internal/dash/geo.go` | `domain/common/geo.go` | physical distance value objects |
 | `internal/request.go` | `infrastructure/adsb/client.go` | HTTP adapters |
 | `internal/persistence.go` | `infrastructure/persistence/json_state_repo.go` | state repository |
-| `../internal/infrastructure/notify/notification.go` | `infrastructure/notify/desktop_notifier.go` | notification adapter |
+| `../internal/application/services/notification_service.go` | `infrastructure/notify/desktop_notifier.go` | notification adapter |
 
 ## Migration checklist
 

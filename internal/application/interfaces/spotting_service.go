@@ -21,9 +21,17 @@ import (
 // - saving state
 // - emitting notifications.
 type SpottingService interface {
+	// ProcessAircraftRecords takes a batch of ADS-B records and returns
+	// a updated list of aircraft sightings.
 	ProcessAircraftRecords(
 		aircraftSpecRepo rep.AircraftTypeRepo,
 		operatorRepo rep.OperatorRepository,
 		countryRepo rep.CountryRepository,
 		aircraftRecords []obs.AircraftRecord)
+
+	// GetFastest returns the aircraft observed with the highest speed over ground.
+	GetFastest() obs.AircraftRecord
+
+	// GetHighest returns the aircraft observed at the highest altitude.
+	GetHighest() obs.AircraftRecord
 }

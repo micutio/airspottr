@@ -26,8 +26,3 @@ type FlightrouteRepository interface {
 	// FlightrouteRepository
 	RestorePendingCallsigns(pendingCallsigns []string)
 }
-
-// TODO:
-//    - Reference repositories for looking up ICAO/operator/country data
-//    - StateRepository for saving and loading state
-//    - NotificationSender for emitting summaries and rarity notifications

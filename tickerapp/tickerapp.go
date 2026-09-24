@@ -17,7 +17,6 @@ import (
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
-	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -32,7 +31,7 @@ type TickerApp struct {
 	operatorRepo       rep.OperatorRepository
 	countryRepo        rep.CountryRepository
 	dashboard          *srv.Dashboard
-	notify             *noti.Notify
+	notify             *srv.Notify
 	done               chan bool
 	wg                 sync.WaitGroup
 }
@@ -40,7 +39,7 @@ type TickerApp struct {
 // New creates and initializes a new TickerApp.
 func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
 	logger := slog.Default() // Or a custom logger
-	notify := noti.NewNotify(appName, &stdout)
+	notify := srv.NewNotify(appName, &stdout)
 
 	appState, appStateErr := pers.LoadState(pers.StateFilePath())
 	if appStateErr != nil {
@@ -130,7 +129,7 @@ func (app *TickerApp) start() {
 					aircraftRecords)
 				app.notify.EmitRarityNotifications(
 					currentSightings,
-					noti.DefaultRarityNotifyToggles(),
+					srv.DefaultRarityNotifyToggles(),
 				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.

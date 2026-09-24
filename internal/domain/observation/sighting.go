@@ -7,10 +7,6 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// TODO: Remove dependency on Math, if possible.
-// TODO: Make flightroute record value instead of pointer.
-// TODO: Avoid duplicating data by adding field: lastStatus AicraftRecord `json:"lastStatus"`.
-
 // AircraftSighting represents signals received from an aircraft in Flight.
 // This includes aircraft on the ground as long as a valid Flight number is
 // being broadcast.
@@ -28,7 +24,7 @@ type AircraftSighting struct {
 	Registration string                `json:"registration"`
 	Latitude     float64               `json:"latitude"`
 	Longitude    float64               `json:"longitude"`
-	Direction    Direction             `json:"direction"`
+	Direction    ref.Direction         `json:"direction"`
 	Distance     float64               `json:"distance"`    // distance of the aircraft to our location [m]
 	TypeShort    string                `json:"type_short"`  // short type name, directly from the record
 	TypeDesc     string                `json:"type_desc"`   // typeDesc is the full name of the aircraft type

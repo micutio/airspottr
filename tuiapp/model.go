@@ -10,7 +10,6 @@ import (
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
-	"github.com/micutio/airspottr/internal/infrastructure/notify"
 )
 
 // model implements tea.Model (Init, Update, View).
@@ -40,7 +39,7 @@ type model struct {
 	operatorRepo     repo.OperatorRepository
 	countryRepo      repo.CountryRepository
 	dashboard        *srv.Dashboard
-	notify           *notify.Notify
+	notify           *srv.Notify
 	options          adsb.RequestOptions
 	currentSightings []obs.AircraftSighting
 
