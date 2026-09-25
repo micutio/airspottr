@@ -2,6 +2,7 @@ package observation
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	ref "github.com/micutio/airspottr/internal/domain/reference"
@@ -33,6 +34,28 @@ type AircraftSighting struct {
 	Info         string                `json:"info"`        // info contains the aircraft information represented as string
 	Flightroute  ref.FlightrouteRecord `json:"flightroute"` // flightroute contains airline, origin and destination
 	LastRecord   AircraftRecord        `json:"last_record"`
+}
+
+// NewSighting builds a default sighting for an aircraft not seen before.
+func NewSighting(observerLat, observerLon float64, aircraft AircraftRecord, now time.Time) AircraftSighting {
+	lastSeenOffset := time.Duration(aircraft.Seen) * time.Second
+	return AircraftSighting{
+		Rarities:     NoRarity,
+		LastSeen:     now.Add(-lastSeenOffset),
+		LastFlightNo: FlightUnknown,
+		Registration: aircraft.Registration,
+		Latitude:     aircraft.Lat,
+		Longitude:    aircraft.Lon,
+		Direction:    ref.GetDirection(observerLat, observerLon, aircraft.Lat, aircraft.Lon),
+		Distance:     math.MaxInt,
+		TypeShort:    "",
+		TypeDesc:     TypeUnknown,
+		Operator:     OperatorUnknown,
+		Country:      ref.CountryUnknown,
+		Info:         "",
+		Flightroute:  ref.FlightrouteRecord{}, //nolint:exhaustruct_v5 // using default values
+		LastRecord:   aircraft,
+	}
 }
 
 // ByFlight implements the comparator interface and allows sorting a list of aircraft records
