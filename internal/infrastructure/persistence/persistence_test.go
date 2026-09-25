@@ -1,4 +1,4 @@
-package internal
+package persistence
 
 import (
 	"io"
@@ -11,7 +11,34 @@ import (
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	"github.com/micutio/airspottr/internal/infrastructure/observation"
 )
+
+type typeRepoMock struct{}
+
+func (typeRepoMock) GetAircraftType(_ string) (ref.IcaoAircraftSpec, bool) {
+	return ref.IcaoAircraftSpec{}, false //nolint:exhaustruct_v5 // shortened for testing
+}
+
+type operatorRepoMock struct{}
+
+func (operatorRepoMock) GetOperatorByIcao(_ string) (ref.IcaoOperator, bool) {
+	return ref.IcaoOperator{}, false //nolint:exhaustruct_v5 // shortened for testing
+}
+
+func (operatorRepoMock) GetOperatorByMilCode(_ string) (string, bool) {
+	return "", false
+}
+
+type countryRepoMock struct{}
+
+func (countryRepoMock) GetCountryByHexCode(_ string) (string, error) {
+	return "", nil
+}
+
+func (countryRepoMock) GetCountryByRegistration(_ string) (string, bool) {
+	return "", false
+}
 
 func TestSaveAndLoadState(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -26,21 +53,7 @@ func TestSaveAndLoadState(t *testing.T) {
 	}()
 	t.Chdir(findRepoRoot(t))
 
-	dashboard := srv.NewDashboard(1.0, 2.0, new(io.Discard))
-
-	request, reqErr := adsb.NewFlightrouteRequest(new(io.Discard))
-	if reqErr != nil {
-		t.Fatal(reqErr)
-	}
-
-	dashboard.IsWarmup = false
-	dashboard.SeenTypeCount["A"] = 1
-	dashboard.SeenOperatorCount["OP"] = 2
-	dashboard.SeenCountryCount["US"] = 3
-	dashboard.SightedTypesCount = 1
-	dashboard.SightedOperatorsCount = 2
-	dashboard.SightedCountriesCount = 3
-
+	sightingRepo := observation.NewSightingRepo()
 	sighting := obs.AircraftSighting{
 		Rarities:     obs.RareType,
 		LastSeen:     now(),
@@ -58,22 +71,53 @@ func TestSaveAndLoadState(t *testing.T) {
 		Flightroute:  *ref.GetDefaultFlightrouteRecord(),
 		LastRecord:   obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
 	}
-	dashboard.Sightings["ABC123"] = sighting
+	sightingRepo.UpdateSighting("ABC123", sighting)
+
+	dashboard := srv.NewDashboard(
+		1.0,
+		2.0,
+		sightingRepo,
+		typeRepoMock{},
+		operatorRepoMock{},
+		countryRepoMock{},
+		new(io.Discard))
+
+	request, reqErr := adsb.NewFlightrouteRequest(new(io.Discard))
+	if reqErr != nil {
+		t.Fatal(reqErr)
+	}
+
+	dashboard.IsWarmup = false
+	dashboard.SeenTypeCount["A"] = 1
+	dashboard.SeenOperatorCount["OP"] = 2
+	dashboard.SeenCountryCount["US"] = 3
+	dashboard.SightedTypesCount = 1
+	dashboard.SightedOperatorsCount = 2
+	dashboard.SightedCountriesCount = 3
 
 	request.RestorePendingCallsigns([]string{"TEST123", "OTHER456"})
 
-	if saveErr := SaveState(statePath, dashboard, request); saveErr != nil {
+	stateToSave := dashboard.SaveState(request.GetPendingCallsigns())
+	if saveErr := SaveState(statePath, stateToSave); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 
-	dashboard2 := srv.NewDashboard(1.0, 2.0, new(io.Discard))
+	sightingRepo2 := observation.NewSightingRepo()
+	dashboard2 := srv.NewDashboard(
+		1.0,
+		2.0,
+		sightingRepo2,
+		typeRepoMock{},
+		operatorRepoMock{},
+		countryRepoMock{},
+		new(io.Discard))
 
 	appState, appStateErr := LoadState(statePath)
 	if appStateErr != nil {
 		t.Fatal(appStateErr)
 	}
 
-	if loadDashboardErr := appState.LoadDashboardState(dashboard2); loadDashboardErr != nil {
+	if loadDashboardErr := dashboard2.RestoreState(&appState.InternalState.DashboardState); loadDashboardErr != nil {
 		t.Fatal(loadDashboardErr)
 	}
 
@@ -86,10 +130,11 @@ func TestSaveAndLoadState(t *testing.T) {
 	if got := dashboard2.SeenCountryCount["US"]; got != 3 {
 		t.Fatalf("expected SeenCountryCount US=3, got %d", got)
 	}
-	if got := len(dashboard2.Sightings); got != 1 {
+	allSightings := sightingRepo2.GetAllSightings()
+	if got := len(allSightings); got != 1 {
 		t.Fatalf("expected 1 aircraft sighting, got %d", got)
 	}
-	if got := dashboard2.Sightings["ABC123"].LastFlightNo; got != "TEST123" {
+	if got := allSightings["ABC123"].LastFlightNo; got != "TEST123" {
 		t.Fatalf("expected restored sighting flight TEST123, got %s", got)
 	}
 }

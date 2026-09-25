@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 	srv "github.com/micutio/airspottr/internal/application/services"
+	"github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
-	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 const errLogFilePath = "./airspottr.log"
@@ -50,12 +50,23 @@ func setupFlightrouteRequest(
 
 // setupRequestsAndDashboard initializes the dashboard and notification system.
 func setupDashboard(
+	state srv.AirspottrState,
 	requestOptions adsb.RequestOptions,
-	state pers.AirspottrState,
+	sightingRepo repositories.SightingRepo,
+	aircraftTypeRepo repositories.AircraftTypeRepo,
+	operatorRepo repositories.OperatorRepository,
+	countryRepo repositories.CountryRepository,
 	errWriter io.Writer,
 ) (*srv.Dashboard, error) {
-	dashboard := srv.NewDashboard(requestOptions.Lat, requestOptions.Lon, &errWriter)
-	if loadErr := state.LoadDashboardState(dashboard); loadErr != nil {
+	dashboard := srv.NewDashboard(
+		requestOptions.Lat,
+		requestOptions.Lon,
+		sightingRepo,
+		aircraftTypeRepo,
+		operatorRepo,
+		countryRepo,
+		&errWriter)
+	if loadErr := dashboard.RestoreState(&state.InternalState.DashboardState); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 

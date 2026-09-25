@@ -2,7 +2,7 @@ package interfaces
 
 import (
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	rep "github.com/micutio/airspottr/internal/domain/repositories"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 // Example workflow
@@ -21,17 +21,25 @@ import (
 // - saving state
 // - emitting notifications.
 type SpottingService interface {
-	// ProcessAircraftRecords takes a batch of ADS-B records and returns
-	// a updated list of aircraft sightings.
-	ProcessAircraftRecords(
-		aircraftSpecRepo rep.AircraftTypeRepo,
-		operatorRepo rep.OperatorRepository,
-		countryRepo rep.CountryRepository,
-		aircraftRecords []obs.AircraftRecord)
+	// ProcessAircraftRecords takes currently observed aircraft messages to update
+	// sightings and determine sighting rarity.
+	// If an aircraft has not been recorded before -> create a new sighting.
+	// If an aircraft has been recorded before on a different flight -> create a new sighting.
+	// If an aircraft has been recorded before on the same flight -> update existing sighting.
+	// If a sighting contains either a type, operator or country of origin that
+	// has been counted below a certain threshold, then this sighting is now
+	// considered rare and can be used to emit notifications to the user.
+	ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord)
+
+	// GetCurrentSightings returns the most recent aircraft sightings.
+	GetCurrentSightings() []obs.AircraftSighting
 
 	// GetFastest returns the aircraft observed with the highest speed over ground.
 	GetFastest() obs.AircraftRecord
 
 	// GetHighest returns the aircraft observed at the highest altitude.
 	GetHighest() obs.AircraftRecord
+
+	// AssignFlightRoutes applies the given flight routes to all sightings they apply to.
+	AssignFlightRoutes(flightRouteRecords map[string]ref.FlightrouteRecord)
 }

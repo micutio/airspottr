@@ -11,6 +11,7 @@ import (
 	noti "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
+	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -46,12 +47,6 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		log.Printf("failed to setup flightroute request: %v", err)
 	}
 
-	dashboard, err := setupDashboard(requestOptions, appState, errLogFile)
-	if err != nil {
-		log.Printf("failed to set up dashboard and request: %v", err)
-		return
-	}
-
 	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
 	if typeRepoErr != nil {
 		log.Printf("failed to create aircraft type repo: %v", typeRepoErr)
@@ -70,6 +65,18 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		return
 	}
 
+	dashboard, err := setupDashboard(
+		appState,
+		requestOptions,
+		observation.NewSightingRepo(),
+		typeRepo,
+		operatorRepo,
+		countryRepo,
+		errLogFile)
+	if err != nil {
+		log.Printf("failed to set up dashboard and request: %v", err)
+		return
+	}
 	dashboard.FinishWarmupPeriod()
 
 	theme := getDefaultTheme()
@@ -94,12 +101,9 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		aircraftRepo:      aircraftReq,
 		flightrouteRepo:   flightrouteReq,
 		typeRepo:          typeRepo,
-		operatorRepo:      operatorRepo,
-		countryRepo:       countryRepo,
 		dashboard:         dashboard,
 		notify:            notify,
 		options:           requestOptions,
-		currentSightings:  nil,
 		inputFocus:        focusTable,
 		notifyStripIdx:    notifyType,
 		notifyOnType:      true,
@@ -111,7 +115,8 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 	if _, progErr := p.Run(); progErr != nil {
 		log.Printf("error running program: %v", progErr)
 	}
-	if saveErr := pers.SaveState(pers.StateFilePath(), dashboard, flightrouteReq); saveErr != nil {
+	state := dashboard.SaveState(flightrouteReq.GetPendingCallsigns())
+	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {
 		log.Printf("failed to save persistent state: %v", saveErr)
 	}
 }

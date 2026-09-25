@@ -71,8 +71,8 @@ func (m *model) viewHeader() string {
 	notifyPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewNotifyListContent())
 
 	var rightPanel string
-	highest := m.dashboard.Highest
-	fastest := m.dashboard.Fastest
+	highest := m.dashboard.GetHighest()
+	fastest := m.dashboard.GetFastest()
 	highestType, htExists := m.typeRepo.GetAircraftType(highest.IcaoType)
 	fastestType, ftExists := m.typeRepo.GetAircraftType(fastest.IcaoType)
 	if htExists && ftExists {

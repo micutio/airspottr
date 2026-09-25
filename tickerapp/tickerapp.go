@@ -17,6 +17,7 @@ import (
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
+	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -41,16 +42,6 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	logger := slog.Default() // Or a custom logger
 	notify := srv.NewNotify(appName, &stdout)
 
-	appState, appStateErr := pers.LoadState(pers.StateFilePath())
-	if appStateErr != nil {
-		return nil, fmt.Errorf("failed to load app state: %w", appStateErr)
-	}
-
-	dashboard := srv.NewDashboard(options.Lat, options.Lon, &stderr)
-	if dashboardLoadErr := appState.LoadDashboardState(dashboard); dashboardLoadErr != nil {
-		return nil, fmt.Errorf("failed to load app dashboard state: %w", dashboardLoadErr)
-	}
-
 	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, &stderr)
 	if aircraftRequestErr != nil {
 		return nil, fmt.Errorf("unable to create request: %w", aircraftRequestErr)
@@ -60,6 +51,8 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	if flightrouteRequestErr != nil {
 		return nil, fmt.Errorf("unable to create request: %w", flightrouteRequestErr)
 	}
+
+	sightingRepo := observation.NewSightingRepo()
 
 	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
 	if typeRepoErr != nil {
@@ -73,6 +66,24 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 	countryRepo, countryRepoErr := data.NewCountryRepo()
 	if countryRepoErr != nil {
 		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
+	}
+
+	appState, appStateErr := pers.LoadState(pers.StateFilePath())
+	if appStateErr != nil {
+		return nil, fmt.Errorf("failed to load app state: %w", appStateErr)
+	}
+
+	dashboard := srv.NewDashboard(
+		options.Lat,
+		options.Lon,
+		sightingRepo,
+		typeRepo,
+		operatorRepo,
+		countryRepo,
+		&stderr)
+
+	if loadErr := dashboard.RestoreState(&appState.InternalState.DashboardState); loadErr != nil {
+		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 
 	return &TickerApp{ //nolint:exhaustruct_v5 // no need to init waitgroup
@@ -122,11 +133,8 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.aircraftRequest.RequestAircraft()
-				currentSightings := app.dashboard.ProcessAircraftRecords(
-					app.typeRepo,
-					app.operatorRepo,
-					app.countryRepo,
-					aircraftRecords)
+				app.dashboard.ProcessAircraftRecords(aircraftRecords)
+				currentSightings := app.dashboard.GetCurrentSightings()
 				app.notify.EmitRarityNotifications(
 					currentSightings,
 					srv.DefaultRarityNotifyToggles(),
@@ -159,7 +167,8 @@ func (app *TickerApp) waitForShutdown() {
 	close(app.done)
 	// Wait for the main goroutine to finish.
 	app.wg.Wait()
-	if saveErr := pers.SaveState(pers.StateFilePath(), app.dashboard, app.flightrouteRequest); saveErr != nil {
+	state := app.dashboard.SaveState(app.flightrouteRequest.GetPendingCallsigns())
+	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {
 		app.logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }

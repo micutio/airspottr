@@ -31,12 +31,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []obs.AircraftRecord(msg)
-	currentSightings := m.dashboard.ProcessAircraftRecords(
-		m.typeRepo,
-		m.operatorRepo,
-		m.countryRepo,
-		aircraftRecords)
-	m.currentSightings = currentSightings
+	m.dashboard.ProcessAircraftRecords(aircraftRecords)
+	currentSightings := m.dashboard.GetCurrentSightings()
 	m.notify.EmitRarityNotifications(currentSightings, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
