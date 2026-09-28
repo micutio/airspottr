@@ -37,13 +37,14 @@ func isRare(thisCount, total int) bool {
 
 // EvaluateBatch applies flight identity, classification, rarity, and
 // fastest/highest tracking to a batch of aircraft records.
+// It mutates state in place and returns the current-batch sightings.
 func EvaluateBatch(
-	state State,
+	state *State,
 	records []AircraftRecord,
 	classifier Classifier,
 	now time.Time,
-) (State, []AircraftSighting) {
-	state = cloneState(state)
+) []AircraftSighting {
+	ensureMaps(state)
 	currentSightings := make([]AircraftSighting, len(records))
 	observer := state.Observer
 
@@ -73,9 +74,9 @@ func EvaluateBatch(
 		state.Fastest = updateFastest(state.Fastest, aircraft)
 
 		newRarities := NoRarity
-		newRarities |= classifyType(&state, &sighting, &aircraft, identity.NewFlight, classifier)
-		newRarities |= classifyOperator(&state, &sighting, &aircraft, identity.NewFlight, classifier)
-		newRarities |= classifyCountry(&state, &sighting, &aircraft, identity.NewFlight, classifier)
+		newRarities |= classifyType(state, &sighting, &aircraft, identity.NewFlight, classifier)
+		newRarities |= classifyOperator(state, &sighting, &aircraft, identity.NewFlight, classifier)
+		newRarities |= classifyCountry(state, &sighting, &aircraft, identity.NewFlight, classifier)
 		sighting.Rarities = newRarities
 
 		sighting.Info = sighting.SightingToString()
@@ -83,31 +84,22 @@ func EvaluateBatch(
 		state.Sightings[aircraft.Hex] = sighting
 	}
 
-	return state, currentSightings
+	return currentSightings
 }
 
-func cloneState(state State) State {
-	state.Sightings = cloneSightings(state.Sightings)
-	state.SeenType = cloneCounts(state.SeenType)
-	state.SeenOperator = cloneCounts(state.SeenOperator)
-	state.SeenCountry = cloneCounts(state.SeenCountry)
-	return state
-}
-
-func cloneSightings(src map[string]AircraftSighting) map[string]AircraftSighting {
-	out := make(map[string]AircraftSighting, len(src))
-	for hex, sighting := range src {
-		out[hex] = sighting
+func ensureMaps(state *State) {
+	if state.Sightings == nil {
+		state.Sightings = map[string]AircraftSighting{}
 	}
-	return out
-}
-
-func cloneCounts(src map[string]int) map[string]int {
-	out := make(map[string]int, len(src))
-	for key, count := range src {
-		out[key] = count
+	if state.SeenType == nil {
+		state.SeenType = map[string]int{}
 	}
-	return out
+	if state.SeenOperator == nil {
+		state.SeenOperator = map[string]int{}
+	}
+	if state.SeenCountry == nil {
+		state.SeenCountry = map[string]int{}
+	}
 }
 
 func classifyType(

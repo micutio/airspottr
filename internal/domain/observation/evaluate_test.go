@@ -119,7 +119,8 @@ func TestEvaluateBatchNewAircraftUnknownUntilIdentified(t *testing.T) {
 
 	record := baseRecord()
 	record.Flight = ""
-	state, current := EvaluateBatch(emptyState(), []AircraftRecord{record}, stubClassifier{}, time.Now())
+	state := emptyState()
+	current := EvaluateBatch(&state, []AircraftRecord{record}, stubClassifier{}, time.Now())
 	if len(current) != 1 {
 		t.Fatalf("expected 1 current sighting, got %d", len(current))
 	}
@@ -138,11 +139,12 @@ func TestEvaluateBatchSameFlightDoesNotIncrementAgain(t *testing.T) {
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	record := baseRecord()
-	state, _ := EvaluateBatch(emptyState(), []AircraftRecord{record}, classifier, time.Now())
+	state := emptyState()
+	EvaluateBatch(&state, []AircraftRecord{record}, classifier, time.Now())
 	if state.SightedTypes != 1 {
 		t.Fatalf("first pass SightedTypes = %d, want 1", state.SightedTypes)
 	}
-	state, _ = EvaluateBatch(state, []AircraftRecord{record}, classifier, time.Now())
+	EvaluateBatch(&state, []AircraftRecord{record}, classifier, time.Now())
 	if state.SightedTypes != 1 {
 		t.Fatalf("second pass SightedTypes = %d, want 1", state.SightedTypes)
 	}
@@ -158,11 +160,12 @@ func TestEvaluateBatchDifferentFlightIncrementsAgain(t *testing.T) {
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	first := baseRecord()
-	state, _ := EvaluateBatch(emptyState(), []AircraftRecord{first}, classifier, time.Now())
+	state := emptyState()
+	EvaluateBatch(&state, []AircraftRecord{first}, classifier, time.Now())
 
 	second := first
 	second.Flight = "DLH456"
-	state, current := EvaluateBatch(state, []AircraftRecord{second}, classifier, time.Now())
+	current := EvaluateBatch(&state, []AircraftRecord{second}, classifier, time.Now())
 	if current[0].LastFlightNo != "DLH456" {
 		t.Fatalf("LastFlightNo = %q, want DLH456", current[0].LastFlightNo)
 	}
@@ -179,7 +182,8 @@ func TestEvaluateBatchIdentifyingCallsignDoesNotCountAsNewFlight(t *testing.T) {
 	}
 	unknown := baseRecord()
 	unknown.Flight = ""
-	state, current := EvaluateBatch(emptyState(), []AircraftRecord{unknown}, classifier, time.Now())
+	state := emptyState()
+	current := EvaluateBatch(&state, []AircraftRecord{unknown}, classifier, time.Now())
 	if current[0].LastFlightNo != FlightUnknown {
 		t.Fatalf("expected unknown flight after first pass, got %q", current[0].LastFlightNo)
 	}
@@ -189,7 +193,7 @@ func TestEvaluateBatchIdentifyingCallsignDoesNotCountAsNewFlight(t *testing.T) {
 
 	identified := unknown
 	identified.Flight = "BAW123"
-	state, current = EvaluateBatch(state, []AircraftRecord{identified}, classifier, time.Now())
+	current = EvaluateBatch(&state, []AircraftRecord{identified}, classifier, time.Now())
 	if current[0].LastFlightNo != "BAW123" {
 		t.Fatalf("LastFlightNo = %q, want BAW123", current[0].LastFlightNo)
 	}
@@ -207,7 +211,7 @@ func TestEvaluateBatchRareType(t *testing.T) {
 	state := emptyState()
 	state.SightedTypes = 1099
 	record := baseRecord()
-	_, current := EvaluateBatch(state, []AircraftRecord{record}, classifier, time.Now())
+	current := EvaluateBatch(&state, []AircraftRecord{record}, classifier, time.Now())
 	if current[0].Rarities&RareType == 0 {
 		t.Fatalf("expected RareType flag, got %b", current[0].Rarities)
 	}
@@ -220,7 +224,8 @@ func TestEvaluateBatchOperatorIcaoFallback(t *testing.T) {
 		opByIcao: map[string][2]string{"BAW": {"British Airways", "united kingdom"}},
 	}
 	record := baseRecord()
-	_, current := EvaluateBatch(emptyState(), []AircraftRecord{record}, classifier, time.Now())
+	state := emptyState()
+	current := EvaluateBatch(&state, []AircraftRecord{record}, classifier, time.Now())
 	if current[0].Operator != "British Airways" {
 		t.Fatalf("Operator = %q, want British Airways", current[0].Operator)
 	}
@@ -234,7 +239,8 @@ func TestEvaluateBatchOperatorMilFallback(t *testing.T) {
 	}
 	record := baseRecord()
 	record.Flight = "RCH801"
-	_, current := EvaluateBatch(emptyState(), []AircraftRecord{record}, classifier, time.Now())
+	state := emptyState()
+	current := EvaluateBatch(&state, []AircraftRecord{record}, classifier, time.Now())
 	if current[0].Operator != "US Air Mobility Command" {
 		t.Fatalf("Operator = %q, want mil operator", current[0].Operator)
 	}
@@ -245,7 +251,8 @@ func TestEvaluateBatchOperatorOwnOpFallback(t *testing.T) {
 
 	record := baseRecord()
 	record.OwnOp = "Private Owner"
-	_, current := EvaluateBatch(emptyState(), []AircraftRecord{record}, stubClassifier{}, time.Now())
+	state := emptyState()
+	current := EvaluateBatch(&state, []AircraftRecord{record}, stubClassifier{}, time.Now())
 	if current[0].Operator != "Private Owner" {
 		t.Fatalf("Operator = %q, want Private Owner", current[0].Operator)
 	}
@@ -259,7 +266,8 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 		classifier := stubClassifier{
 			opByIcao: map[string][2]string{"BAW": {"British Airways", "united kingdom"}},
 		}
-		_, current := EvaluateBatch(emptyState(), []AircraftRecord{baseRecord()}, classifier, time.Now())
+		state := emptyState()
+		current := EvaluateBatch(&state, []AircraftRecord{baseRecord()}, classifier, time.Now())
 		if current[0].Country != "UNITED KINGDOM" {
 			t.Fatalf("Country = %q, want UNITED KINGDOM", current[0].Country)
 		}
@@ -270,7 +278,8 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 		classifier := stubClassifier{
 			countryByHex: map[string]string{"abc123": "germany"},
 		}
-		_, current := EvaluateBatch(emptyState(), []AircraftRecord{baseRecord()}, classifier, time.Now())
+		state := emptyState()
+		current := EvaluateBatch(&state, []AircraftRecord{baseRecord()}, classifier, time.Now())
 		if current[0].Country != "GERMANY" {
 			t.Fatalf("Country = %q, want GERMANY", current[0].Country)
 		}
@@ -281,7 +290,8 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 		classifier := stubClassifier{
 			countryByReg: map[string]string{"G-ABCD": "united kingdom"},
 		}
-		_, current := EvaluateBatch(emptyState(), []AircraftRecord{baseRecord()}, classifier, time.Now())
+		state := emptyState()
+		current := EvaluateBatch(&state, []AircraftRecord{baseRecord()}, classifier, time.Now())
 		if current[0].Country != "UNITED KINGDOM" {
 			t.Fatalf("Country = %q, want UNITED KINGDOM", current[0].Country)
 		}

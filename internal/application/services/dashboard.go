@@ -85,12 +85,8 @@ func (db *Dashboard) FinishWarmupPeriod() {
 
 // ProcessAircraftRecords implements the interfaces.SpottingService method.
 func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord) {
-	state, currentSightings := obs.EvaluateBatch(
-		db.observationState(),
-		aircraftRecords,
-		db.classifier,
-		time.Now(),
-	)
+	state := db.observationState()
+	currentSightings := obs.EvaluateBatch(&state, aircraftRecords, db.classifier, time.Now())
 	db.applyObservationState(state, currentSightings)
 }
 
