@@ -1,60 +1,33 @@
-package services
+package notify
 
 import (
 	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
 
+	"github.com/gen2brain/beeep"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	"github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// Notify implements the NotificationService interface.
-type Notify struct {
+const appIconPath = "./assets/icon.png"
+
+// BeeepNotifier emits desktop notifications for rare sighting events.
+type BeeepNotifier struct {
 	Stdout log.Logger
 }
 
-func NewNotify(appName string, consoleOut *io.Writer) *Notify {
-	_ = appName
-	return &Notify{
+func NewBeeepNotifier(appName string, consoleOut *io.Writer) *BeeepNotifier {
+	beeep.AppName = appName //nolint:reassign // This is the only way to set app name in beeep.
+	return &BeeepNotifier{
 		Stdout: *log.New(*consoleOut, "", 0),
 	}
 }
 
-// TODO: Extract these console printing methods into a separate context.
-
-// PrintSummary prints the highest, fastest and the most and the least common types.
-func (notify *Notify) PrintSummary(dash *Dashboard) {
-	notify.Stdout.Println("=== Summary ===")
-	notify.listByRarity("aircraft", dash.SeenTypeCount)
-	notify.listByRarity("operator", dash.SeenOperatorCount)
-	notify.listByRarity("country", dash.SeenCountryCount)
-	notify.Stdout.Println("Fastest Aircraft:")
-	fastest := dash.GetFastest()
-	notify.Stdout.Println(fastest.AircraftToString())
-	notify.Stdout.Println("Highest Aircraft:")
-	highest := dash.GetHighest()
-	notify.Stdout.Println(highest.AircraftToString())
-	notify.Stdout.Println("=== End Summary ===")
-}
-
-func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[string]int) {
-	propertyCounts := reference.GetSortedCountsForProperty(propertyCountMap)
-
-	notify.Stdout.Printf("Rarity from least to most common %s", propertyName)
-	for j := range propertyCounts {
-		notify.Stdout.Printf("%6d - %s\n", propertyCounts[j].Count, propertyCounts[j].Property)
-	}
-}
-
-// DefaultRarityNotifyToggles enables notifications for all rarity kinds.
 func DefaultRarityNotifyToggles() obs.RarityNotifyToggles {
 	return obs.RarityNotifyToggles{Type: true, Operator: true, Country: true}
 }
 
-// EmitRarityNotifications sends desktop notifications for sightings, respecting toggles.
-// Combined rarities (e.g. type+operator) degrade to the best matching template for the enabled subset.
-func (notify *Notify) EmitRarityNotifications(
+func (n *BeeepNotifier) EmitRarityNotifications(
 	sightings []obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
@@ -62,11 +35,15 @@ func (notify *Notify) EmitRarityNotifications(
 		if sightings[i].Rarities == obs.NoRarity {
 			continue
 		}
-		notify.emitRarityWithToggles(sightings[i], toggles)
+		n.emitRarityWithToggles(sightings[i], toggles)
 	}
 }
 
-func (notify *Notify) emitRarityWithToggles(
+func (n *BeeepNotifier) DefaultRarityNotifyToggles() obs.RarityNotifyToggles {
+	return DefaultRarityNotifyToggles()
+}
+
+func (n *BeeepNotifier) emitRarityWithToggles(
 	sighting obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
@@ -98,39 +75,39 @@ func (notify *Notify) emitRarityWithToggles(
 
 	switch rarityFlag { //nolint:exhaustive // By definition noFlag is false when this is called.
 	case obs.RareType:
-		notify.Stdout.Printf("found rare type %sighting\n", sighting.Info)
-		notifyRareType(sighting)
+		n.Stdout.Printf("found rare type %sighting\n", sighting.Info)
+		n.notifyRareType(sighting)
 	case obs.RareOperator:
-		notify.Stdout.Printf("found rare operator: %sighting\n", sighting.Operator)
-		notifyRareOperator(sighting)
+		n.Stdout.Printf("found rare operator: %sighting\n", sighting.Operator)
+		n.notifyRareOperator(sighting)
 	case obs.RareType | obs.RareOperator:
-		notify.Stdout.Printf(
+		n.Stdout.Printf(
 			"found rare type and operator: %sighting run by %sighting\n", sighting.Info, sighting.Operator)
-		notifyRareTypeAndOperator(sighting)
+		n.notifyRareTypeAndOperator(sighting)
 	case obs.RareCountry:
-		notify.Stdout.Printf("found rare country: %sighting\n", sighting.Country)
-		notifyRareCountry(sighting)
+		n.Stdout.Printf("found rare country: %sighting\n", sighting.Country)
+		n.notifyRareCountry(sighting)
 	case obs.RareType | obs.RareCountry:
-		notify.Stdout.Printf("found rare type and country: %sighting -> %sighting\n", sighting.Info, sighting.Country)
-		notifyRareTypeAndCountry(sighting)
+		n.Stdout.Printf("found rare type and country: %sighting -> %sighting\n", sighting.Info, sighting.Country)
+		n.notifyRareTypeAndCountry(sighting)
 	case obs.RareOperator | obs.RareCountry:
-		notify.Stdout.Printf(
+		n.Stdout.Printf(
 			"found rare operator and country: %sighting -> %sighting\n", sighting.Operator, sighting.Country)
-		notifyRareOperatorAndCountry(sighting)
+		n.notifyRareOperatorAndCountry(sighting)
 	case obs.RareType | obs.RareOperator | obs.RareCountry:
-		notify.Stdout.Printf(
+		n.Stdout.Printf(
 			"found the TRIFECTA: %sighting -> %sighting -> %sighting\n",
 			sighting.Info,
 			sighting.Operator,
 			sighting.Country,
 		)
-		notifyRareTypeOperatorCountry(sighting)
+		n.notifyRareTypeOperatorCountry(sighting)
 	default:
 		panic("unknown rare type")
 	}
 }
 
-func notifyRareType(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareType(sighting obs.AircraftSighting) {
 	msgTitle := "Rare Aircraft Type Spotted"
 	msgBody := fmt.Sprintf(
 		"%s (%s)\n%3.0f %s",
@@ -138,10 +115,12 @@ func notifyRareType(sighting obs.AircraftSighting) {
 		sighting.Registration,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareOperator(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareOperator(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	msgTitle := "Rare Operator Spotted"
 	msgBody := fmt.Sprintf(
@@ -151,10 +130,12 @@ func notifyRareOperator(sighting obs.AircraftSighting) {
 		sighting.Registration,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareCountry(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareCountry(sighting obs.AircraftSighting) {
 	country := sighting.Country
 	msgTitle := "Rare Aircraft Country Spotted"
 	msgBody := fmt.Sprintf(
@@ -164,10 +145,12 @@ func notifyRareCountry(sighting obs.AircraftSighting) {
 		sighting.Registration,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareTypeAndOperator(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareTypeAndOperator(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	msgTitle := "Rare Type & Operator Spotted"
 	msgBody := fmt.Sprintf(
@@ -177,10 +160,12 @@ func notifyRareTypeAndOperator(sighting obs.AircraftSighting) {
 		operator,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareTypeAndCountry(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareTypeAndCountry(sighting obs.AircraftSighting) {
 	country := sighting.Country
 	msgTitle := "Rare Type & Country Spotted"
 	msgBody := fmt.Sprintf(
@@ -190,10 +175,12 @@ func notifyRareTypeAndCountry(sighting obs.AircraftSighting) {
 		country,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareOperatorAndCountry(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareOperatorAndCountry(sighting obs.AircraftSighting) {
 	operator := sighting.Operator
 	country := sighting.Country
 	msgTitle := "Rare Operator & Country Spotted"
@@ -203,10 +190,12 @@ func notifyRareOperatorAndCountry(sighting obs.AircraftSighting) {
 		country,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }
 
-func notifyRareTypeOperatorCountry(sighting obs.AircraftSighting) {
+func (n *BeeepNotifier) notifyRareTypeOperatorCountry(sighting obs.AircraftSighting) {
 	var aType string
 	if sighting.TypeShort != "" {
 		aType = sighting.TypeShort
@@ -225,5 +214,7 @@ func notifyRareTypeOperatorCountry(sighting obs.AircraftSighting) {
 		country,
 		sighting.Distance,
 		sighting.Direction)
-	fmt.Printf("%s\n%s\n", msgTitle, msgBody)
+	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
+		panic(err)
+	}
 }

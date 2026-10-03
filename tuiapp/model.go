@@ -9,6 +9,7 @@ import (
 	srv "github.com/micutio/airspottr/internal/application/services"
 	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 )
 
 // model implements tea.Model (Init, Update, View).
@@ -36,7 +37,7 @@ type model struct {
 	flightrouteRepo repo.FlightrouteRepository
 	typeRepo        repo.AircraftTypeRepo
 	dashboard       *srv.Dashboard
-	notify          *srv.Notify
+	notify          *noti.BeeepNotifier
 	options         adsb.RequestOptions
 
 	inputFocus      inputFocus

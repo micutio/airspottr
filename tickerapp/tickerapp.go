@@ -17,6 +17,7 @@ import (
 	rep "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
@@ -32,7 +33,8 @@ type TickerApp struct {
 	operatorRepo       rep.OperatorRepository
 	countryRepo        rep.CountryRepository
 	dashboard          *srv.Dashboard
-	notify             *srv.Notify
+	notify             *noti.BeeepNotifier
+	summaryNotify      *srv.Notify
 	done               chan bool
 	wg                 sync.WaitGroup
 }
@@ -40,7 +42,8 @@ type TickerApp struct {
 // New creates and initializes a new TickerApp.
 func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
 	logger := slog.Default() // Or a custom logger
-	notify := srv.NewNotify(appName, &stdout)
+	desktopNotify := noti.NewBeeepNotifier(appName, &stdout)
+	summaryNotify := srv.NewNotify(appName, &stdout)
 
 	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, &stderr)
 	if aircraftRequestErr != nil {
@@ -96,7 +99,8 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		operatorRepo:       operatorRepo,
 		countryRepo:        countryRepo,
 		dashboard:          dashboard,
-		notify:             notify,
+		notify:             desktopNotify,
+		summaryNotify:      summaryNotify,
 		done:               make(chan bool),
 	}, nil
 }
@@ -137,7 +141,7 @@ func (app *TickerApp) start() {
 				currentSightings := app.dashboard.GetCurrentSightings()
 				app.notify.EmitRarityNotifications(
 					currentSightings,
-					srv.DefaultRarityNotifyToggles(),
+					noti.DefaultRarityNotifyToggles(),
 				)
 
 				// This method checks whether we have flight routes in the cache for all sightings.
@@ -148,7 +152,7 @@ func (app *TickerApp) start() {
 					app.dashboard.AssignFlightRoutes(routes)
 				}
 			case <-summaryTicker.C:
-				app.notify.PrintSummary(app.dashboard)
+				app.summaryNotify.PrintSummary(app.dashboard)
 			case <-app.done:
 				app.logger.Info("Stopping HTTP GET request routine.")
 				return

@@ -8,9 +8,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	noti "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
@@ -30,7 +30,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		}
 	}()
 
-	notify := noti.NewNotify(appName, new(io.Discard))
+	notify := noti.NewBeeepNotifier(appName, new(io.Discard))
 
 	aircraftReq, err := setupAircraftRequest(requestOptions, errLogFile)
 	if err != nil {
