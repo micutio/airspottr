@@ -1,46 +1,19 @@
 package services
 
-import (
-	obs "github.com/micutio/airspottr/internal/domain/observation"
-	ref "github.com/micutio/airspottr/internal/domain/reference"
-)
+import rep "github.com/micutio/airspottr/internal/domain/repositories"
 
-// AirspottrState encapsulates the internal state of the app to hide the exported JSON fields of
-// persistentState.
-type AirspottrState struct {
-	InternalState PersistentState
-}
+// AirspottrState is kept as a compatibility alias while the persisted-state model lives in the
+// repositories layer.
+type AirspottrState = rep.AirspottrState
 
-type PersistedRareSighting struct {
-	Rarities obs.RarityFlag `json:"rarities"`
-	Hex      string         `json:"hex"`
-}
+// PersistedRareSighting is kept as a compatibility alias.
+type PersistedRareSighting = rep.PersistedRareSighting
 
-type FlightrouteRepoState struct {
-	PendingCallsigns []string `json:"pending_callsigns"`
-}
+// FlightrouteRepoState is kept as a compatibility alias.
+type FlightrouteRepoState = rep.FlightrouteRepoState
 
-type PersistentState struct {
-	DashboardState       DashboardState       `json:"dashboard"`
-	FlightrouteRepoState FlightrouteRepoState `json:"request"`
-}
+// PersistentState is kept as a compatibility alias.
+type PersistentState = rep.PersistentState
 
-type DashboardState struct {
-	IsWarmup        bool                 `json:"is_warmup"`
-	Lat             float64              `json:"lat"`
-	Lon             float64              `json:"lon"`
-	Fastest         obs.AircraftRecord   `json:"fastest"`
-	Highest         obs.AircraftRecord   `json:"highest"`
-	CurrentAircraft []obs.AircraftRecord `json:"current_aircraft"`
-	// Deprecated: no longer in use
-	RareSightings []PersistedRareSighting `json:"rare_sightings"`
-	// Deprecated: no longer in use
-	CachedFlightRoutes map[string]*ref.FlightrouteRecord `json:"cached_flight_routes"`
-	AircraftSightings  map[string]obs.AircraftSighting   `json:"aircraft_sightings"`
-	TotalTypeCount     int                               `json:"total_type_count"`
-	TotalOperatorCount int                               `json:"total_operator_count"`
-	TotalCountryCount  int                               `json:"total_country_count"`
-	SeenTypeCount      map[string]int                    `json:"seen_type_count"`
-	SeenOperatorCount  map[string]int                    `json:"seen_operator_count"`
-	SeenCountryCount   map[string]int                    `json:"seen_country_count"`
-}
+// DashboardState is kept as a compatibility alias.
+type DashboardState = rep.DashboardState

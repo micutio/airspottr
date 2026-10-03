@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	srv "github.com/micutio/airspottr/internal/application/services"
+	rep "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 const stateFileName = "airspottr_state.json"
@@ -20,7 +20,7 @@ func StateFilePath() string {
 	return filepath.Join(configDir, "airspottr", stateFileName)
 }
 
-func SaveState(filePath string, state *srv.PersistentState) error {
+func SaveState(filePath string, state *rep.PersistentState) error {
 	data, marshallErr := json.MarshalIndent(state, "", "  ")
 	if marshallErr != nil {
 		return fmt.Errorf("save state: marshal failed: %w", marshallErr)
@@ -34,21 +34,21 @@ func SaveState(filePath string, state *srv.PersistentState) error {
 	return nil
 }
 
-func LoadState(filePath string) (srv.AirspottrState, error) {
+func LoadState(filePath string) (rep.AirspottrState, error) {
 	data, readFileErr := os.ReadFile(filePath)
-	defaultState := srv.AirspottrState{} //nolint:exhaustruct_v5 // using default values
+	defaultState := rep.AirspottrState{} //nolint:exhaustruct_v5 // using default values
 	if readFileErr != nil {
 		if os.IsNotExist(readFileErr) {
 			return defaultState, nil
 		}
 		return defaultState, fmt.Errorf("load state: unable to read file: %w", readFileErr)
 	}
-	var internalState srv.PersistentState
+	var internalState rep.PersistentState
 	if unmarshalErr := json.Unmarshal(data, &internalState); unmarshalErr != nil {
 		return defaultState, fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
 
-	state := srv.AirspottrState{
+	state := rep.AirspottrState{
 		InternalState: internalState,
 	}
 
