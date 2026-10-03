@@ -58,11 +58,8 @@ func (notify *Notify) EmitRarityNotifications(
 	sightings []obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
-	for i := range sightings {
-		if sightings[i].Rarities == obs.NoRarity {
-			continue
-		}
-		notify.emitRarityWithToggles(sightings[i], toggles)
+	for _, event := range obs.DetectRareSightings(sightings) {
+		notify.emitRarityWithToggles(event.Sighting, toggles)
 	}
 }
 

@@ -3,6 +3,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
 	"time"
@@ -22,6 +23,7 @@ var (
 
 // Dashboard implements the interfaces.SpottingService interface.
 type Dashboard struct {
+	session               *obs.SpottingSession
 	currentSightings      []obs.AircraftSighting // volatile cache of recently sighted aircraft
 	sightingRepo          rep.SightingRepo
 	classifier            obs.Classifier
@@ -52,7 +54,9 @@ func NewDashboard(lat, lon float64,
 		countryRepo,
 		log.New(stderr, "classifier ", log.LstdFlags),
 	)
+	session := obs.NewSpottingSession(ref.NewCoordinates(lat, lon))
 	dashboard := Dashboard{
+		session:               session,
 		currentSightings:      []obs.AircraftSighting{},
 		sightingRepo:          sightingRepo,
 		classifier:            classifier,
@@ -71,12 +75,54 @@ func NewDashboard(lat, lon float64,
 	}
 
 	dashboard.ErrOut.Println("Dashboard init")
+	dashboard.syncStateFromSession()
 
 	return &dashboard
 }
 
 func (db *Dashboard) FinishWarmupPeriod() {
 	db.IsWarmup = false
+	if db.session != nil {
+		db.session.SetWarmup(false)
+	}
+}
+
+func (db *Dashboard) syncStateFromSession() {
+	if db.session == nil {
+		return
+	}
+	state := db.session.Snapshot()
+	db.fastest = state.Fastest
+	db.highest = state.Highest
+	db.SightedTypesCount = state.SightedTypes
+	db.SightedOperatorsCount = state.SightedOperators
+	db.SightedCountriesCount = state.SightedCountries
+	db.SeenTypeCount = state.SeenType
+	db.SeenOperatorCount = state.SeenOperator
+	db.SeenCountryCount = state.SeenCountry
+	db.Lat = state.Observer.Latitude
+	db.Lon = state.Observer.Longitude
+}
+
+func (db *Dashboard) syncSessionFromDashboard() {
+	if db.session == nil {
+		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
+	}
+	state := obs.State{
+		Observer:         ref.NewCoordinates(db.Lat, db.Lon),
+		Sightings:        db.sightingRepo.GetAllSightings(),
+		SeenType:         db.SeenTypeCount,
+		SeenOperator:     db.SeenOperatorCount,
+		SeenCountry:      db.SeenCountryCount,
+		SightedTypes:     db.SightedTypesCount,
+		SightedOperators: db.SightedOperatorsCount,
+		SightedCountries: db.SightedCountriesCount,
+		Fastest:          db.fastest,
+		Highest:          db.highest,
+	}
+	if restoreErr := db.session.Restore(state); restoreErr != nil {
+		db.ErrOut.Printf("sync spotting session from dashboard: %v", restoreErr)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -91,33 +137,34 @@ func (db *Dashboard) ProcessAircraftRecords(aircraftRecords []obs.AircraftRecord
 }
 
 func (db *Dashboard) observationState() obs.State {
-	return obs.State{
-		Observer:         ref.NewCoordinates(db.Lat, db.Lon),
-		Sightings:        db.sightingRepo.GetAllSightings(),
-		SeenType:         db.SeenTypeCount,
-		SeenOperator:     db.SeenOperatorCount,
-		SeenCountry:      db.SeenCountryCount,
-		SightedTypes:     db.SightedTypesCount,
-		SightedOperators: db.SightedOperatorsCount,
-		SightedCountries: db.SightedCountriesCount,
-		Fastest:          db.fastest,
-		Highest:          db.highest,
+	if db.session == nil {
+		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
 	}
+	state := db.session.Snapshot()
+	state.Sightings = db.sightingRepo.GetAllSightings()
+	state.SeenType = db.SeenTypeCount
+	state.SeenOperator = db.SeenOperatorCount
+	state.SeenCountry = db.SeenCountryCount
+	state.SightedTypes = db.SightedTypesCount
+	state.SightedOperators = db.SightedOperatorsCount
+	state.SightedCountries = db.SightedCountriesCount
+	state.Fastest = db.fastest
+	state.Highest = db.highest
+	return state
 }
 
 func (db *Dashboard) applyObservationState(
 	state obs.State,
 	currentSightings []obs.AircraftSighting,
 ) {
+	if db.session == nil {
+		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
+	}
+	if restoreErr := db.session.Restore(state); restoreErr != nil {
+		db.ErrOut.Printf("restore spotting session: %v", restoreErr)
+	}
 	db.sightingRepo.RestoreSightings(state.Sightings)
-	db.SeenTypeCount = state.SeenType
-	db.SeenOperatorCount = state.SeenOperator
-	db.SeenCountryCount = state.SeenCountry
-	db.SightedTypesCount = state.SightedTypes
-	db.SightedOperatorsCount = state.SightedOperators
-	db.SightedCountriesCount = state.SightedCountries
-	db.fastest = state.Fastest
-	db.highest = state.Highest
+	db.syncStateFromSession()
 	db.currentSightings = currentSightings
 }
 
@@ -188,6 +235,11 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords map[string]ref.Flight
 func (db *Dashboard) SaveState(
 	pendingCallsigns []string,
 ) *PersistentState {
+	if db.session == nil {
+		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
+	}
+	db.syncSessionFromDashboard()
+	state := db.session.Snapshot()
 	aircraftSightings := db.sightingRepo.GetAllSightings()
 	sightingKeys := make(map[*obs.AircraftSighting]string, len(aircraftSightings))
 	for hex, sighting := range aircraftSightings {
@@ -200,16 +252,16 @@ func (db *Dashboard) SaveState(
 			IsWarmup:           db.IsWarmup,
 			Lat:                db.Lat,
 			Lon:                db.Lon,
-			Fastest:            db.GetFastest(),
-			Highest:            db.GetHighest(),
+			Fastest:            state.Fastest,
+			Highest:            state.Highest,
 			CurrentAircraft:    nil,
 			AircraftSightings:  aircraftSightings,
-			TotalTypeCount:     db.SightedTypesCount,
-			TotalOperatorCount: db.SightedOperatorsCount,
-			TotalCountryCount:  db.SightedCountriesCount,
-			SeenTypeCount:      db.SeenTypeCount,
-			SeenOperatorCount:  db.SeenOperatorCount,
-			SeenCountryCount:   db.SeenCountryCount,
+			TotalTypeCount:     state.SightedTypes,
+			TotalOperatorCount: state.SightedOperators,
+			TotalCountryCount:  state.SightedCountries,
+			SeenTypeCount:      state.SeenType,
+			SeenOperatorCount:  state.SeenOperator,
+			SeenCountryCount:   state.SeenCountry,
 		},
 		FlightrouteRepoState: FlightrouteRepoState{
 			PendingCallsigns: append([]string(nil), pendingCallsigns...),
@@ -222,16 +274,28 @@ func (db *Dashboard) RestoreState(state *DashboardState) error {
 		return errCoordMismatch
 	}
 
+	if db.session == nil {
+		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
+	}
+	if restoreErr := db.session.Restore(obs.State{
+		Observer:         ref.NewCoordinates(state.Lat, state.Lon),
+		Sightings:        state.AircraftSightings,
+		SeenType:         state.SeenTypeCount,
+		SeenOperator:     state.SeenOperatorCount,
+		SeenCountry:      state.SeenCountryCount,
+		SightedTypes:     state.TotalTypeCount,
+		SightedOperators: state.TotalOperatorCount,
+		SightedCountries: state.TotalCountryCount,
+		Fastest:          state.Fastest,
+		Highest:          state.Highest,
+	}); restoreErr != nil {
+		return fmt.Errorf("restore spotting session: %w", restoreErr)
+	}
+
 	db.IsWarmup = state.IsWarmup
-	db.fastest = state.Fastest
-	db.highest = state.Highest
+	db.session.SetWarmup(state.IsWarmup)
 	db.sightingRepo.RestoreSightings(state.AircraftSightings)
-	db.SightedTypesCount = state.TotalTypeCount
-	db.SightedOperatorsCount = state.TotalOperatorCount
-	db.SightedCountriesCount = state.TotalCountryCount
-	db.SeenTypeCount = state.SeenTypeCount
-	db.SeenOperatorCount = state.SeenOperatorCount
-	db.SeenCountryCount = state.SeenCountryCount
+	db.syncStateFromSession()
 
 	return nil
 }

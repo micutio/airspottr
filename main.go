@@ -175,6 +175,7 @@ func buildTUIApp(appName string, options adsb.RequestOptions) (tuiapp.Dependenci
 		AppName:             appName,
 		AircraftSource:      aircraftReq,
 		FlightRouteSource:   flightrouteReq,
+		TypeRepo:            typeRepo,
 		Dashboard:           dashboard,
 		NotificationService: notify,
 		RequestOptions:      options,

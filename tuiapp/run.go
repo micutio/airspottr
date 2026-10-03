@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	appint "github.com/micutio/airspottr/internal/application/interfaces"
 	srv "github.com/micutio/airspottr/internal/application/services"
+	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
@@ -21,6 +22,7 @@ type Dependencies struct {
 	AppName             string
 	AircraftSource      appint.AircraftDataSource
 	FlightRouteSource   appint.FlightRouteDataSource
+	TypeRepo            repo.AircraftTypeRepo
 	Dashboard           *srv.Dashboard
 	NotificationService appint.NotificationService
 	RequestOptions      adsb.RequestOptions
@@ -89,6 +91,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		AppName:             appName,
 		AircraftSource:      aircraftReq,
 		FlightRouteSource:   flightrouteReq,
+		TypeRepo:            typeRepo,
 		Dashboard:           dashboard,
 		NotificationService: notify,
 		RequestOptions:      requestOptions,
@@ -108,6 +111,14 @@ func RunWithDependencies(deps Dependencies) {
 	if deps.AircraftSource == nil || deps.FlightRouteSource == nil {
 		log.Printf("aircraft and route sources are required for TUI startup")
 		return
+	}
+	if deps.TypeRepo == nil {
+		typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
+		if typeRepoErr != nil {
+			log.Printf("failed to create aircraft type repo for TUI: %v", typeRepoErr)
+			return
+		}
+		deps.TypeRepo = typeRepo
 	}
 	notifyInstance := noti.NewBeeepNotifier(deps.AppName, io.Discard)
 	if concreteNotify, ok := deps.NotificationService.(*noti.BeeepNotifier); ok {
@@ -141,7 +152,7 @@ func RunWithDependencies(deps Dependencies) {
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      deps.AircraftSource,
 		flightrouteRepo:   deps.FlightRouteSource,
-		typeRepo:          nil,
+		typeRepo:          deps.TypeRepo,
 		dashboard:         deps.Dashboard,
 		refreshUseCase:    refreshUseCase,
 		notify:            notifyInstance,

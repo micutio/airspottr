@@ -73,6 +73,16 @@ func (m *model) viewHeader() string {
 	var rightPanel string
 	highest := m.dashboard.GetHighest()
 	fastest := m.dashboard.GetFastest()
+	if m.typeRepo == nil {
+		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
+			m.baseStyle.Foreground(m.theme.Secondary).Render(
+				"  Awaiting\n  aircraft\n  data…",
+			),
+		)
+		return m.viewStyle.Render(
+			lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, notifyPanel, rightPanel),
+		)
+	}
 	highestType, htExists := m.typeRepo.GetAircraftType(highest.IcaoType)
 	fastestType, ftExists := m.typeRepo.GetAircraftType(fastest.IcaoType)
 	if htExists && ftExists {
