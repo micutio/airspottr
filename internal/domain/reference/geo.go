@@ -1,6 +1,8 @@
 package reference
 
 import (
+	"errors"
+	"fmt"
 	"math"
 )
 
@@ -24,10 +26,41 @@ type Coordinates struct {
 
 // NewCoordinates returns a coordinates struct based on parameters passed.
 func NewCoordinates(latitude, longitude float64) Coordinates {
-	return Coordinates{
-		Latitude:  latitude,
-		Longitude: longitude,
+	return Coordinates{Latitude: latitude, Longitude: longitude}
+}
+
+var (
+	ErrLatitudeOutOfRange  = errors.New("latitude out of range")
+	ErrLongitudeOutOfRange = errors.New("longitude out of range")
+)
+
+// ParseCoordinates validates and returns a coordinate pair.
+func ParseCoordinates(latitude, longitude float64) (Coordinates, error) {
+	coords := Coordinates{Latitude: latitude, Longitude: longitude}
+	if err := coords.Validate(); err != nil {
+		return Coordinates{}, err
 	}
+	return coords, nil
+}
+
+// MustCoordinates validates a coordinate pair and panics on invalid input.
+func MustCoordinates(latitude, longitude float64) Coordinates {
+	coords := NewCoordinates(latitude, longitude)
+	if err := coords.Validate(); err != nil {
+		panic(err)
+	}
+	return coords
+}
+
+// Validate ensures the coordinate falls within the valid lat/lon ranges.
+func (c Coordinates) Validate() error {
+	if c.Latitude < -90 || c.Latitude > 90 {
+		return fmt.Errorf("%w: got %v", ErrLatitudeOutOfRange, c.Latitude)
+	}
+	if c.Longitude < -180 || c.Longitude > 180 {
+		return fmt.Errorf("%w: got %v", ErrLongitudeOutOfRange, c.Longitude)
+	}
+	return nil
 }
 
 func (c Coordinates) toRadians() Coordinates {

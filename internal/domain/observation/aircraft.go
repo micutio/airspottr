@@ -121,8 +121,21 @@ func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	if ac.Flight == "" {
 		return FlightUnknown
 	}
+	callsign, err := NewFlightCallsign(ac.Flight)
+	if err != nil {
+		return FlightUnknown
+	}
+	return strings.TrimSpace(callsign.String())
+}
 
-	return strings.TrimSpace(ac.Flight)
+// FlightNo returns the validated flight identifier as a domain value object.
+func (ac *AircraftRecord) FlightNo() (FlightCallsign, error) {
+	return NewFlightCallsign(ac.Flight)
+}
+
+// HexCode returns the validated aircraft hex as a domain value object.
+func (ac *AircraftRecord) HexCode() (AircraftHex, error) {
+	return NewAircraftHex(ac.Hex)
 }
 
 // GetFlightNoAsIcaoCode trims whitespaces and digits from the Flight number,
@@ -132,8 +145,11 @@ func (ac *AircraftRecord) GetFlightNoAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
 		return FlightUnknownCode
 	}
-
-	return stripDigits(strings.TrimSpace(ac.Flight))
+	callsign, err := NewFlightCallsign(ac.Flight)
+	if err != nil {
+		return FlightUnknownCode
+	}
+	return stripDigits(strings.TrimSpace(callsign.String()))
 }
 
 // GetRegistrationPrefix returns the prefix of the registration if it exists,

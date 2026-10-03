@@ -71,3 +71,19 @@ func TestHaversineDistance(t *testing.T) {
 		}
 	}
 }
+
+func TestCoordinatesValidation(t *testing.T) {
+	coord, err := ParseCoordinates(53.55, 9.99)
+	if err != nil {
+		t.Fatalf("ParseCoordinates() unexpected error: %v", err)
+	}
+	if coord.Validate() != nil {
+		t.Fatal("Validate() rejected valid coordinates")
+	}
+	if _, err = ParseCoordinates(91, 0); err == nil {
+		t.Fatal("ParseCoordinates() accepted invalid latitude")
+	}
+	if _, err = ParseCoordinates(0, 181); err == nil {
+		t.Fatal("ParseCoordinates() accepted invalid longitude")
+	}
+}
