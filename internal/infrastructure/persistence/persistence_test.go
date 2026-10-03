@@ -40,6 +40,37 @@ func (countryRepoMock) GetCountryByRegistration(_ string) (string, bool) {
 	return "", false
 }
 
+func TestLoadStateMigratesLegacyStateToLocationHistory(t *testing.T) {
+	tmpDir := t.TempDir()
+	statePath := filepath.Join(tmpDir, "airspottr_state.json")
+	//nolint:exhaustruct_v5 // test migration fixture
+	legacyState := &srv.PersistentState{
+		//nolint:exhaustruct_v5 // test migration fixture
+		DashboardState: srv.DashboardState{
+			Lat: 1.3521,
+			Lon: 103.8198,
+			SeenTypeCount: map[string]int{
+				"A": 4,
+			},
+		},
+	}
+	if err := SaveState(statePath, legacyState); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadState(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := ref.LocationKey(1.3521, 103.8198)
+	if _, ok := loaded.InternalState.LocationStates[key]; !ok {
+		t.Fatalf("expected location history for %s to be present", key)
+	}
+	selected := StateForLocation(loaded, 1.3521, 103.8198)
+	if selected.Lat != 1.3521 || selected.Lon != 103.8198 {
+		t.Fatalf("StateForLocation() = (%f,%f), want (1.3521,103.8198)", selected.Lat, selected.Lon)
+	}
+}
+
 func TestSaveAndLoadState(t *testing.T) {
 	tmpDir := t.TempDir()
 	statePath := filepath.Join(tmpDir, "airspottr_state.json")

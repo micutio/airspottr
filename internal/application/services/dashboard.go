@@ -241,31 +241,33 @@ func (db *Dashboard) SaveState(
 	db.syncSessionFromDashboard()
 	state := db.session.Snapshot()
 	aircraftSightings := db.sightingRepo.GetAllSightings()
-	sightingKeys := make(map[*obs.AircraftSighting]string, len(aircraftSightings))
 	for hex, sighting := range aircraftSightings {
 		aircraftSightings[hex] = sighting
-		sightingKeys[&sighting] = hex
 	}
 
+	dashboardState := DashboardState{ //nolint:exhaustruct_v5 // removed deprecated items
+		IsWarmup:           db.IsWarmup,
+		Lat:                db.Lat,
+		Lon:                db.Lon,
+		Fastest:            state.Fastest,
+		Highest:            state.Highest,
+		CurrentAircraft:    nil,
+		AircraftSightings:  aircraftSightings,
+		TotalTypeCount:     state.SightedTypes,
+		TotalOperatorCount: state.SightedOperators,
+		TotalCountryCount:  state.SightedCountries,
+		SeenTypeCount:      state.SeenType,
+		SeenOperatorCount:  state.SeenOperator,
+		SeenCountryCount:   state.SeenCountry,
+	}
+	locationKey := ref.LocationKey(db.Lat, db.Lon)
+
 	return &PersistentState{
-		DashboardState: DashboardState{ //nolint:exhaustruct_v5 // removed deprecated items
-			IsWarmup:           db.IsWarmup,
-			Lat:                db.Lat,
-			Lon:                db.Lon,
-			Fastest:            state.Fastest,
-			Highest:            state.Highest,
-			CurrentAircraft:    nil,
-			AircraftSightings:  aircraftSightings,
-			TotalTypeCount:     state.SightedTypes,
-			TotalOperatorCount: state.SightedOperators,
-			TotalCountryCount:  state.SightedCountries,
-			SeenTypeCount:      state.SeenType,
-			SeenOperatorCount:  state.SeenOperator,
-			SeenCountryCount:   state.SeenCountry,
-		},
+		DashboardState: dashboardState,
 		FlightrouteRepoState: FlightrouteRepoState{
 			PendingCallsigns: append([]string(nil), pendingCallsigns...),
 		},
+		LocationStates: map[string]DashboardState{locationKey: dashboardState},
 	}
 }
 

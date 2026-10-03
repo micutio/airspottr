@@ -21,8 +21,9 @@ type FlightrouteRepoState struct {
 }
 
 type PersistentState struct {
-	DashboardState       DashboardState       `json:"dashboard"`
-	FlightrouteRepoState FlightrouteRepoState `json:"request"`
+	DashboardState       DashboardState            `json:"dashboard"`
+	FlightrouteRepoState FlightrouteRepoState      `json:"request"`
+	LocationStates       map[string]DashboardState `json:"location_states,omitempty"`
 }
 
 type DashboardState struct {

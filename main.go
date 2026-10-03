@@ -104,7 +104,8 @@ func buildTickerApp(appName string, options adsb.RequestOptions) (tickerapp.Depe
 		countryRepo,
 		stderr,
 	)
-	if loadErr := dashboard.RestoreState(&appState.InternalState.DashboardState); loadErr != nil {
+	currentState := pers.StateForLocation(appState, options.Lat, options.Lon)
+	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
 		return tickerapp.Dependencies{}, fmt.Errorf("restore dashboard state: %w", loadErr)
 	}
 
@@ -165,7 +166,8 @@ func buildTUIApp(appName string, options adsb.RequestOptions) (tuiapp.Dependenci
 		countryRepo,
 		errLogFile,
 	)
-	if loadErr := dashboard.RestoreState(&appState.InternalState.DashboardState); loadErr != nil {
+	currentState := pers.StateForLocation(appState, options.Lat, options.Lon)
+	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
 		return tuiapp.Dependencies{}, fmt.Errorf("restore dashboard state: %w", loadErr)
 	}
 	dashboard.FinishWarmupPeriod()

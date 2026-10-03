@@ -127,7 +127,8 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		stderr,
 	)
 
-	if loadErr := dashboard.RestoreState(&appState.InternalState.DashboardState); loadErr != nil {
+	currentState := pers.StateForLocation(appState, options.Lat, options.Lon)
+	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 

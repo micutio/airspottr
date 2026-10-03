@@ -10,6 +10,7 @@ import (
 	srv "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 const errLogFilePath = "./airspottr.log"
@@ -66,7 +67,8 @@ func setupDashboard(
 		operatorRepo,
 		countryRepo,
 		errWriter)
-	if loadErr := dashboard.RestoreState(&state.InternalState.DashboardState); loadErr != nil {
+	currentState := pers.StateForLocation(state, requestOptions.Lat, requestOptions.Lon)
+	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 
