@@ -16,10 +16,10 @@ type BeeepNotifier struct {
 	Stdout log.Logger
 }
 
-func NewBeeepNotifier(appName string, consoleOut *io.Writer) *BeeepNotifier {
+func NewBeeepNotifier(appName string, consoleOut io.Writer) *BeeepNotifier {
 	beeep.AppName = appName //nolint:reassign // This is the only way to set app name in beeep.
 	return &BeeepNotifier{
-		Stdout: *log.New(*consoleOut, "", 0),
+		Stdout: *log.New(consoleOut, "", 0),
 	}
 }
 

@@ -22,6 +22,21 @@ import (
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
+type Dependencies struct {
+	AppName            string
+	Options            adsb.RequestOptions
+	Logger             *slog.Logger
+	AircraftRequest    *adsb.AircraftRequest
+	FlightrouteRequest *adsb.FlightrouteRequest
+	Dashboard          *srv.Dashboard
+	RefreshUseCase     *srv.RefreshUseCase
+	Notify             *noti.BeeepNotifier
+	SummaryNotify      *srv.Notify
+	Done               chan bool
+	Stdout             io.Writer
+	Stderr             io.Writer
+}
+
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
 	appName            string
@@ -40,18 +55,43 @@ type TickerApp struct {
 	wg                 sync.WaitGroup
 }
 
+func NewWithDependencies(deps Dependencies) *TickerApp {
+	if deps.Logger == nil {
+		deps.Logger = slog.Default()
+	}
+	if deps.Done == nil {
+		deps.Done = make(chan bool)
+	}
+	return &TickerApp{
+		appName:            deps.AppName,
+		options:            deps.Options,
+		logger:             deps.Logger,
+		aircraftRequest:    deps.AircraftRequest,
+		flightrouteRequest: deps.FlightrouteRequest,
+		typeRepo:           nil,
+		operatorRepo:       nil,
+		countryRepo:        nil,
+		dashboard:          deps.Dashboard,
+		refreshUseCase:     deps.RefreshUseCase,
+		notify:             deps.Notify,
+		summaryNotify:      deps.SummaryNotify,
+		done:               deps.Done,
+		wg:                 sync.WaitGroup{},
+	}
+}
+
 // New creates and initializes a new TickerApp.
 func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
-	logger := slog.Default() // Or a custom logger
-	desktopNotify := noti.NewBeeepNotifier(appName, &stdout)
-	summaryNotify := srv.NewNotify(appName, &stdout)
+	logger := slog.Default()
+	desktopNotify := noti.NewBeeepNotifier(appName, stdout)
+	summaryNotify := srv.NewNotify(appName, stdout)
 
-	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, &stderr)
+	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, stderr)
 	if aircraftRequestErr != nil {
 		return nil, fmt.Errorf("unable to create request: %w", aircraftRequestErr)
 	}
 
-	flightrouteRequest, flightrouteRequestErr := adsb.NewFlightrouteRequest(&stderr)
+	flightrouteRequest, flightrouteRequestErr := adsb.NewFlightrouteRequest(stderr)
 	if flightrouteRequestErr != nil {
 		return nil, fmt.Errorf("unable to create request: %w", flightrouteRequestErr)
 	}
@@ -84,7 +124,8 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		typeRepo,
 		operatorRepo,
 		countryRepo,
-		&stderr)
+		stderr,
+	)
 
 	if loadErr := dashboard.RestoreState(&appState.InternalState.DashboardState); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
@@ -123,6 +164,13 @@ func Run(appName string, options adsb.RequestOptions) {
 
 	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
 
+	app.start()
+	app.waitForShutdown()
+}
+
+func RunWithDependencies(deps Dependencies) {
+	app := NewWithDependencies(deps)
+	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", app.appName, deps.Options.Lat, deps.Options.Lon)
 	app.start()
 	app.waitForShutdown()
 }

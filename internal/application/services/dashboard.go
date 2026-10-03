@@ -44,13 +44,13 @@ func NewDashboard(lat, lon float64,
 	aircraftTypeRepo rep.AircraftTypeRepo,
 	operatorRepo rep.OperatorRepository,
 	countryRepo rep.CountryRepository,
-	stderr *io.Writer,
+	stderr io.Writer,
 ) *Dashboard {
 	classifier := newReferenceClassifier(
 		aircraftTypeRepo,
 		operatorRepo,
 		countryRepo,
-		log.New(*stderr, "classifier ", log.LstdFlags),
+		log.New(stderr, "classifier ", log.LstdFlags),
 	)
 	dashboard := Dashboard{
 		currentSightings:      []obs.AircraftSighting{},
@@ -67,7 +67,7 @@ func NewDashboard(lat, lon float64,
 		SeenTypeCount:         make(map[string]int),
 		SeenOperatorCount:     make(map[string]int),
 		SeenCountryCount:      make(map[string]int),
-		ErrOut:                *log.New(*stderr, "dashboard ", log.LstdFlags),
+		ErrOut:                *log.New(stderr, "dashboard ", log.LstdFlags),
 	}
 
 	dashboard.ErrOut.Println("Dashboard init")

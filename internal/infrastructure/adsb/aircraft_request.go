@@ -195,7 +195,7 @@ type AircraftRequest struct {
 	errOut         log.Logger
 }
 
-func NewAircraftRequest(opts RequestOptions, stderr *io.Writer) (*AircraftRequest, error) {
+func NewAircraftRequest(opts RequestOptions, stderr io.Writer) (*AircraftRequest, error) {
 	aircraftReqURL, urlErr := createAircraftReqURL(opts)
 	if urlErr != nil {
 		return nil, fmt.Errorf("NewRequest: %w", urlErr)
@@ -215,7 +215,7 @@ func NewAircraftRequest(opts RequestOptions, stderr *io.Writer) (*AircraftReques
 		aircraftReqURL: aircraftReqURL,
 		apiClient:      client,
 		waitGroup:      sync.WaitGroup{},
-		errOut:         *log.New(*stderr, "request ", log.LstdFlags),
+		errOut:         *log.New(stderr, "request ", log.LstdFlags),
 	}
 
 	request.errOut.Println("Request init")

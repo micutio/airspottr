@@ -109,7 +109,7 @@ type FlightrouteRequest struct {
 	cachedFlightroutesMu sync.Mutex
 }
 
-func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
+func NewFlightrouteRequest(stderr io.Writer) (*FlightrouteRequest, error) {
 	client := &http.Client{
 		Timeout: reqTimeout,
 		Transport: &http.Transport{
@@ -123,7 +123,7 @@ func NewFlightrouteRequest(stderr *io.Writer) (*FlightrouteRequest, error) {
 	request := &FlightrouteRequest{
 		apiClient:            client,
 		waitGroup:            sync.WaitGroup{},
-		errOut:               *log.New(*stderr, "request ", log.LstdFlags),
+		errOut:               *log.New(stderr, "request ", log.LstdFlags),
 		pendingCallsigns:     []string{},
 		pendingCallsignsMu:   sync.Mutex{},
 		cachedFlightroutes:   make(map[string]ref.FlightrouteRecord),

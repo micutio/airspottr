@@ -80,9 +80,9 @@ func TestSaveAndLoadState(t *testing.T) {
 		typeRepoMock{},
 		operatorRepoMock{},
 		countryRepoMock{},
-		new(io.Discard))
+		io.Discard)
 
-	request, reqErr := adsb.NewFlightrouteRequest(new(io.Discard))
+	request, reqErr := adsb.NewFlightrouteRequest(io.Discard)
 	if reqErr != nil {
 		t.Fatal(reqErr)
 	}
@@ -110,7 +110,7 @@ func TestSaveAndLoadState(t *testing.T) {
 		typeRepoMock{},
 		operatorRepoMock{},
 		countryRepoMock{},
-		new(io.Discard))
+		io.Discard)
 
 	appState, appStateErr := LoadState(statePath)
 	if appStateErr != nil {

@@ -28,7 +28,7 @@ func setupAircraftRequest(
 	requestOptions adsb.RequestOptions,
 	errWriter io.Writer,
 ) (*adsb.AircraftRequest, error) {
-	aircraftReq, aircraftReqErr := adsb.NewAircraftRequest(requestOptions, &errWriter)
+	aircraftReq, aircraftReqErr := adsb.NewAircraftRequest(requestOptions, errWriter)
 	if aircraftReqErr != nil {
 		return nil, fmt.Errorf("failed to create aircraft request: %w", aircraftReqErr)
 	}
@@ -40,7 +40,7 @@ func setupAircraftRequest(
 func setupFlightrouteRequest(
 	errWriter io.Writer,
 ) (*adsb.FlightrouteRequest, error) {
-	flightrouteReq, flightrouteReqErr := adsb.NewFlightrouteRequest(&errWriter)
+	flightrouteReq, flightrouteReqErr := adsb.NewFlightrouteRequest(errWriter)
 	if flightrouteReqErr != nil {
 		return nil, fmt.Errorf("failed to create flight request: %w", flightrouteReqErr)
 	}
@@ -65,7 +65,7 @@ func setupDashboard(
 		aircraftTypeRepo,
 		operatorRepo,
 		countryRepo,
-		&errWriter)
+		errWriter)
 	if loadErr := dashboard.RestoreState(&state.InternalState.DashboardState); loadErr != nil {
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}

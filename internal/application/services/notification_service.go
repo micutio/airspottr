@@ -14,10 +14,10 @@ type Notify struct {
 	Stdout log.Logger
 }
 
-func NewNotify(appName string, consoleOut *io.Writer) *Notify {
+func NewNotify(appName string, consoleOut io.Writer) *Notify {
 	_ = appName
 	return &Notify{
-		Stdout: *log.New(*consoleOut, "", 0),
+		Stdout: *log.New(consoleOut, "", 0),
 	}
 }
 
