@@ -33,6 +33,7 @@ type TickerApp struct {
 	operatorRepo       rep.OperatorRepository
 	countryRepo        rep.CountryRepository
 	dashboard          *srv.Dashboard
+	refreshUseCase     *srv.RefreshUseCase
 	notify             *noti.BeeepNotifier
 	summaryNotify      *srv.Notify
 	done               chan bool
@@ -89,6 +90,12 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
 	}
 
+	refreshUseCase := srv.NewRefreshUseCase(
+		dashboard,
+		desktopNotify,
+		flightrouteRequest.GetFlightroutes,
+	)
+
 	return &TickerApp{ //nolint:exhaustruct_v5 // no need to init waitgroup
 		appName:            appName,
 		options:            options,
@@ -99,6 +106,7 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		operatorRepo:       operatorRepo,
 		countryRepo:        countryRepo,
 		dashboard:          dashboard,
+		refreshUseCase:     refreshUseCase,
 		notify:             desktopNotify,
 		summaryNotify:      summaryNotify,
 		done:               make(chan bool),
@@ -137,20 +145,7 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.aircraftRequest.RequestAircraft()
-				app.dashboard.ProcessAircraftRecords(aircraftRecords)
-				currentSightings := app.dashboard.GetCurrentSightings()
-				app.notify.EmitRarityNotifications(
-					currentSightings,
-					noti.DefaultRarityNotifyToggles(),
-				)
-
-				// This method checks whether we have flight routes in the cache for all sightings.
-				callsignsWithoutRoute := srv.GetCallsignsRequiringRoutes(currentSightings)
-				if len(callsignsWithoutRoute) > 0 {
-					// For flights without known route we query data from adsbdb.com.
-					routes := app.flightrouteRequest.GetFlightroutes(callsignsWithoutRoute)
-					app.dashboard.AssignFlightRoutes(routes)
-				}
+				app.refreshUseCase.RefreshBatch(aircraftRecords, noti.DefaultRarityNotifyToggles())
 			case <-summaryTicker.C:
 				app.summaryNotify.PrintSummary(app.dashboard)
 			case <-app.done:

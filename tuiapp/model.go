@@ -37,6 +37,7 @@ type model struct {
 	flightrouteRepo repo.FlightrouteRepository
 	typeRepo        repo.AircraftTypeRepo
 	dashboard       *srv.Dashboard
+	refreshUseCase  *srv.RefreshUseCase
 	notify          *noti.BeeepNotifier
 	options         adsb.RequestOptions
 

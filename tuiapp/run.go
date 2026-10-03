@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
@@ -29,8 +30,6 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 			log.Printf("error closing log file: %v", closeErr)
 		}
 	}()
-
-	notify := noti.NewBeeepNotifier(appName, new(io.Discard))
 
 	aircraftReq, err := setupAircraftRequest(requestOptions, errLogFile)
 	if err != nil {
@@ -81,6 +80,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 
 	theme := getDefaultTheme()
 	tables := initTables(theme)
+	notify := noti.NewBeeepNotifier(appName, new(io.Discard))
 
 	appModel := &model{
 		width:             0,
@@ -102,6 +102,7 @@ func Run(appName string, requestOptions adsb.RequestOptions) {
 		flightrouteRepo:   flightrouteReq,
 		typeRepo:          typeRepo,
 		dashboard:         dashboard,
+		refreshUseCase:    srv.NewRefreshUseCase(dashboard, notify, flightrouteReq.GetFlightroutes),
 		notify:            notify,
 		options:           requestOptions,
 		inputFocus:        focusTable,
