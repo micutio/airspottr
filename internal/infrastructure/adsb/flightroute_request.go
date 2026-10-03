@@ -20,6 +20,82 @@ const (
 	FlightRouteQueryThreshold = 10
 )
 
+type flightRouteQueryResponse struct {
+	Response flightRouteResponse `json:"response"`
+}
+
+type flightRouteResponse struct {
+	Flightroute flightRouteDTO `json:"flightroute"`
+}
+
+type flightRouteDTO struct {
+	Callsign     string      `json:"callsign"`
+	CallsignIcao string      `json:"callsign_icao"`
+	CallsignIata string      `json:"callsign_iata"`
+	Airline      airlineDTO  `json:"airline"`
+	Origin       locationDTO `json:"origin"`
+	Destination  locationDTO `json:"destination"`
+}
+
+type airlineDTO struct {
+	Name       string `json:"name"`
+	Icao       string `json:"icao"`
+	Iata       string `json:"iata"`
+	Country    string `json:"country"`
+	CountryIso string `json:"country_iso"`
+	Callsign   string `json:"callsign"`
+}
+
+type locationDTO struct {
+	CountryIsoName string  `json:"country_iso_name"`
+	CountryName    string  `json:"country_name"`
+	Elevation      int     `json:"elevation"`
+	IataCode       string  `json:"iata_code"`
+	IcaoCode       string  `json:"icao_code"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	Municipality   string  `json:"municipality"`
+	Airport        string  `json:"name"`
+}
+
+func (dto flightRouteDTO) toDomain() ref.FlightrouteRecord {
+	return ref.FlightrouteRecord{
+		Callsign:     dto.Callsign,
+		CallsignIcao: dto.CallsignIcao,
+		CallsignIata: dto.CallsignIata,
+		Airline: ref.AirlineRecord{
+			Name:       dto.Airline.Name,
+			Icao:       dto.Airline.Icao,
+			Iata:       dto.Airline.Iata,
+			Country:    dto.Airline.Country,
+			CountryIso: dto.Airline.CountryIso,
+			Callsign:   dto.Airline.Callsign,
+		},
+		Origin: ref.LocationRecord{
+			CountryIsoName: dto.Origin.CountryIsoName,
+			CountryName:    dto.Origin.CountryName,
+			Elevation:      dto.Origin.Elevation,
+			IataCode:       dto.Origin.IataCode,
+			IcaoCode:       dto.Origin.IcaoCode,
+			Latitude:       dto.Origin.Latitude,
+			Longitude:      dto.Origin.Longitude,
+			Municipality:   dto.Origin.Municipality,
+			Airport:        dto.Origin.Airport,
+		},
+		Destination: ref.LocationRecord{
+			CountryIsoName: dto.Destination.CountryIsoName,
+			CountryName:    dto.Destination.CountryName,
+			Elevation:      dto.Destination.Elevation,
+			IataCode:       dto.Destination.IataCode,
+			IcaoCode:       dto.Destination.IcaoCode,
+			Latitude:       dto.Destination.Latitude,
+			Longitude:      dto.Destination.Longitude,
+			Municipality:   dto.Destination.Municipality,
+			Airport:        dto.Destination.Airport,
+		},
+	}
+}
+
 // FlightrouteRequest handles http request commands.
 // Should implement:
 //   - application.FlightrouteRepository
@@ -204,13 +280,13 @@ func createFlightRouteRequestURL(callsign string) (string, error) {
 // FlightRouteRecord.
 // It is then assigned to all flights matching the callsign.
 func (r *FlightrouteRequest) flightRouteJSONToRecord(jsonBytes []byte) (ref.FlightrouteRecord, error) {
-	var data ref.FlightrouteResponse
+	var data flightRouteQueryResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
 		r.errOut.Println(jsonErr)
-		return data.Response.Flightroute, jsonErr
+		return ref.FlightrouteRecord{}, jsonErr
 	}
-	return data.Response.Flightroute, nil
+	return data.Response.Flightroute.toDomain(), nil
 }
 
 // sendRequest builds the API URL from opts, sends an HTTP GET request, and returns the response body.

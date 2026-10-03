@@ -6,47 +6,38 @@ const (
 	NotAvailable string = "N/A"
 )
 
-// FlightrouteResponse reflects the JSON received from calls to adsbdb.
-type FlightrouteResponse struct {
-	Response FlightrouteResult `json:"response"`
-}
-
-// FlightrouteResult reflects the result contained withing FlightrouteResponse.
-type FlightrouteResult struct {
-	Flightroute FlightrouteRecord `json:"flightroute"`
-}
-
-// FlightrouteRecord reflects the actual flightroute data contained in the result.
+// FlightrouteRecord is the domain model for route metadata for a flight callsign.
+// External API adapters map ADS-B DB payloads into this structure.
 type FlightrouteRecord struct {
-	Callsign     string         `json:"callsign"`
-	CallsignIcao string         `json:"callsign_icao"`
-	CallsignIata string         `json:"callsign_iata"`
-	Airline      AirlineRecord  `json:"airline"`
-	Origin       LocationRecord `json:"origin"`
-	Destination  LocationRecord `json:"destination"`
+	Callsign     string
+	CallsignIcao string
+	CallsignIata string
+	Airline      AirlineRecord
+	Origin       LocationRecord
+	Destination  LocationRecord
 }
 
 // AirlineRecord reflects the airline data within FlightrouteRecord.
 type AirlineRecord struct {
-	Name       string `json:"name"`
-	Icao       string `json:"icao"`
-	Iata       string `json:"iata"`
-	Country    string `json:"country"`
-	CountryIso string `json:"country_iso"`
-	Callsign   string `json:"callsign"`
+	Name       string
+	Icao       string
+	Iata       string
+	Country    string
+	CountryIso string
+	Callsign   string
 }
 
 // LocationRecord is used to store data for Flight origin and destination.
 type LocationRecord struct {
-	CountryIsoName string  `json:"country_iso_name"`
-	CountryName    string  `json:"country_name"`
-	Elevation      int     `json:"elevation"`
-	IataCode       string  `json:"iata_code"`
-	IcaoCode       string  `json:"icao_code"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
-	Municipality   string  `json:"municipality"`
-	Airport        string  `json:"name"`
+	CountryIsoName string
+	CountryName    string
+	Elevation      int
+	IataCode       string
+	IcaoCode       string
+	Latitude       float32
+	Longitude      float32
+	Municipality   string
+	Airport        string
 }
 
 func GetDefaultFlightrouteRecord() *FlightrouteRecord {
