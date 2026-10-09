@@ -13,7 +13,7 @@ Both frontends reuse the same core `internal/` package for request handling, air
 
 ## Core components
 
-### main.go
+### cmd/airspottr/main.go
 
 The main entrypoint wires together command-line options and selects the frontend.
 
@@ -21,7 +21,7 @@ The main entrypoint wires together command-line options and selects the frontend
 - `--latlon` / `-l` supplies custom latitude and longitude.
 - `--location` / `-L` selects from predefined coordinates.
 
-If a predefined location is selected, `main.go` replaces any supplied `--latlon` coordinates with the matching latitude and longitude.
+If a predefined location is selected, `cmd/airspottr/main.go` replaces any supplied `--latlon` coordinates with the matching latitude and longitude.
 
 ### internal.Request
 
@@ -128,7 +128,7 @@ The TUI displays current aircraft data, rarity panels, and allows toggling notif
 ## Data flow
 
 1. The CLI parses the location and mode.
-2. `main.go` creates `internal.Request` and `internal.Dashboard`.
+2. `cmd/airspottr/main.go` creates `internal.Request` and `internal.Dashboard`.
 3. Backend updates fetch aircraft from ADS-B APIs.
 4. The dashboard enriches records from local data and computes rarity metrics.
 5. Flight routes are requested for callsigns that lack cached route data.

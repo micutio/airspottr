@@ -26,7 +26,7 @@ Consider reorganizing the repository into the following logical packages:
 - `infrastructure/persistence`
 - `ui/tui`
 - `ui/ticker`
-- `cmd/airspottr` (optional) or keep `main.go` at repository root
+- `cmd/airspottr`
 
 ### Domain layer
 
@@ -211,7 +211,7 @@ A steady migration should minimize churn:
 
 - Keep `tuiapp` and `tickerapp` as thin adapters.
 - Remove any remaining domain logic from UI packages.
-- Update `main.go` or add `cmd/airspottr` to bootstrap dependency injection.
+- Update `cmd/airspottr` to bootstrap dependency injection.
 
 ## Practical considerations
 

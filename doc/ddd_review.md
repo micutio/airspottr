@@ -25,7 +25,7 @@ Existing docs (`ddd-analysis.md`, `ddd-migration-guide.md`, `strategic-ddd.md`) 
 ## Current structure
 
 ```
-main.go                         # CLI: mode + location only
+cmd/airspottr/main.go           # CLI: mode + location only
 tickerapp/  tuiapp/             # presentation (also composition + refresh loop)
 internal/
   domain/
@@ -123,7 +123,7 @@ application → domain + beeep             LEAK
 infrastructure → domain
                → application/services    inward coupling (persistence DTOs)
 tuiapp / tickerapp → application + domain + concrete infrastructure
-main.go → adsb.RequestOptions + UI       not a true composition root
+cmd/airspottr/main.go → adsb.RequestOptions + UI not a true composition root
 ```
 
 | Leak | Where |
@@ -148,7 +148,7 @@ These align with the existing migration recipes; most of them are still open.
 2. **Anti-corruption layer** in `infrastructure/adsb`: map JSON DTOs there; keep a lean domain `Aircraft` / `FlightRoute` without ADS-B noise fields.
 3. **Notification adapter** under `infrastructure/notify`. Application delivers already-decided rare sightings or events; no `beeep` in application.
 4. **One application use case** for the refresh cycle (`Fetch → Process → Routes → Notify → Save`) so ticker and TUI only schedule and render.
-5. **Single composition root** (`cmd/airspottr` or `main.go` wiring only). UI depends on `SpottingService` / `NotificationService`, not concrete repos.
+5. **Single composition root** (`cmd/airspottr` wiring only). UI depends on `SpottingService` / `NotificationService`, not concrete repos.
 6. **Explicit aggregate** (spotting session at a location) with private counts and invariants — also the natural place for per-location history.
 7. **Domain events** (`RareSightingDetected`, optionally `FlightRouteAssigned`) instead of polling `RarityFlag` in the UI.
 8. **State repository port** so persistence does not import application DTO types.

@@ -6,7 +6,7 @@ This document analyzes the current architecture of `airspottr` and identifies ho
 
 `airspottr` currently has the following core modules:
 
-- `main.go` - CLI parsing and frontend selection.
+- `cmd/airspottr/main.go` - CLI parsing and frontend selection.
 - `internal/` - shared application logic, including domain concepts, infrastructure, and orchestration.
 - `internal/dash/` - CSV-backed lookup and geographic utility helpers.
 - `tuiapp/` - Bubble Tea-based terminal UI.

@@ -38,13 +38,13 @@ The application supports two modes:
 Example:
 
 ```bash
-go run . --location hamburg
+go run ./cmd/airspottr --location hamburg
 ```
 
 or to run the ticker:
 
 ```bash
-go run . --ticker --latlon 40.7128,-74.0060
+go run ./cmd/airspottr --ticker --latlon 40.7128,-74.0060
 ```
 
 ### Test
@@ -57,7 +57,7 @@ go test ./...
 
 ## Repository layout
 
-- `main.go` - Application entrypoint and CLI flag handling.
+- `cmd/airspottr/main.go` - Application entrypoint and CLI flag handling.
 - `internal/` - Core logic and domain model.
   - `aircraft.go` - Aircraft JSON model and helper methods.
   - `dashboard.go` - Stateful dashboard that tracks seen aircraft, rarity metrics, fastest/highest aircraft, and enriches sightings.
@@ -82,7 +82,7 @@ It is recommended to provide either a predefined location or latitude/longitude 
 
 ### Predefined locations
 
-Supported predefined locations in `main.go`:
+Supported predefined locations in `cmd/airspottr/main.go`:
 
 - `hamburg`
 - `new-york`
@@ -91,7 +91,7 @@ Supported predefined locations in `main.go`:
 Example:
 
 ```bash
-go run . --location singapore
+go run ./cmd/airspottr --location singapore
 ```
 
 ### Custom coordinates
@@ -99,7 +99,7 @@ go run . --location singapore
 Provide a latitude and longitude pair with `--latlon` or `-l`:
 
 ```bash
-go run . --latlon 52.5200,13.4050
+go run ./cmd/airspottr --latlon 52.5200,13.4050
 ```
 
 ## Extension points

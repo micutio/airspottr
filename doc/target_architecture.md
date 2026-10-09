@@ -17,7 +17,7 @@ internal/
 
 ## Main function
 
-- usually lives in `cmd/youAppName/main.go`
+- usually lives in `cmd/yourAppName/main.go` (e.g. `cmd/airspottr/main.go`)
 - construct concrete repositories
 - injects them into services
 - hands services to controllers
