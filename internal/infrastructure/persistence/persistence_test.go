@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,7 +47,7 @@ func TestLoadStateMigratesLegacyStateToLocationHistory(t *testing.T) {
 	//nolint:exhaustruct_v5 // test migration fixture
 	legacyState := &srv.PersistentState{
 		//nolint:exhaustruct_v5 // test migration fixture
-		DashboardState: srv.DashboardState{
+		DashboardState: &srv.DashboardState{
 			Lat: 1.3521,
 			Lon: 103.8198,
 			SeenTypeCount: map[string]int{
@@ -65,9 +66,195 @@ func TestLoadStateMigratesLegacyStateToLocationHistory(t *testing.T) {
 	if _, ok := loaded.InternalState.LocationStates[key]; !ok {
 		t.Fatalf("expected location history for %s to be present", key)
 	}
-	selected := StateForLocation(loaded, 1.3521, 103.8198)
+	selected, ok := StateForLocation(loaded, 1.3521, 103.8198)
+	if !ok {
+		t.Fatalf("expected state for location %s to be found", key)
+	}
 	if selected.Lat != 1.3521 || selected.Lon != 103.8198 {
 		t.Fatalf("StateForLocation() = (%f,%f), want (1.3521,103.8198)", selected.Lat, selected.Lon)
+	}
+
+	// Another location should not find state or return legacy state.
+	_, okDiff := StateForLocation(loaded, 53.5511, 9.9937)
+	if okDiff {
+		t.Fatal("expected no state for different location")
+	}
+}
+
+func TestLoadStateMigratesRawLegacyJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	statePath := filepath.Join(tmpDir, "airspottr_state.json")
+
+	// Raw legacy JSON without location_states key
+	rawLegacyJSON := []byte(`{
+  "dashboard": {
+    "is_warmup": false,
+    "lat": 1.3521,
+    "lon": 103.8198,
+    "seen_type_count": {
+      "A320": 5
+    },
+    "total_type_count": 1
+  },
+  "request": {
+    "pending_callsigns": ["SIA123"]
+  }
+}`)
+
+	if err := os.WriteFile(statePath, rawLegacyJSON, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadState(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := ref.LocationKey(1.3521, 103.8198)
+	if _, exists := loaded.InternalState.LocationStates[key]; !exists {
+		t.Fatalf("expected legacy state to be migrated into LocationStates under key %s", key)
+	}
+	if loaded.InternalState.DashboardState != nil {
+		t.Fatalf("expected DashboardState to be nil in memory after migration")
+	}
+
+	// Check that the file on disk was migrated to the new format (dashboard key removed).
+	diskBytes, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(diskBytes), `"dashboard"`) {
+		t.Fatalf("expected 'dashboard' key to be removed from migrated JSON file on disk, got: %s", string(diskBytes))
+	}
+	if !strings.Contains(string(diskBytes), `"location_states"`) {
+		t.Fatalf("expected 'location_states' to be present in migrated JSON file on disk, got: %s", string(diskBytes))
+	}
+
+	state, ok := StateForLocation(loaded, 1.3521, 103.8198)
+	if !ok {
+		t.Fatal("expected StateForLocation to return true for legacy location")
+	}
+	if state.TotalTypeCount != 1 || state.SeenTypeCount["A320"] != 5 {
+		t.Fatalf("unexpected state content: %+v", state)
+	}
+
+	// Querying another location must return false, not legacy state
+	_, okOther := StateForLocation(loaded, 53.5511, 9.9937)
+	if okOther {
+		t.Fatal("expected StateForLocation to return false for non-matching location")
+	}
+
+	// Saving a new location to this file must preserve the migrated legacy location
+	hamburgState := &srv.PersistentState{
+		DashboardState: &srv.DashboardState{
+			Lat: 53.5511,
+			Lon: 9.9937,
+			SeenTypeCount: map[string]int{
+				"B738": 3,
+			},
+			TotalTypeCount: 1,
+		},
+	}
+	if err := SaveState(statePath, hamburgState); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := LoadState(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Both locations should now be present
+	singapore, okSin := StateForLocation(reloaded, 1.3521, 103.8198)
+	if !okSin || singapore.SeenTypeCount["A320"] != 5 {
+		t.Fatalf("expected Singapore state to be preserved, got ok=%v, state=%+v", okSin, singapore)
+	}
+
+	hamburg, okHam := StateForLocation(reloaded, 53.5511, 9.9937)
+	if !okHam || hamburg.SeenTypeCount["B738"] != 3 {
+		t.Fatalf("expected Hamburg state to be saved, got ok=%v, state=%+v", okHam, hamburg)
+	}
+
+	// Check that the re-saved file also does NOT contain the legacy dashboard key
+	diskBytesAfterSave, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(diskBytesAfterSave), `"dashboard"`) {
+		t.Fatalf("expected 'dashboard' key to NOT be written by SaveState, got: %s", string(diskBytesAfterSave))
+	}
+}
+
+func TestLoadStateCleansUpDuplicateLegacyAndNewFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	statePath := filepath.Join(tmpDir, "airspottr_state.json")
+
+	// File with duplicate data in both old and new formats
+	duplicateJSON := []byte(`{
+  "dashboard": {
+    "is_warmup": false,
+    "lat": 1.3521,
+    "lon": 103.8198,
+    "seen_type_count": {
+      "A320": 5
+    },
+    "total_type_count": 1
+  },
+  "request": {
+    "pending_callsigns": null
+  },
+  "location_states": {
+    "1.3521,103.8198": {
+      "is_warmup": false,
+      "lat": 1.3521,
+      "lon": 103.8198,
+      "seen_type_count": {
+        "A320": 5
+      },
+      "total_type_count": 1
+    },
+    "53.5511,9.9937": {
+      "is_warmup": false,
+      "lat": 53.5511,
+      "lon": 9.9937,
+      "seen_type_count": {
+        "B738": 3
+      },
+      "total_type_count": 1
+    }
+  }
+}`)
+
+	if err := os.WriteFile(statePath, duplicateJSON, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadState(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if loaded.InternalState.DashboardState != nil {
+		t.Fatal("expected DashboardState to be nil after migration")
+	}
+
+	// Check file on disk: "dashboard" must be removed
+	diskBytes, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(diskBytes), `"dashboard"`) {
+		t.Fatalf("expected 'dashboard' key to be stripped from file on disk, got: %s", string(diskBytes))
+	}
+
+	// Both locations must still be available
+	sin, okSin := StateForLocation(loaded, 1.3521, 103.8198)
+	if !okSin || sin.SeenTypeCount["A320"] != 5 {
+		t.Fatalf("expected Singapore location state to remain intact, got: %+v", sin)
+	}
+	ham, okHam := StateForLocation(loaded, 53.5511, 9.9937)
+	if !okHam || ham.SeenTypeCount["B738"] != 3 {
+		t.Fatalf("expected Hamburg location state to remain intact, got: %+v", ham)
 	}
 }
 
@@ -148,8 +335,20 @@ func TestSaveAndLoadState(t *testing.T) {
 		t.Fatal(appStateErr)
 	}
 
-	if loadDashboardErr := dashboard2.RestoreState(&appState.InternalState.DashboardState); loadDashboardErr != nil {
+	savedDashboard, ok := StateForLocation(appState, 1.0, 2.0)
+	if !ok {
+		t.Fatal("expected location state for (1.0, 2.0) to be found")
+	}
+	if loadDashboardErr := dashboard2.RestoreState(&savedDashboard); loadDashboardErr != nil {
 		t.Fatal(loadDashboardErr)
+	}
+
+	diskBytes, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(diskBytes), `"dashboard"`) {
+		t.Fatalf("expected 'dashboard' key not to be written by SaveState, got: %s", string(diskBytes))
 	}
 
 	if got := dashboard2.SeenTypeCount["A"]; got != 1 {

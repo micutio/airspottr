@@ -127,9 +127,10 @@ func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) 
 		stderr,
 	)
 
-	currentState := pers.StateForLocation(appState, options.Lat, options.Lon)
-	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
-		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
+	if currentState, ok := pers.StateForLocation(appState, options.Lat, options.Lon); ok {
+		if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
+			return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
+		}
 	}
 
 	refreshUseCase := srv.NewRefreshUseCase(

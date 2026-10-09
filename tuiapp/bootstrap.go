@@ -67,9 +67,10 @@ func setupDashboard(
 		operatorRepo,
 		countryRepo,
 		errWriter)
-	currentState := pers.StateForLocation(state, requestOptions.Lat, requestOptions.Lon)
-	if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
-		return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
+	if currentState, ok := pers.StateForLocation(state, requestOptions.Lat, requestOptions.Lon); ok {
+		if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
+			return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
+		}
 	}
 
 	return dashboard, nil

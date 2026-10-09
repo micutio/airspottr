@@ -263,7 +263,7 @@ func (db *Dashboard) SaveState(
 	locationKey := ref.LocationKey(db.Lat, db.Lon)
 
 	return &PersistentState{
-		DashboardState: dashboardState,
+		DashboardState: nil,
 		FlightrouteRepoState: FlightrouteRepoState{
 			PendingCallsigns: append([]string(nil), pendingCallsigns...),
 		},
@@ -272,7 +272,10 @@ func (db *Dashboard) SaveState(
 }
 
 func (db *Dashboard) RestoreState(state *DashboardState) error {
-	if state.Lat != db.Lat || state.Lon != db.Lon {
+	if state == nil {
+		return nil
+	}
+	if ref.LocationKey(state.Lat, state.Lon) != ref.LocationKey(db.Lat, db.Lon) {
 		return errCoordMismatch
 	}
 
@@ -280,7 +283,7 @@ func (db *Dashboard) RestoreState(state *DashboardState) error {
 		db.session = obs.NewSpottingSession(ref.NewCoordinates(db.Lat, db.Lon))
 	}
 	if restoreErr := db.session.Restore(obs.State{
-		Observer:         ref.NewCoordinates(state.Lat, state.Lon),
+		Observer:         ref.NewCoordinates(db.Lat, db.Lon),
 		Sightings:        state.AircraftSightings,
 		SeenType:         state.SeenTypeCount,
 		SeenOperator:     state.SeenOperatorCount,
