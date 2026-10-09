@@ -263,7 +263,6 @@ func (db *Dashboard) SaveState(
 	locationKey := ref.LocationKey(db.Lat, db.Lon)
 
 	return &PersistentState{
-		DashboardState: nil,
 		FlightrouteRepoState: FlightrouteRepoState{
 			PendingCallsigns: append([]string(nil), pendingCallsigns...),
 		},

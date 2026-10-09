@@ -21,10 +21,8 @@ type FlightrouteRepoState struct {
 }
 
 type PersistentState struct {
-	// Deprecated: legacy format, migrated to LocationStates
-	DashboardState       *DashboardState           `json:"dashboard,omitempty"`
 	FlightrouteRepoState FlightrouteRepoState      `json:"request"`
-	LocationStates       map[string]DashboardState `json:"location_states,omitempty"`
+	LocationStates       map[string]DashboardState `json:"location_states"`
 }
 
 type DashboardState struct {
