@@ -80,5 +80,5 @@ func StateForLocation(state rep.AirspottrState, latitude, longitude float64) (re
 			return locationState, true
 		}
 	}
-	return rep.DashboardState{}, false
+	return rep.DashboardState{}, false //nolint:exhaustruct_v5 // using default values
 }

@@ -60,13 +60,13 @@ func TestSaveAndLoadMultipleLocations(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveState(statePath, state1); err != nil {
-		t.Fatal(err)
+	if saveErr := SaveState(statePath, state1); saveErr != nil {
+		t.Fatal(saveErr)
 	}
 
-	loaded1, err := LoadState(statePath)
-	if err != nil {
-		t.Fatal(err)
+	loaded1, load1Err := LoadState(statePath)
+	if load1Err != nil {
+		t.Fatal(load1Err)
 	}
 
 	sin, okSin := StateForLocation(loaded1, 1.3521, 103.8198)
@@ -96,19 +96,21 @@ func TestSaveAndLoadMultipleLocations(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveState(statePath, state2); err != nil {
-		t.Fatal(err)
+	if save2Err := SaveState(statePath, state2); save2Err != nil {
+		t.Fatal(save2Err)
 	}
 
-	loaded2, err := LoadState(statePath)
-	if err != nil {
-		t.Fatal(err)
+	loaded2, load2Err := LoadState(statePath)
+	if load2Err != nil {
+		t.Fatal(load2Err)
 	}
 
 	// Both locations must now be present
 	sin2, okSin2 := StateForLocation(loaded2, 1.3521, 103.8198)
 	if !okSin2 || sin2.SeenTypeCount["A320"] != 5 {
-		t.Fatalf("expected Singapore location state to remain intact after adding Hamburg, got ok=%v, state=%+v", okSin2, sin2)
+		t.Fatalf("expected SG state to remain intact after adding HAM, got ok=%v, state=%+v",
+			okSin2,
+			sin2)
 	}
 	ham2, okHam2 := StateForLocation(loaded2, 53.5511, 9.9937)
 	if !okHam2 || ham2.SeenTypeCount["B738"] != 3 {
@@ -122,9 +124,9 @@ func TestSaveAndLoadMultipleLocations(t *testing.T) {
 	}
 
 	// Ensure saved JSON on disk does not contain legacy "dashboard" field
-	diskBytes, err := os.ReadFile(statePath)
-	if err != nil {
-		t.Fatal(err)
+	diskBytes, diskByteErr := os.ReadFile(statePath)
+	if diskByteErr != nil {
+		t.Fatal(diskByteErr)
 	}
 	if strings.Contains(string(diskBytes), `"dashboard"`) {
 		t.Fatalf("expected 'dashboard' key not to be in JSON, got: %s", string(diskBytes))
