@@ -66,6 +66,9 @@ func EvaluateBatch(
 		if identity.Identified || identity.Updated {
 			sighting.LastFlightNo = thisFlightNo
 		}
+		if identity.Updated {
+			sighting.Flightroute = ref.FlightrouteRecord{} //nolint:exhaustruct_v5 // reset to unassigned
+		}
 
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
 		sighting.Distance = ref.Distance(observer, acPos).Kilometers()

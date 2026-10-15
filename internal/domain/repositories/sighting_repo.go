@@ -15,6 +15,6 @@ type SightingRepo interface {
 	// GetAllSightings retrieves all sightings for persisting them on disk.
 	GetAllSightings() map[string]obs.AircraftSighting
 
-	// UpdateFlightroute updates the flightroute of the given sighting.
-	UpdateFlightroute(icaoHex string, flightroute ref.FlightrouteRecord)
+	// UpdateFlightroute updates the flightroute of sightings matching the given callsign.
+	UpdateFlightroute(callsign string, flightroute ref.FlightrouteRecord)
 }

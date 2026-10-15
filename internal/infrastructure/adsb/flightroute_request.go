@@ -188,9 +188,11 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	// 0. Put dummies for the selected callsigns into the cache, so that we do not query for them
 	// again if the database does not have them.
 	for _, callsign := range selectedCallsigns {
+		defaultRoute := *ref.GetDefaultFlightrouteRecord()
 		r.cachedFlightroutesMu.Lock()
-		r.cachedFlightroutes[callsign] = *ref.GetDefaultFlightrouteRecord()
+		r.cachedFlightroutes[callsign] = defaultRoute
 		r.cachedFlightroutesMu.Unlock()
+		flightrouteRecords[callsign] = defaultRoute
 	}
 
 	// 1. Build input urls for selected callsigns
@@ -230,6 +232,9 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 			r.errOut.Println(
 				fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
 					err))
+			continue
+		}
+		if flightrouteRecord.Callsign == "" {
 			continue
 		}
 		flightrouteRecords[flightrouteRecord.Callsign] = flightrouteRecord

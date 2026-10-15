@@ -188,7 +188,7 @@ func (db *Dashboard) GetHighest() obs.AircraftRecord {
 // It returns a list of callsigns without known routes, to allow querying
 // online for these cases.
 func GetCallsignsRequiringRoutes(currentSightings []obs.AircraftSighting) []string {
-	defaultFlightrouteRecord := *ref.GetDefaultFlightrouteRecord()
+	emptyFlightroute := ref.FlightrouteRecord{} //nolint:exhaustruct_v5 // zero-value check
 	var callsignsWithoutRoute []string
 	for _, sighting := range currentSightings {
 		if sighting.LastFlightNo == obs.FlightUnknown {
@@ -196,7 +196,7 @@ func GetCallsignsRequiringRoutes(currentSightings []obs.AircraftSighting) []stri
 			continue
 		}
 
-		if sighting.Flightroute != defaultFlightrouteRecord {
+		if sighting.Flightroute != emptyFlightroute {
 			// A Flight route is already set.
 			continue
 		}
@@ -209,26 +209,26 @@ func GetCallsignsRequiringRoutes(currentSightings []obs.AircraftSighting) []stri
 
 // AssignFlightRoutes assigns the given Flight routes to all flights matching the callsign.
 func (db *Dashboard) AssignFlightRoutes(flightRouteRecords map[string]ref.FlightrouteRecord) {
-	defaultFlightrouteRecord := *ref.GetDefaultFlightrouteRecord()
-	for _, sighting := range db.currentSightings {
+	emptyFlightroute := ref.FlightrouteRecord{} //nolint:exhaustruct_v5 // zero-value check
+	for idx := range db.currentSightings {
+		sighting := &db.currentSightings[idx]
 		if sighting.LastFlightNo == obs.FlightUnknown {
 			// Can't get Flight routes for unknown Flight.
 			continue
 		}
 
-		if sighting.Flightroute != defaultFlightrouteRecord {
+		if sighting.Flightroute != emptyFlightroute {
 			// A Flight route is already set.
 			continue
 		}
 
 		if flightRoute, ok := flightRouteRecords[sighting.LastFlightNo]; ok {
 			sighting.Flightroute = flightRoute
-			continue
 		}
 	}
 
-	for hexCode, flightRoute := range flightRouteRecords {
-		db.sightingRepo.UpdateFlightroute(hexCode, flightRoute)
+	for callsign, flightRoute := range flightRouteRecords {
+		db.sightingRepo.UpdateFlightroute(callsign, flightRoute)
 	}
 }
 

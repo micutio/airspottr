@@ -33,12 +33,11 @@ func (sgtRepo *SightingRepo) GetAllSightings() map[string]obs.AircraftSighting {
 }
 
 // UpdateFlightroute implements the repositories.SightingRepo interface method.
-func (sgtRepo *SightingRepo) UpdateFlightroute(icaoHex string, flightroute ref.FlightrouteRecord) {
-	sighting, exists := sgtRepo.sightings[icaoHex]
-	if !exists {
-		return
+func (sgtRepo *SightingRepo) UpdateFlightroute(callsign string, flightroute ref.FlightrouteRecord) {
+	for hex, sighting := range sgtRepo.sightings {
+		if sighting.LastFlightNo == callsign {
+			sighting.Flightroute = flightroute
+			sgtRepo.sightings[hex] = sighting
+		}
 	}
-
-	sighting.Flightroute = flightroute
-	sgtRepo.sightings[icaoHex] = sighting
 }

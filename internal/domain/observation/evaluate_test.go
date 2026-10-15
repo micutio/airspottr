@@ -163,11 +163,18 @@ func TestEvaluateBatchDifferentFlightIncrementsAgain(t *testing.T) {
 	state := emptyState()
 	EvaluateBatch(&state, []AircraftRecord{first}, classifier, time.Now())
 
+	s := state.Sightings[first.Hex]
+	s.Flightroute = *ref.GetDefaultFlightrouteRecord()
+	state.Sightings[first.Hex] = s
+
 	second := first
 	second.Flight = "DLH456"
 	current := EvaluateBatch(&state, []AircraftRecord{second}, classifier, time.Now())
 	if current[0].LastFlightNo != "DLH456" {
 		t.Fatalf("LastFlightNo = %q, want DLH456", current[0].LastFlightNo)
+	}
+	if current[0].Flightroute != (ref.FlightrouteRecord{}) {
+		t.Fatalf("expected Flightroute reset on flight update, got %#v", current[0].Flightroute)
 	}
 	if state.SightedTypes != 2 {
 		t.Fatalf("SightedTypes = %d, want 2", state.SightedTypes)
