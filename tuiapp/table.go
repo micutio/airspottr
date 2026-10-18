@@ -193,7 +193,7 @@ func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormat
 func aircraftToRow(sighting obs.AircraftSighting, route ref.FlightrouteRecord) table.Row {
 	return table.Row{
 		fmt.Sprintf("%3.0f", sighting.Distance),
-		sighting.LastRecord.GetFlightNoAsStr(),
+		sighting.LastRecord.GetCallsignAsStr(),
 		sighting.TypeDesc,
 		route.Origin.IataCode,
 		route.Destination.IataCode,

@@ -20,7 +20,7 @@ func TestFlightToAirlineConversion(t *testing.T) {
 			Flight: flight.flightNo,
 		}
 
-		icaoCode := aircraft.GetFlightNoAsIcaoCode()
+		icaoCode := aircraft.GetCallsignAsIcaoCode()
 
 		if icaoCode != flight.expectedCode {
 			t.Errorf("fail: want %v, got %v", flight.expectedCode, icaoCode)

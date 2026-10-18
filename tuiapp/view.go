@@ -92,7 +92,7 @@ func (m *model) viewHeader() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("ALT", highest.GetAltitudeAsStr()),
-					listItem("FNO", highest.GetFlightNoAsStr()),
+					listItem("FNO", highest.GetCallsignAsStr()),
 					listItem("REG", highest.Registration),
 					listItem("TID", highestType.Make),
 				),
@@ -100,7 +100,7 @@ func (m *model) viewHeader() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
-					listItem("FNO", fastest.GetFlightNoAsStr()),
+					listItem("FNO", fastest.GetCallsignAsStr()),
 					listItem("REG", fastest.Registration),
 					listItem("TID", fastestType.Make),
 				),

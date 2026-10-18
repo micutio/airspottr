@@ -37,8 +37,8 @@ func TestAircraftJSONMapsToDomainModel(t *testing.T) {
 	if aircraft.Hex != "abc123" {
 		t.Fatalf("hex mismatch: got %q", aircraft.Hex)
 	}
-	if aircraft.GetFlightNoAsStr() != "BAW123" {
-		t.Fatalf("callsign mismatch: got %q", aircraft.GetFlightNoAsStr())
+	if aircraft.GetCallsignAsStr() != "BAW123" {
+		t.Fatalf("callsign mismatch: got %q", aircraft.GetCallsignAsStr())
 	}
 	if aircraft.Description != "Airbus A319" {
 		t.Fatalf("description mismatch: got %q", aircraft.Description)

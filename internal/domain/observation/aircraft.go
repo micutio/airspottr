@@ -114,10 +114,13 @@ func (ac *AircraftRecord) GetAltitudeAsStr() string {
 	return AltitudeUnknown
 }
 
-// GetFlightNoAsStr converts the Flight number to a string.
-// Returns either the full Flight number or 'unknown ' if it was not transmitted.
+// GetCallsignAsStr converts the callsign (a.k.a. flight number) to a string.
+// Returns either
+// - the full Flight number
+// or
+// - 'unknown ' if it was not transmitted.
 // TODO: Move or copy this to sighting!
-func (ac *AircraftRecord) GetFlightNoAsStr() string {
+func (ac *AircraftRecord) GetCallsignAsStr() string {
 	if ac.Flight == "" {
 		return FlightUnknown
 	}
@@ -128,20 +131,20 @@ func (ac *AircraftRecord) GetFlightNoAsStr() string {
 	return strings.TrimSpace(callsign.String())
 }
 
-// FlightNo returns the validated flight identifier as a domain value object.
-func (ac *AircraftRecord) FlightNo() (FlightCallsign, error) {
+// ValidatedCallsign returns the validated callsign as domain value object.
+func (ac *AircraftRecord) ValidatedCallsign() (FlightCallsign, error) {
 	return NewFlightCallsign(ac.Flight)
 }
 
-// HexCode returns the validated aircraft hex as a domain value object.
-func (ac *AircraftRecord) HexCode() (AircraftHex, error) {
+// ValidatedIcaoCode returns the validated aircraft code as domain value object.
+func (ac *AircraftRecord) ValidatedIcaoCode() (AircraftHex, error) {
 	return NewAircraftHex(ac.Hex)
 }
 
-// GetFlightNoAsIcaoCode trims whitespaces and digits from the Flight number,
-// resulting in the three-digit icao code for civilian flights and arbitrary length codes
-// for military, government and private flights.
-func (ac *AircraftRecord) GetFlightNoAsIcaoCode() string {
+// GetCallsignAsIcaoCode trims whitespaces and digits from the Flight number,
+// resulting in the three-digit icao code for civilian flights and arbitrary
+// length codes for military, government and private flights.
+func (ac *AircraftRecord) GetCallsignAsIcaoCode() string {
 	if len(ac.Flight) == 0 {
 		return FlightUnknownCode
 	}
@@ -175,7 +178,7 @@ func stripDigits(str string) string {
 // AircraftToString generates a one-liner consisting of the most relevant information about the
 // given aircraft.
 func (ac *AircraftRecord) AircraftToString() string {
-	flight := ac.GetFlightNoAsStr()
+	flight := ac.GetCallsignAsStr()
 	altitude := ac.GetAltitudeAsStr()
 	var aType string
 	if ac.Description != "" {

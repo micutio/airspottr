@@ -8,11 +8,11 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// FlightIdentity describes how a new ADS-B flight number relates to a stored sighting.
+// FlightIdentity describes how a new ADS-B callsign relates to a stored sighting.
 type FlightIdentity struct {
-	Identified bool
-	Updated    bool
-	NewFlight  bool
+	Identified bool // Unknown sighting matches new record with callsign
+	Updated    bool // Known sighting matches new record with new data
+	NewFlight  bool // No previously known sighting matches the new record
 }
 
 // IdentifyFlight compares previous and current flight numbers.
@@ -61,7 +61,7 @@ func EvaluateBatch(
 			sighting.Registration = aircraft.Registration
 		}
 
-		thisFlightNo := aircraft.GetFlightNoAsStr()
+		thisFlightNo := aircraft.GetCallsignAsStr()
 		identity := IdentifyFlight(sighting.LastFlightNo, thisFlightNo, isNew)
 		if identity.Identified || identity.Updated {
 			sighting.LastFlightNo = thisFlightNo
@@ -147,12 +147,12 @@ func classifyOperator(
 		return NoRarity
 	}
 
-	flightNo := aircraft.GetFlightNoAsStr()
+	flightNo := aircraft.GetCallsignAsStr()
 	if flightNo == "" {
 		return NoRarity
 	}
 
-	flightCode := aircraft.GetFlightNoAsIcaoCode()
+	flightCode := aircraft.GetCallsignAsIcaoCode()
 	if flightCode != FlightUnknownCode {
 		if company, _, opExists := classifier.OperatorByIcao(flightCode); opExists {
 			sighting.Operator = company
@@ -193,12 +193,12 @@ func classifyCountry(
 		return NoRarity
 	}
 
-	flightNo := aircraft.GetFlightNoAsStr()
+	flightNo := aircraft.GetCallsignAsStr()
 	if flightNo == "" {
 		return NoRarity
 	}
 
-	flightCode := aircraft.GetFlightNoAsIcaoCode()
+	flightCode := aircraft.GetCallsignAsIcaoCode()
 	if flightCode != FlightUnknownCode {
 		if _, country, exists := classifier.OperatorByIcao(flightCode); exists {
 			sighting.Country = strings.ToUpper(country)
