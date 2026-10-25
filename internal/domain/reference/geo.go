@@ -43,6 +43,10 @@ func ParseCoordinates(latitude, longitude float64) (Coordinates, error) {
 	return coords, nil
 }
 
+// TODO: Is MustCoordinates used anywhere? Remove, if not.
+// Panicing instead of graceful handling should be minimised
+// as much as possible.
+
 // MustCoordinates validates a coordinate pair and panics on invalid input.
 func MustCoordinates(latitude, longitude float64) Coordinates {
 	coords := NewCoordinates(latitude, longitude)
