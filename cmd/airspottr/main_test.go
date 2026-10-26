@@ -7,8 +7,6 @@ import (
 )
 
 func TestBuildAppsWithDifferentLocations(t *testing.T) {
-	t.Chdir("../..")
-
 	locations := []struct {
 		name string
 		lat  float64

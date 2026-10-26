@@ -110,15 +110,6 @@ func TestSaveAndLoadState(t *testing.T) {
 	tmpDir := t.TempDir()
 	statePath := filepath.Join(tmpDir, "airspottr_state.json")
 
-	origWd, wdErr := os.Getwd()
-	if wdErr != nil {
-		t.Fatal(wdErr)
-	}
-	defer func() {
-		t.Chdir(origWd)
-	}()
-	t.Chdir(findRepoRoot(t))
-
 	sighting := obs.AircraftSighting{
 		Rarities:     obs.RareType,
 		LastSeen:     now(),
@@ -210,23 +201,4 @@ func TestSaveAndLoadState(t *testing.T) {
 
 func now() time.Time {
 	return time.Now().UTC().Truncate(time.Second)
-}
-
-func findRepoRoot(t *testing.T) string {
-	workingDir, wdErr := os.Getwd()
-	if wdErr != nil {
-		t.Fatal(wdErr)
-	}
-	for range 10 {
-		candidate := filepath.Join(workingDir, "data", "ICAOList.csv")
-		if _, statErr := os.Stat(candidate); statErr == nil {
-			return workingDir
-		}
-		if workingDir == filepath.Dir(workingDir) {
-			break
-		}
-		workingDir = filepath.Dir(workingDir)
-	}
-	t.Fatal("could not locate repository root")
-	return ""
 }

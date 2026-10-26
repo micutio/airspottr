@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
-	"os"
 	"strconv"
 	"strings"
 
+	rawdata "github.com/micutio/airspottr/data"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
-	icaoListPath            = "./data/ICAOList.csv"
-	airlineListPath         = "./data/Airlines.csv"
-	milCodeFilePath         = "./data/MilICAOOperatorLookUp.csv"
-	regPrefixListPath       = "./data/RegPrefixList.csv"
-	hexRangeListPath        = "./data/ICAOHexRange.csv"
+	icaoListPath            = "ICAOList.csv"
+	airlineListPath         = "Airlines.csv"
+	milCodeFilePath         = "MilICAOOperatorLookUp.csv"
+	regPrefixListPath       = "RegPrefixList.csv"
+	hexRangeListPath        = "ICAOHexRange.csv"
 	icaoAircraftHeaderCount = 4
 	icaoAirlineHeaderCount  = 4
 	milCodeHeaderCount      = 2
@@ -159,7 +159,7 @@ func (c *Classifier) CountryByRegistration(registration string) (string, bool) {
 }
 
 func readCSV(filePath string, expectedHeaders int, onRow func(record []string) error) error {
-	file, err := os.Open(filePath)
+	file, err := rawdata.Files.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("open %s: %w", filePath, err)
 	}
