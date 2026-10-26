@@ -11,7 +11,6 @@ import (
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
-	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 	"github.com/micutio/airspottr/tickerapp"
 	"github.com/micutio/airspottr/tuiapp"
@@ -62,63 +61,56 @@ func main() {
 	tuiapp.RunWithDependencies(app)
 }
 
-func buildTickerApp(appName string, options adsb.RequestOptions) (tickerapp.Dependencies, error) {
-	stdout := os.Stdout
-	stderr := os.Stderr
-	logger := slog.Default()
-	desktopNotify := noti.NewBeeepNotifier(appName, stdout)
-
+func buildCoreServices(
+	options adsb.RequestOptions,
+	errOut io.Writer,
+) (*adsb.AircraftRequest, *adsb.FlightrouteRequest, *srv.Dashboard, error) {
 	appState, appStateErr := pers.LoadState(pers.StateFilePath())
 	if appStateErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("load app state: %w", appStateErr)
+		return nil, nil, nil, fmt.Errorf("load app state: %w", appStateErr)
 	}
 
-	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, stderr)
-	if aircraftRequestErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("new aircraft request: %w", aircraftRequestErr)
+	aircraftReq, aircraftErr := adsb.NewAircraftRequest(options, errOut)
+	if aircraftErr != nil {
+		return nil, nil, nil, fmt.Errorf("new aircraft request: %w", aircraftErr)
 	}
-	flightrouteRequest, flightrouteRequestErr := adsb.NewFlightrouteRequest(stderr)
-	if flightrouteRequestErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("new flight route request: %w", flightrouteRequestErr)
-	}
-
-	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
-	if typeRepoErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("new aircraft type repo: %w", typeRepoErr)
-	}
-	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
-	if operatorRepoErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("new operator repo: %w", operatorRepoErr)
-	}
-	countryRepo, countryRepoErr := data.NewCountryRepo()
-	if countryRepoErr != nil {
-		return tickerapp.Dependencies{}, fmt.Errorf("new country repo: %w", countryRepoErr)
+	flightrouteReq, flightrouteErr := adsb.NewFlightrouteRequest(errOut)
+	if flightrouteErr != nil {
+		return nil, nil, nil, fmt.Errorf("new flight route request: %w", flightrouteErr)
 	}
 
-	dashboard := srv.NewDashboard(
-		options.Lat,
-		options.Lon,
-		observation.NewSightingRepo(),
-		typeRepo,
-		operatorRepo,
-		countryRepo,
-		stderr,
-	)
+	classifier, classifierErr := data.NewClassifier(errOut)
+	if classifierErr != nil {
+		return nil, nil, nil, fmt.Errorf("load reference data: %w", classifierErr)
+	}
+
+	dashboard := srv.NewDashboard(options.Lat, options.Lon, classifier, errOut)
 	if currentState, ok := pers.StateForLocation(appState, options.Lat, options.Lon); ok {
 		if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
-			return tickerapp.Dependencies{}, fmt.Errorf("restore dashboard state: %w", loadErr)
+			return nil, nil, nil, fmt.Errorf("restore dashboard state: %w", loadErr)
 		}
 	}
 
-	refreshUseCase := srv.NewRefreshUseCase(dashboard, desktopNotify, flightrouteRequest.GetFlightroutes)
+	return aircraftReq, flightrouteReq, dashboard, nil
+}
+
+func buildTickerApp(appName string, options adsb.RequestOptions) (tickerapp.Dependencies, error) {
+	stdout := os.Stdout
+	stderr := os.Stderr
+	aircraftReq, flightrouteReq, dashboard, err := buildCoreServices(options, stderr)
+	if err != nil {
+		return tickerapp.Dependencies{}, err
+	}
+
+	desktopNotify := noti.NewBeeepNotifier(appName, stdout)
+	dashboard.ConfigureRefresh(desktopNotify, flightrouteReq.GetFlightroutes)
 	return tickerapp.Dependencies{
 		AppName:            appName,
 		Options:            options,
-		Logger:             logger,
-		AircraftRequest:    aircraftRequest,
-		FlightrouteRequest: flightrouteRequest,
+		Logger:             slog.Default(),
+		AircraftRequest:    aircraftReq,
+		FlightrouteRequest: flightrouteReq,
 		Dashboard:          dashboard,
-		RefreshUseCase:     refreshUseCase,
 		Notify:             desktopNotify,
 		SummaryNotify:      srv.NewNotify(appName, stdout),
 		Done:               make(chan bool),
@@ -132,56 +124,19 @@ func buildTUIApp(appName string, options adsb.RequestOptions) (tuiapp.Dependenci
 	if err != nil {
 		return tuiapp.Dependencies{}, fmt.Errorf("open log file: %w", err)
 	}
-	aircraftReq, aircraftErr := adsb.NewAircraftRequest(options, errLogFile)
-	if aircraftErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("new aircraft request: %w", aircraftErr)
-	}
-	flightrouteReq, flightrouteErr := adsb.NewFlightrouteRequest(errLogFile)
-	if flightrouteErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("new flight route request: %w", flightrouteErr)
-	}
-
-	appState, appStateErr := pers.LoadState(pers.StateFilePath())
-	if appStateErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("load app state: %w", appStateErr)
-	}
-	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
-	if typeRepoErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("new aircraft type repo: %w", typeRepoErr)
-	}
-	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
-	if operatorRepoErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("new operator repo: %w", operatorRepoErr)
-	}
-	countryRepo, countryRepoErr := data.NewCountryRepo()
-	if countryRepoErr != nil {
-		return tuiapp.Dependencies{}, fmt.Errorf("new country repo: %w", countryRepoErr)
-	}
-
-	dashboard := srv.NewDashboard(
-		options.Lat,
-		options.Lon,
-		observation.NewSightingRepo(),
-		typeRepo,
-		operatorRepo,
-		countryRepo,
-		errLogFile,
-	)
-	if currentState, ok := pers.StateForLocation(appState, options.Lat, options.Lon); ok {
-		if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
-			return tuiapp.Dependencies{}, fmt.Errorf("restore dashboard state: %w", loadErr)
-		}
+	aircraftReq, flightrouteReq, dashboard, err := buildCoreServices(options, errLogFile)
+	if err != nil {
+		_ = errLogFile.Close()
+		return tuiapp.Dependencies{}, err
 	}
 	dashboard.FinishWarmupPeriod()
 
-	notify := noti.NewBeeepNotifier(appName, io.Discard)
 	return tuiapp.Dependencies{
 		AppName:             appName,
 		AircraftSource:      aircraftReq,
 		FlightRouteSource:   flightrouteReq,
-		TypeRepo:            typeRepo,
 		Dashboard:           dashboard,
-		NotificationService: notify,
+		NotificationService: noti.NewBeeepNotifier(appName, io.Discard),
 		RequestOptions:      options,
 		ErrorLog:            errLogFile,
 	}, nil

@@ -58,22 +58,6 @@ func NewSighting(observerLat, observerLon float64, aircraft AircraftRecord, now 
 	}
 }
 
-// ByFlight implements the comparator interface and allows sorting a list of aircraft records
-// by Flight.
-type ByFlight []AircraftSighting
-
-func (a ByFlight) Len() int           { return len(a) }
-func (a ByFlight) Less(i, j int) bool { return a[i].LastFlightNo < a[j].LastFlightNo }
-func (a ByFlight) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-// ByDistance implements the comparator interface and allows sorting a list of aircraft records.
-// by distance to a given lon,lat coordinate.
-type ByDistance []AircraftSighting
-
-func (a ByDistance) Len() int           { return len(a) }
-func (a ByDistance) Less(i, j int) bool { return a[i].Distance < a[j].Distance }
-func (a ByDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 // SightingToString generates a one-liner consisting of the most relevant information about the
 // given aircraft.
 func (ac *AircraftSighting) SightingToString() string {

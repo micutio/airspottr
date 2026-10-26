@@ -4,7 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	appint "github.com/micutio/airspottr/internal/application/interfaces"
+	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
@@ -34,7 +34,7 @@ func aircraftQueryTick() tea.Cmd {
 
 type AircraftResponseMsg []obs.AircraftRecord
 
-func requestAircraftDataCmd(frr appint.AircraftDataSource) tea.Cmd {
+func requestAircraftDataCmd(frr srv.AircraftDataSource) tea.Cmd {
 	return func() tea.Msg {
 		aircraftData := frr.RequestAircraft()
 		return AircraftResponseMsg(aircraftData)

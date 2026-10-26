@@ -6,9 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	appint "github.com/micutio/airspottr/internal/application/interfaces"
 	srv "github.com/micutio/airspottr/internal/application/services"
-	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
 )
@@ -34,11 +32,9 @@ type model struct {
 	uiState         uiState
 	startTime       time.Time
 	lastUpdate      time.Time
-	aircraftRepo    appint.AircraftDataSource
-	flightrouteRepo appint.FlightRouteDataSource
-	typeRepo        repo.AircraftTypeRepo
+	aircraftRepo    srv.AircraftDataSource
+	flightrouteRepo srv.FlightRouteDataSource
 	dashboard       *srv.Dashboard
-	refreshUseCase  *srv.RefreshUseCase
 	notify          *noti.BeeepNotifier
 	options         adsb.RequestOptions
 

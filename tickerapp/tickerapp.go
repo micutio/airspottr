@@ -14,11 +14,8 @@ import (
 	"time"
 
 	srv "github.com/micutio/airspottr/internal/application/services"
-	rep "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
-	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
-	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
@@ -29,7 +26,6 @@ type Dependencies struct {
 	AircraftRequest    *adsb.AircraftRequest
 	FlightrouteRequest *adsb.FlightrouteRequest
 	Dashboard          *srv.Dashboard
-	RefreshUseCase     *srv.RefreshUseCase
 	Notify             *noti.BeeepNotifier
 	SummaryNotify      *srv.Notify
 	Done               chan bool
@@ -44,11 +40,7 @@ type TickerApp struct {
 	logger             *slog.Logger
 	aircraftRequest    *adsb.AircraftRequest
 	flightrouteRequest *adsb.FlightrouteRequest
-	typeRepo           rep.AircraftTypeRepo
-	operatorRepo       rep.OperatorRepository
-	countryRepo        rep.CountryRepository
 	dashboard          *srv.Dashboard
-	refreshUseCase     *srv.RefreshUseCase
 	notify             *noti.BeeepNotifier
 	summaryNotify      *srv.Notify
 	done               chan bool
@@ -62,112 +54,21 @@ func NewWithDependencies(deps Dependencies) *TickerApp {
 	if deps.Done == nil {
 		deps.Done = make(chan bool)
 	}
+	if deps.Dashboard != nil && deps.FlightrouteRequest != nil {
+		deps.Dashboard.ConfigureRefresh(deps.Notify, deps.FlightrouteRequest.GetFlightroutes)
+	}
 	return &TickerApp{
 		appName:            deps.AppName,
 		options:            deps.Options,
 		logger:             deps.Logger,
 		aircraftRequest:    deps.AircraftRequest,
 		flightrouteRequest: deps.FlightrouteRequest,
-		typeRepo:           nil,
-		operatorRepo:       nil,
-		countryRepo:        nil,
 		dashboard:          deps.Dashboard,
-		refreshUseCase:     deps.RefreshUseCase,
 		notify:             deps.Notify,
 		summaryNotify:      deps.SummaryNotify,
 		done:               deps.Done,
 		wg:                 sync.WaitGroup{},
 	}
-}
-
-// New creates and initializes a new TickerApp.
-func New(appName string, options adsb.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
-	logger := slog.Default()
-	desktopNotify := noti.NewBeeepNotifier(appName, stdout)
-	summaryNotify := srv.NewNotify(appName, stdout)
-
-	aircraftRequest, aircraftRequestErr := adsb.NewAircraftRequest(options, stderr)
-	if aircraftRequestErr != nil {
-		return nil, fmt.Errorf("unable to create request: %w", aircraftRequestErr)
-	}
-
-	flightrouteRequest, flightrouteRequestErr := adsb.NewFlightrouteRequest(stderr)
-	if flightrouteRequestErr != nil {
-		return nil, fmt.Errorf("unable to create request: %w", flightrouteRequestErr)
-	}
-
-	sightingRepo := observation.NewSightingRepo()
-
-	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
-	if typeRepoErr != nil {
-		return nil, fmt.Errorf("unable to create aircraft type repository: %w", typeRepoErr)
-	}
-
-	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
-	if operatorRepoErr != nil {
-		return nil, fmt.Errorf("unable to create operator repository: %w", operatorRepoErr)
-	}
-	countryRepo, countryRepoErr := data.NewCountryRepo()
-	if countryRepoErr != nil {
-		return nil, fmt.Errorf("unable to create country repository: %w", countryRepoErr)
-	}
-
-	appState, appStateErr := pers.LoadState(pers.StateFilePath())
-	if appStateErr != nil {
-		return nil, fmt.Errorf("failed to load app state: %w", appStateErr)
-	}
-
-	dashboard := srv.NewDashboard(
-		options.Lat,
-		options.Lon,
-		sightingRepo,
-		typeRepo,
-		operatorRepo,
-		countryRepo,
-		stderr,
-	)
-
-	if currentState, ok := pers.StateForLocation(appState, options.Lat, options.Lon); ok {
-		if loadErr := dashboard.RestoreState(&currentState); loadErr != nil {
-			return nil, fmt.Errorf("warning: unable to load persisted dashboard state: %w", loadErr)
-		}
-	}
-
-	refreshUseCase := srv.NewRefreshUseCase(
-		dashboard,
-		desktopNotify,
-		flightrouteRequest.GetFlightroutes,
-	)
-
-	return &TickerApp{ //nolint:exhaustruct_v5 // no need to init waitgroup
-		appName:            appName,
-		options:            options,
-		logger:             logger,
-		aircraftRequest:    aircraftRequest,
-		flightrouteRequest: flightrouteRequest,
-		typeRepo:           typeRepo,
-		operatorRepo:       operatorRepo,
-		countryRepo:        countryRepo,
-		dashboard:          dashboard,
-		refreshUseCase:     refreshUseCase,
-		notify:             desktopNotify,
-		summaryNotify:      summaryNotify,
-		done:               make(chan bool),
-	}, nil
-}
-
-// Run is the main entry point for the ticker application.
-func Run(appName string, options adsb.RequestOptions) {
-	app, err := New(appName, options, os.Stdout, os.Stderr)
-	if err != nil {
-		slog.Default().Error("failed to initialize ticker app", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
-
-	app.start()
-	app.waitForShutdown()
 }
 
 func RunWithDependencies(deps Dependencies) {
@@ -195,7 +96,7 @@ func (app *TickerApp) start() {
 			select {
 			case <-aircraftUpdateTicker.C:
 				aircraftRecords := app.aircraftRequest.RequestAircraft()
-				app.refreshUseCase.RefreshBatch(aircraftRecords, noti.DefaultRarityNotifyToggles())
+				app.dashboard.RefreshBatch(aircraftRecords, noti.DefaultRarityNotifyToggles())
 			case <-summaryTicker.C:
 				app.summaryNotify.PrintSummary(app.dashboard)
 			case <-app.done:
@@ -204,7 +105,6 @@ func (app *TickerApp) start() {
 			}
 		}
 	})
-	// WaitGroup.Wait() is called in waitForShutdown() below
 }
 
 // waitForShutdown blocks until an interrupt or terminate signal is received.
@@ -214,7 +114,6 @@ func (app *TickerApp) waitForShutdown() {
 	<-sigc
 	app.logger.Info("Shutdown signal received, stopping...")
 	close(app.done)
-	// Wait for the main goroutine to finish.
 	app.wg.Wait()
 	state := app.dashboard.SaveState(app.flightrouteRequest.GetPendingCallsigns())
 	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {

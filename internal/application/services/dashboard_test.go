@@ -8,34 +8,7 @@ import (
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	infraobs "github.com/micutio/airspottr/internal/infrastructure/observation"
 )
-
-type stubTypeRepo struct{}
-
-func (stubTypeRepo) GetAircraftType(string) (ref.IcaoAircraftSpec, bool) {
-	return ref.IcaoAircraftSpec{}, false
-}
-
-type stubOperatorRepo struct{}
-
-func (stubOperatorRepo) GetOperatorByIcao(string) (ref.IcaoOperator, bool) {
-	return ref.IcaoOperator{}, false
-}
-
-func (stubOperatorRepo) GetOperatorByMilCode(string) (string, bool) {
-	return "", false
-}
-
-type stubCountryRepo struct{}
-
-func (stubCountryRepo) GetCountryByHexCode(string) (string, error) {
-	return "", nil
-}
-
-func (stubCountryRepo) GetCountryByRegistration(string) (string, bool) {
-	return "", false
-}
 
 func TestGetCallsignsRequiringRoutes(t *testing.T) {
 	t.Parallel()
@@ -60,14 +33,10 @@ func TestGetCallsignsRequiringRoutes(t *testing.T) {
 func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 	t.Parallel()
 
-	sightingRepo := infraobs.NewSightingRepo()
 	dashboard := NewDashboard(
 		53.55,
 		9.99,
-		sightingRepo,
-		stubTypeRepo{},
-		stubOperatorRepo{},
-		stubCountryRepo{},
+		nil,
 		io.Discard,
 	)
 
@@ -77,8 +46,7 @@ func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 	expectedRoute.Destination.IataCode = "JFK"
 
 	var requestedCallsigns []string
-	useCase := NewRefreshUseCase(
-		dashboard,
+	dashboard.ConfigureRefresh(
 		nil,
 		func(callsigns []string) map[string]ref.FlightrouteRecord {
 			requestedCallsigns = append(requestedCallsigns, callsigns...)
@@ -96,7 +64,7 @@ func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 		},
 	}
 
-	current := useCase.RefreshBatch(records, obs.RarityNotifyToggles{})
+	current := dashboard.RefreshBatch(records, obs.RarityNotifyToggles{})
 	if !slices.Equal(requestedCallsigns, []string{"BAW123"}) {
 		t.Fatalf("requested callsigns = %v, want [BAW123]", requestedCallsigns)
 	}
@@ -108,9 +76,9 @@ func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 		t.Fatalf("current sighting route not updated: %#v", current[0].Flightroute)
 	}
 
-	stored, exists := sightingRepo.GetAllSightings()["abc123"]
+	stored, exists := dashboard.Sightings["abc123"]
 	if !exists {
-		t.Fatal("expected sighting stored in repo under hex abc123")
+		t.Fatal("expected sighting stored in dashboard under hex abc123")
 	}
 	if stored.Flightroute != expectedRoute {
 		t.Fatalf("stored sighting route = %#v, want %#v", stored.Flightroute, expectedRoute)
@@ -118,7 +86,7 @@ func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 
 	// Subsequent refresh for the same aircraft/flight should preserve the route without re-requesting.
 	requestedCallsigns = nil
-	current = useCase.RefreshBatch(records, obs.RarityNotifyToggles{})
+	current = dashboard.RefreshBatch(records, obs.RarityNotifyToggles{})
 	if len(requestedCallsigns) != 0 {
 		t.Fatalf("expected no route lookup on second pass, got %v", requestedCallsigns)
 	}

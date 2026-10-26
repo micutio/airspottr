@@ -2,6 +2,7 @@ package tuiapp
 
 import (
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Rarity table column order on the global-stats row: Type | Operator | Country.
@@ -11,6 +12,24 @@ const (
 	rarityByCountry
 	rarityTableCount = 3
 )
+
+type tableSetup struct {
+	tables tuiTables
+	style  table.Styles
+}
+
+// initTables creates and configures all tables used in the TUI.
+func initTables(theme Theme) tableSetup {
+	tableStyle := table.DefaultStyles()
+	tableStyle.Header.Padding(0)
+	tableStyle.Cell.Padding(0)
+	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
+
+	return tableSetup{
+		tables: newTuiTables(tableStyle),
+		style:  tableStyle,
+	}
+}
 
 // tuiTables groups all bubble tables and shared layout operations.
 type tuiTables struct {

@@ -23,78 +23,21 @@ const (
 	OperatorUnknown = "unknown"
 )
 
-// AircraftResult is the domain-level result wrapper for an aircraft query.
-// External data adapters map ADS-B payloads into this shape.
-type AircraftResult struct {
-	Now         float64
-	ResultCount int
-	Ptime       float64
-	Aircraft    []AircraftRecord
-}
-
 // AircraftRecord is the lean domain representation of an observed aircraft.
 // ADS-B transport types live in infrastructure/adsb and are converted here.
 type AircraftRecord struct {
-	Alert           int
-	AltBaro         any
-	AltGeom         int
-	BaroRate        float64
-	EmitterCategory string
-	Emergency       string
-	Flight          string
-	GroundSpeed     float64
-	Gva             float64
-	Hex             string
-	Lat             float64
-	Lon             float64
-	Messages        int
-	Mlat            []string
-	NacP            float64
-	NacV            float64
-	NavAltitudeMcp  int
-	NavHeading      float64
-	NavQNH          float64
-	Nic             int
-	NicBaro         int
-	Registration    string
-	RadiusOfCtn     float64
-	Rssi            float64
-	Sda             int
-	Seen            float64
-	SeenPos         float64
-	Sil             int
-	SilType         string
-	Spi             int
-	Squawk          string
-	IcaoType        string
-	Tisb            []string
-	Track           float64
-	Type            string
-	Version         int
-	GeomRate        float64
-	DBFlags         int
-	NavModes        []string
-	TrueHeading     float64
-	Ias             float64
-	Mach            float64
-	MagHeading      float64
-	Oat             float64
-	Roll            float64
-	Tas             float64
-	Tat             float32
-	TrackRate       float64
-	WindDirection   float64
-	WindSpeed       float64
-	GpsOkBefore     float64
-	GpsOkLat        float64
-	GpsOkLon        float64
-	LastPosition    any
-	RrLat           float64
-	RrLon           float64
-	CalcTrack       any
-	NavAltitudeFMS  float64
-	OwnOp           string
-	Description     string
+	Hex          string
+	Flight       string
+	Registration string
+	IcaoType     string
+	Description  string
+	OwnOp        string
+	Lat          float64
+	Lon          float64
+	AltBaro      any
+	GroundSpeed  float64
+	NavHeading   float64
+	Seen         float64
 }
 
 // GetAltitudeAsStr reads the altitude of an aircraft and returns it as a string.
@@ -119,40 +62,23 @@ func (ac *AircraftRecord) GetAltitudeAsStr() string {
 // - the full Flight number
 // or
 // - 'unknown ' if it was not transmitted.
-// TODO: Move or copy this to sighting!
 func (ac *AircraftRecord) GetCallsignAsStr() string {
-	if ac.Flight == "" {
+	normalized := strings.ToUpper(strings.TrimSpace(ac.Flight))
+	if normalized == "" {
 		return FlightUnknown
 	}
-	callsign, err := NewFlightCallsign(ac.Flight)
-	if err != nil {
-		return FlightUnknown
-	}
-	return strings.TrimSpace(callsign.String())
-}
-
-// ValidatedCallsign returns the validated callsign as domain value object.
-func (ac *AircraftRecord) ValidatedCallsign() (FlightCallsign, error) {
-	return NewFlightCallsign(ac.Flight)
-}
-
-// ValidatedIcaoCode returns the validated aircraft code as domain value object.
-func (ac *AircraftRecord) ValidatedIcaoCode() (AircraftHex, error) {
-	return NewAircraftHex(ac.Hex)
+	return normalized
 }
 
 // GetCallsignAsIcaoCode trims whitespaces and digits from the Flight number,
 // resulting in the three-digit icao code for civilian flights and arbitrary
 // length codes for military, government and private flights.
 func (ac *AircraftRecord) GetCallsignAsIcaoCode() string {
-	if len(ac.Flight) == 0 {
+	normalized := strings.ToUpper(strings.TrimSpace(ac.Flight))
+	if normalized == "" {
 		return FlightUnknownCode
 	}
-	callsign, err := NewFlightCallsign(ac.Flight)
-	if err != nil {
-		return FlightUnknownCode
-	}
-	return stripDigits(strings.TrimSpace(callsign.String()))
+	return stripDigits(normalized)
 }
 
 // GetRegistrationPrefix returns the prefix of the registration if it exists,

@@ -8,95 +8,20 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	appint "github.com/micutio/airspottr/internal/application/interfaces"
 	srv "github.com/micutio/airspottr/internal/application/services"
-	repo "github.com/micutio/airspottr/internal/domain/repositories"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
-	"github.com/micutio/airspottr/internal/infrastructure/data"
 	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
-	"github.com/micutio/airspottr/internal/infrastructure/observation"
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
 type Dependencies struct {
 	AppName             string
-	AircraftSource      appint.AircraftDataSource
-	FlightRouteSource   appint.FlightRouteDataSource
-	TypeRepo            repo.AircraftTypeRepo
+	AircraftSource      srv.AircraftDataSource
+	FlightRouteSource   srv.FlightRouteDataSource
 	Dashboard           *srv.Dashboard
-	NotificationService appint.NotificationService
+	NotificationService srv.NotificationService
 	RequestOptions      adsb.RequestOptions
 	ErrorLog            io.Writer
-}
-
-// Run starts the TUI. It exits the process if dashboard or request setup fails.
-func Run(appName string, requestOptions adsb.RequestOptions) {
-	errLogFile, err := setupLogger()
-	if err != nil {
-		log.Fatalf("failed to set up logging: %v", err)
-	}
-	defer func() {
-		if closeErr := errLogFile.Close(); closeErr != nil {
-			log.Printf("error closing log file: %v", closeErr)
-		}
-	}()
-
-	appState, appStateErr := pers.LoadState(pers.StateFilePath())
-	if appStateErr != nil {
-		log.Printf("failed to load app state: %v", appStateErr)
-	}
-
-	typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
-	if typeRepoErr != nil {
-		log.Printf("failed to create aircraft type repo: %v", typeRepoErr)
-		return
-	}
-	operatorRepo, operatorRepoErr := data.NewOperatorRepo()
-	if operatorRepoErr != nil {
-		log.Printf("failed to set up operator repository: %v", operatorRepoErr)
-		return
-	}
-	countryRepo, countryRepoErr := data.NewCountryRepo()
-	if countryRepoErr != nil {
-		log.Printf("unable to create country repository: %v", countryRepoErr)
-		return
-	}
-
-	dashboard, err := setupDashboard(
-		appState,
-		requestOptions,
-		observation.NewSightingRepo(),
-		typeRepo,
-		operatorRepo,
-		countryRepo,
-		errLogFile,
-	)
-	if err != nil {
-		log.Printf("failed to set up dashboard and request: %v", err)
-		return
-	}
-	dashboard.FinishWarmupPeriod()
-	flightrouteReq, flightrouteErr := setupFlightrouteRequest(errLogFile)
-	if flightrouteErr != nil {
-		log.Printf("failed to setup flightroute request: %v", flightrouteErr)
-		return
-	}
-	aircraftReq, aircraftErr := setupAircraftRequest(requestOptions, errLogFile)
-	if aircraftErr != nil {
-		log.Printf("failed to setup aircraft request: %v", aircraftErr)
-		return
-	}
-	notify := noti.NewBeeepNotifier(appName, io.Discard)
-	RunWithDependencies(Dependencies{
-		AppName:             appName,
-		AircraftSource:      aircraftReq,
-		FlightRouteSource:   flightrouteReq,
-		TypeRepo:            typeRepo,
-		Dashboard:           dashboard,
-		NotificationService: notify,
-		RequestOptions:      requestOptions,
-		ErrorLog:            errLogFile,
-	})
 }
 
 func RunWithDependencies(deps Dependencies) {
@@ -112,14 +37,6 @@ func RunWithDependencies(deps Dependencies) {
 		log.Printf("aircraft and route sources are required for TUI startup")
 		return
 	}
-	if deps.TypeRepo == nil {
-		typeRepo, typeRepoErr := data.NewAircraftTypeRepo()
-		if typeRepoErr != nil {
-			log.Printf("failed to create aircraft type repo for TUI: %v", typeRepoErr)
-			return
-		}
-		deps.TypeRepo = typeRepo
-	}
 	notifyInstance := noti.NewBeeepNotifier(deps.AppName, io.Discard)
 	if concreteNotify, ok := deps.NotificationService.(*noti.BeeepNotifier); ok {
 		notifyInstance = concreteNotify
@@ -128,8 +45,7 @@ func RunWithDependencies(deps Dependencies) {
 
 	theme := getDefaultTheme()
 	tables := initTables(theme)
-	refreshUseCase := srv.NewRefreshUseCase(
-		deps.Dashboard,
+	deps.Dashboard.ConfigureRefresh(
 		deps.NotificationService,
 		deps.FlightRouteSource.GetFlightroutes,
 	)
@@ -152,9 +68,7 @@ func RunWithDependencies(deps Dependencies) {
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      deps.AircraftSource,
 		flightrouteRepo:   deps.FlightRouteSource,
-		typeRepo:          deps.TypeRepo,
 		dashboard:         deps.Dashboard,
-		refreshUseCase:    refreshUseCase,
 		notify:            notifyInstance,
 		options:           deps.RequestOptions,
 		inputFocus:        focusTable,

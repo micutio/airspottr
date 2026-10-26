@@ -5,20 +5,7 @@ import (
 	"testing"
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
-
-type TypeRepoMock struct{}
-
-// GetAircraftType implements the AircraftTypeRepo interface of
-// the same name.
-func (mock *TypeRepoMock) GetAircraftType(icaoCode string) (ref.IcaoAircraftSpec, bool) {
-	return ref.IcaoAircraftSpec{
-		Class:  icaoCode,
-		Engine: icaoCode,
-		Make:   icaoCode,
-	}, true
-}
 
 func TestFilteredSortedSightingsByDistance(t *testing.T) {
 	t.Parallel()
@@ -40,16 +27,15 @@ func TestFilteredSortedSightingsByDistance(t *testing.T) {
 			LastFlightNo: "A",
 		},
 	}
-	typeRepo := TypeRepoMock{}
 
-	out := filteredSortedSightings(currentSightings, &typeRepo, 0, false) // DST asc
+	out := filteredSortedSightings(currentSightings, 0, false) // DST asc
 	if len(out) != 2 {
 		t.Fatalf("len %d", len(out))
 	}
 	if out[0].LastRecord.Hex != "b" || out[1].LastRecord.Hex != "a" {
 		t.Errorf("order %+v", out)
 	}
-	out = filteredSortedSightings(currentSightings, &typeRepo, 0, true)
+	out = filteredSortedSightings(currentSightings, 0, true)
 	if out[0].LastRecord.Hex != "a" {
 		t.Errorf("desc first want a got %s", out[0].LastRecord.Hex)
 	}

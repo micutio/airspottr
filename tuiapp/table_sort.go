@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	"github.com/micutio/airspottr/internal/domain/reference"
-	"github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 const (
@@ -77,7 +76,6 @@ func altitudeSortKey(aircraftSighting obs.AircraftSighting) float64 {
 func compareSightingsAscending(
 	sightingA, sightingB obs.AircraftSighting,
 	col int,
-	typeRepo repositories.AircraftTypeRepo,
 ) bool {
 	dstCol := 0
 	fnoCol := 1
@@ -99,17 +97,8 @@ func compareSightingsAscending(
 			return sa < sb
 		}
 	case tidCol: // TID
-		// TODO: Can we cache AircraftType somewhere?
-		typeA, taExists := typeRepo.GetAircraftType(sightingA.LastRecord.IcaoType)
-		if !taExists {
-			return false
-		}
-		typeB, tbExists := typeRepo.GetAircraftType(sightingB.LastRecord.IcaoType)
-		if !tbExists {
-			return false
-		}
-		if typeA.Make != typeB.Make {
-			return typeA.Make < typeB.Make
+		if sightingA.TypeDesc != sightingB.TypeDesc {
+			return sightingA.TypeDesc < sightingB.TypeDesc
 		}
 	case depCol: // DEP
 		da, dbi := routeA.Origin.IataCode, routeB.Origin.IataCode
@@ -140,20 +129,18 @@ func compareSightingsAscending(
 
 func filteredSortedSightings(
 	currentSightings []obs.AircraftSighting,
-	typeRepo repositories.AircraftTypeRepo,
 	sortCol int,
 	desc bool,
 ) []obs.AircraftSighting {
 	var rows []obs.AircraftSighting
 	for _, ac := range currentSightings {
-		aircraftType, atExists := typeRepo.GetAircraftType(ac.LastRecord.IcaoType)
-		if !atExists || (ac.LastFlightNo == "" && aircraftType.Make == "") {
+		if ac.TypeDesc == obs.TypeUnknown || (ac.LastFlightNo == "" && ac.TypeDesc == "") {
 			continue
 		}
 		rows = append(rows, ac)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		less := compareSightingsAscending(rows[i], rows[j], sortCol, typeRepo)
+		less := compareSightingsAscending(rows[i], rows[j], sortCol)
 		if desc {
 			return !less
 		}

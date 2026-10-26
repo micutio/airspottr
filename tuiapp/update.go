@@ -30,7 +30,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 func (m *model) processAircraftResponse(msg AircraftResponseMsg) {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []obs.AircraftRecord(msg)
-	m.refreshUseCase.RefreshBatch(aircraftRecords, obs.RarityNotifyToggles{
+	m.dashboard.RefreshBatch(aircraftRecords, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
 		Country:  m.notifyOnCountry,
@@ -39,6 +39,6 @@ func (m *model) processAircraftResponse(msg AircraftResponseMsg) {
 }
 
 func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) {
-	m.refreshUseCase.AssignFlightRoutes(msg)
+	m.dashboard.AssignFlightRoutes(msg)
 	m.updateAllTables()
 }

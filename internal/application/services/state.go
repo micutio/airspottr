@@ -1,19 +1,64 @@
 package services
 
-import rep "github.com/micutio/airspottr/internal/domain/repositories"
+import (
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
+)
 
-// AirspottrState is kept as a compatibility alias while the persisted-state model lives in the
-// repositories layer.
-type AirspottrState = rep.AirspottrState
+// AircraftDataSource represents a source of fresh aircraft observations.
+type AircraftDataSource interface {
+	RequestAircraft() []obs.AircraftRecord
+}
 
-// PersistedRareSighting is kept as a compatibility alias.
-type PersistedRareSighting = rep.PersistedRareSighting
+// FlightRouteDataSource represents a source of flight routes keyed by callsign.
+type FlightRouteDataSource interface {
+	GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord
+	GetPendingCallsigns() []string
+	RestorePendingCallsigns(pendingCallsigns []string)
+}
 
-// FlightrouteRepoState is kept as a compatibility alias.
-type FlightrouteRepoState = rep.FlightrouteRepoState
+// NotificationService emits rarity notifications for newly observed sightings.
+type NotificationService interface {
+	EmitRarityNotifications(sightings []obs.AircraftSighting, toggles obs.RarityNotifyToggles)
+	DefaultRarityNotifyToggles() obs.RarityNotifyToggles
+}
 
-// PersistentState is kept as a compatibility alias.
-type PersistentState = rep.PersistentState
+// AirspottrState encapsulates the internal state of the app to hide the exported JSON fields of
+// PersistentState.
+type AirspottrState struct {
+	InternalState PersistentState
+}
 
-// DashboardState is kept as a compatibility alias.
-type DashboardState = rep.DashboardState
+type PersistedRareSighting struct {
+	Rarities obs.RarityFlag `json:"rarities"`
+	Hex      string         `json:"hex"`
+}
+
+type FlightrouteRepoState struct {
+	PendingCallsigns []string `json:"pending_callsigns"`
+}
+
+type PersistentState struct {
+	FlightrouteRepoState FlightrouteRepoState      `json:"request"`
+	LocationStates       map[string]DashboardState `json:"location_states"`
+}
+
+type DashboardState struct {
+	IsWarmup        bool                 `json:"is_warmup"`
+	Lat             float64              `json:"lat"`
+	Lon             float64              `json:"lon"`
+	Fastest         obs.AircraftRecord   `json:"fastest"`
+	Highest         obs.AircraftRecord   `json:"highest"`
+	CurrentAircraft []obs.AircraftRecord `json:"current_aircraft"`
+	// Deprecated: no longer in use
+	RareSightings []PersistedRareSighting `json:"rare_sightings"`
+	// Deprecated: no longer in use
+	CachedFlightRoutes map[string]*ref.FlightrouteRecord `json:"cached_flight_routes"`
+	AircraftSightings  map[string]obs.AircraftSighting   `json:"aircraft_sightings"`
+	TotalTypeCount     int                               `json:"total_type_count"`
+	TotalOperatorCount int                               `json:"total_operator_count"`
+	TotalCountryCount  int                               `json:"total_country_count"`
+	SeenTypeCount      map[string]int                    `json:"seen_type_count"`
+	SeenOperatorCount  map[string]int                    `json:"seen_operator_count"`
+	SeenCountryCount   map[string]int                    `json:"seen_country_count"`
+}

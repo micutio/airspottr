@@ -40,7 +40,6 @@ func (m *model) applySortHeadersAfterResize() {
 func (m *model) updateAllTables() {
 	records := filteredSortedSightings(
 		m.dashboard.GetCurrentSightings(),
-		m.typeRepo,
 		m.aircraftSortCol,
 		m.aircraftSortDesc)
 	rows := buildAircraftRows(records)
@@ -48,9 +47,9 @@ func (m *model) updateAllTables() {
 	applyAircraftSortHeaders(&m.tables.aircraft.table, m.aircraftSortCol, m.aircraftSortDesc)
 
 	raritySources := [rarityTableCount]map[string]int{
-		m.dashboard.SeenTypeCount,
-		m.dashboard.SeenOperatorCount,
-		m.dashboard.SeenCountryCount,
+		m.dashboard.SeenType,
+		m.dashboard.SeenOperator,
+		m.dashboard.SeenCountry,
 	}
 	for idx := range m.tables.rarities {
 		byProperty := m.raritySortCol[idx] == 1

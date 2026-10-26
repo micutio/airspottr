@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	srv "github.com/micutio/airspottr/internal/application/services"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
-	rep "github.com/micutio/airspottr/internal/domain/repositories"
 )
 
 var errNilState = errors.New("save state: state is nil")
@@ -24,13 +24,13 @@ func StateFilePath() string {
 	return filepath.Join(configDir, "airspottr", stateFileName)
 }
 
-func SaveState(filePath string, state *rep.PersistentState) error {
+func SaveState(filePath string, state *srv.PersistentState) error {
 	if state == nil {
 		return errNilState
 	}
 	if existingState, err := LoadState(filePath); err == nil {
 		if state.LocationStates == nil {
-			state.LocationStates = make(map[string]rep.DashboardState)
+			state.LocationStates = make(map[string]srv.DashboardState)
 		}
 		for key, existing := range existingState.InternalState.LocationStates {
 			if _, exists := state.LocationStates[key]; !exists {
@@ -51,34 +51,34 @@ func SaveState(filePath string, state *rep.PersistentState) error {
 	return nil
 }
 
-func LoadState(filePath string) (rep.AirspottrState, error) {
+func LoadState(filePath string) (srv.AirspottrState, error) {
 	data, readFileErr := os.ReadFile(filePath)
-	defaultState := rep.AirspottrState{} //nolint:exhaustruct_v5 // using default values
+	defaultState := srv.AirspottrState{} //nolint:exhaustruct_v5 // using default values
 	if readFileErr != nil {
 		if os.IsNotExist(readFileErr) {
 			return defaultState, nil
 		}
 		return defaultState, fmt.Errorf("load state: unable to read file: %w", readFileErr)
 	}
-	var internalState rep.PersistentState
+	var internalState srv.PersistentState
 	if unmarshalErr := json.Unmarshal(data, &internalState); unmarshalErr != nil {
 		return defaultState, fmt.Errorf("load state: unmarshal failed: %w", unmarshalErr)
 	}
 	if internalState.LocationStates == nil {
-		internalState.LocationStates = make(map[string]rep.DashboardState)
+		internalState.LocationStates = make(map[string]srv.DashboardState)
 	}
-	state := rep.AirspottrState{InternalState: internalState}
+	state := srv.AirspottrState{InternalState: internalState}
 	return state, nil
 }
 
 // StateForLocation returns the saved state for the provided latitude and longitude.
 // The boolean return value indicates whether saved state for that location exists.
-func StateForLocation(state rep.AirspottrState, latitude, longitude float64) (rep.DashboardState, bool) {
+func StateForLocation(state srv.AirspottrState, latitude, longitude float64) (srv.DashboardState, bool) {
 	key := ref.LocationKey(latitude, longitude)
 	if state.InternalState.LocationStates != nil {
 		if locationState, ok := state.InternalState.LocationStates[key]; ok {
 			return locationState, true
 		}
 	}
-	return rep.DashboardState{}, false //nolint:exhaustruct_v5 // using default values
+	return srv.DashboardState{}, false //nolint:exhaustruct_v5 // using default values
 }

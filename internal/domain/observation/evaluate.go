@@ -236,8 +236,8 @@ func updateHighest(current, aircraft AircraftRecord) AircraftRecord {
 		return current
 	}
 
-	highestAltitude, highestAltOk := aircraft.AltBaro.(float64)
-	if !highestAltOk || highestAltitude > thisAltitude {
+	highestAltitude, highestAltOk := current.AltBaro.(float64)
+	if highestAltOk && highestAltitude > thisAltitude {
 		return current
 	}
 

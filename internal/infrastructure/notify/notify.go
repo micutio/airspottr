@@ -47,174 +47,75 @@ func (n *BeeepNotifier) emitRarityWithToggles(
 	sighting obs.AircraftSighting,
 	toggles obs.RarityNotifyToggles,
 ) {
-	if sighting.Rarities == obs.NoRarity {
-		return
-	}
-	f := sighting.Rarities
-	hasT := f&obs.RareType != 0
-	hasO := f&obs.RareOperator != 0
-	hasC := f&obs.RareCountry != 0
-
-	toggleType := toggles.Type && hasT
-	toggleOperator := toggles.Operator && hasO
-	toggleCountry := toggles.Country && hasC
-
-	rarityFlag := obs.RarityFlag(0)
-	if toggleType {
-		rarityFlag |= obs.RareType
-	}
-	if toggleOperator {
-		rarityFlag |= obs.RareOperator
-	}
-	if toggleCountry {
-		rarityFlag |= obs.RareCountry
-	}
+	rarityFlag := enabledRarityFlags(sighting.Rarities, toggles)
 	if rarityFlag == obs.NoRarity {
 		return
 	}
 
-	switch rarityFlag { //nolint:exhaustive // By definition noFlag is false when this is called.
+	title, body, logLine := formatRareSighting(sighting, rarityFlag)
+	n.Stdout.Println(logLine)
+	if err := beeep.Notify(title, body, appIconPath); err != nil {
+		panic(err)
+	}
+}
+
+func enabledRarityFlags(rarities obs.RarityFlag, toggles obs.RarityNotifyToggles) obs.RarityFlag {
+	var flag obs.RarityFlag
+	if toggles.Type && rarities&obs.RareType != 0 {
+		flag |= obs.RareType
+	}
+	if toggles.Operator && rarities&obs.RareOperator != 0 {
+		flag |= obs.RareOperator
+	}
+	if toggles.Country && rarities&obs.RareCountry != 0 {
+		flag |= obs.RareCountry
+	}
+	return flag
+}
+
+func formatRareSighting(
+	sighting obs.AircraftSighting,
+	rarityFlag obs.RarityFlag,
+) (string, string, string) {
+	posLine := fmt.Sprintf("%3.0f %s", sighting.Distance, sighting.Direction)
+	typeWithReg := fmt.Sprintf("%s (%s)", sighting.TypeDesc, sighting.Registration)
+
+	switch rarityFlag { //nolint:exhaustive // NoRarity is filtered before calling formatRareSighting.
 	case obs.RareType:
-		n.Stdout.Printf("found rare type %sighting\n", sighting.Info)
-		n.notifyRareType(sighting)
+		return "Rare Aircraft Type Spotted",
+			fmt.Sprintf("%s\n%s", typeWithReg, posLine),
+			fmt.Sprintf("found rare type %s", sighting.Info)
 	case obs.RareOperator:
-		n.Stdout.Printf("found rare operator: %sighting\n", sighting.Operator)
-		n.notifyRareOperator(sighting)
+		return "Rare Operator Spotted",
+			fmt.Sprintf("%s flying %s\n%s", sighting.Operator, typeWithReg, posLine),
+			fmt.Sprintf("found rare operator: %s", sighting.Operator)
 	case obs.RareType | obs.RareOperator:
-		n.Stdout.Printf(
-			"found rare type and operator: %sighting run by %sighting\n", sighting.Info, sighting.Operator)
-		n.notifyRareTypeAndOperator(sighting)
+		return "Rare Type & Operator Spotted",
+			fmt.Sprintf("%s operated by\n%s\n%s", typeWithReg, sighting.Operator, posLine),
+			fmt.Sprintf("found rare type and operator: %s run by %s", sighting.Info, sighting.Operator)
 	case obs.RareCountry:
-		n.Stdout.Printf("found rare country: %sighting\n", sighting.Country)
-		n.notifyRareCountry(sighting)
+		return "Rare Aircraft Country Spotted",
+			fmt.Sprintf("%s-based %s\n%s", sighting.Country, typeWithReg, posLine),
+			fmt.Sprintf("found rare country: %s", sighting.Country)
 	case obs.RareType | obs.RareCountry:
-		n.Stdout.Printf("found rare type and country: %sighting -> %sighting\n", sighting.Info, sighting.Country)
-		n.notifyRareTypeAndCountry(sighting)
+		return "Rare Type & Country Spotted",
+			fmt.Sprintf("%s registered in\n%s\n%s", typeWithReg, sighting.Country, posLine),
+			fmt.Sprintf("found rare type and country: %s -> %s", sighting.Info, sighting.Country)
 	case obs.RareOperator | obs.RareCountry:
-		n.Stdout.Printf(
-			"found rare operator and country: %sighting -> %sighting\n", sighting.Operator, sighting.Country)
-		n.notifyRareOperatorAndCountry(sighting)
+		return "Rare Operator & Country Spotted",
+			fmt.Sprintf("%s\nflying aircraft registered in\n%s\n%s", sighting.Operator, sighting.Country, posLine),
+			fmt.Sprintf("found rare operator and country: %s -> %s", sighting.Operator, sighting.Country)
 	case obs.RareType | obs.RareOperator | obs.RareCountry:
-		n.Stdout.Printf(
-			"found the TRIFECTA: %sighting -> %sighting -> %sighting\n",
-			sighting.Info,
-			sighting.Operator,
-			sighting.Country,
-		)
-		n.notifyRareTypeOperatorCountry(sighting)
+		aType := sighting.TypeDesc
+		if sighting.TypeShort != "" {
+			aType = sighting.TypeShort
+		}
+		return "TRIFECTA Spotted!",
+			fmt.Sprintf("%s (%s),\nrun by %s,\nregistered in\n%s\n%s",
+				aType, sighting.Registration, sighting.Operator, sighting.Country, posLine),
+			fmt.Sprintf("found the TRIFECTA: %s -> %s -> %s",
+				sighting.Info, sighting.Operator, sighting.Country)
 	default:
 		panic("unknown rare type")
-	}
-}
-
-func (n *BeeepNotifier) notifyRareType(sighting obs.AircraftSighting) {
-	msgTitle := "Rare Aircraft Type Spotted"
-	msgBody := fmt.Sprintf(
-		"%s (%s)\n%3.0f %s",
-		sighting.TypeDesc,
-		sighting.Registration,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareOperator(sighting obs.AircraftSighting) {
-	operator := sighting.Operator
-	msgTitle := "Rare Operator Spotted"
-	msgBody := fmt.Sprintf(
-		"%s flying %s (%s)\n%3.0f %s",
-		operator,
-		sighting.TypeDesc,
-		sighting.Registration,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareCountry(sighting obs.AircraftSighting) {
-	country := sighting.Country
-	msgTitle := "Rare Aircraft Country Spotted"
-	msgBody := fmt.Sprintf(
-		"%s-based %s (%s)\n%3.0f %s",
-		country,
-		sighting.TypeDesc,
-		sighting.Registration,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareTypeAndOperator(sighting obs.AircraftSighting) {
-	operator := sighting.Operator
-	msgTitle := "Rare Type & Operator Spotted"
-	msgBody := fmt.Sprintf(
-		"%s (%s) operated by\n%s\n%3.0f %s",
-		sighting.TypeDesc,
-		sighting.Registration,
-		operator,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareTypeAndCountry(sighting obs.AircraftSighting) {
-	country := sighting.Country
-	msgTitle := "Rare Type & Country Spotted"
-	msgBody := fmt.Sprintf(
-		"%s (%s) registered in\n%s\n%3.0f %s",
-		sighting.TypeDesc,
-		sighting.Registration,
-		country,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareOperatorAndCountry(sighting obs.AircraftSighting) {
-	operator := sighting.Operator
-	country := sighting.Country
-	msgTitle := "Rare Operator & Country Spotted"
-	msgBody := fmt.Sprintf(
-		"%s\nflying aircraft registered in\n%s\n%3.0f %s",
-		operator,
-		country,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
-	}
-}
-
-func (n *BeeepNotifier) notifyRareTypeOperatorCountry(sighting obs.AircraftSighting) {
-	var aType string
-	if sighting.TypeShort != "" {
-		aType = sighting.TypeShort
-	} else {
-		aType = sighting.TypeDesc
-	}
-
-	operator := sighting.Operator
-	country := sighting.Country
-	msgTitle := "TRIFECTA Spotted!"
-	msgBody := fmt.Sprintf(
-		"%s (%s),\nrun by %s,\nregistered in\n%s\n%3.0f %s",
-		aType,
-		sighting.Registration,
-		operator,
-		country,
-		sighting.Distance,
-		sighting.Direction)
-	if err := beeep.Notify(msgTitle, msgBody, appIconPath); err != nil {
-		panic(err)
 	}
 }
