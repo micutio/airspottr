@@ -21,11 +21,11 @@ var (
 
 type noopClassifier struct{}
 
-func (noopClassifier) AircraftMake(string) (string, bool)               { return "", false }
-func (noopClassifier) OperatorByIcao(string) (string, string, bool)     { return "", "", false }
-func (noopClassifier) OperatorByMil(string) (string, bool)              { return "", false }
-func (noopClassifier) CountryByHex(string) (string, bool)               { return "", false }
-func (noopClassifier) CountryByRegistration(string) (string, bool)      { return "", false }
+func (noopClassifier) AircraftMake(string) (string, bool)           { return "", false }
+func (noopClassifier) OperatorByIcao(string) (string, string, bool) { return "", "", false }
+func (noopClassifier) OperatorByMil(string) (string, bool)          { return "", false }
+func (noopClassifier) CountryByHex(string) (string, bool)           { return "", false }
+func (noopClassifier) CountryByRegistration(string) (string, bool)  { return "", false }
 
 // Dashboard coordinates aircraft observation evaluation, route lookups, and notifications.
 type Dashboard struct {

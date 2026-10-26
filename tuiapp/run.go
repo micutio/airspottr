@@ -37,14 +37,12 @@ func RunWithDependencies(deps Dependencies) {
 		log.Printf("aircraft and route sources are required for TUI startup")
 		return
 	}
-	notifyInstance := noti.NewBeeepNotifier(deps.AppName, io.Discard)
-	if concreteNotify, ok := deps.NotificationService.(*noti.BeeepNotifier); ok {
-		notifyInstance = concreteNotify
+	if deps.NotificationService == nil {
+		deps.NotificationService = noti.NewBeeepNotifier(deps.AppName, io.Discard)
 	}
-	deps.NotificationService = notifyInstance
 
 	theme := getDefaultTheme()
-	tables := initTables(theme)
+	tableStyle := initTableStyle(theme)
 	deps.Dashboard.ConfigureRefresh(
 		deps.NotificationService,
 		deps.FlightRouteSource.GetFlightroutes,
@@ -55,21 +53,16 @@ func RunWithDependencies(deps Dependencies) {
 		height:            0,
 		baseStyle:         lipgloss.NewStyle(),
 		viewStyle:         lipgloss.NewStyle(),
-		tableStyle:        tables.style,
+		tableStyle:        tableStyle,
 		theme:             theme,
-		tables:            tables.tables,
-		selectedRarityIdx: 0,
-		aircraftSortCol:   1,
-		aircraftSortDesc:  false,
-		raritySortCol:     [3]int{0, 0, 0},
-		raritySortDesc:    [3]bool{false, false, false},
+		tables:            newTuiTables(tableStyle),
+		selectedRarityIdx: rarityByType,
 		uiState:           mainPage,
 		startTime:         time.Now(),
 		lastUpdate:        time.Unix(0, 0),
 		aircraftRepo:      deps.AircraftSource,
 		flightrouteRepo:   deps.FlightRouteSource,
 		dashboard:         deps.Dashboard,
-		notify:            notifyInstance,
 		options:           deps.RequestOptions,
 		inputFocus:        focusTable,
 		notifyStripIdx:    notifyType,

@@ -8,7 +8,27 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	srv "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
-	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
+)
+
+type uiState int
+
+const (
+	mainPage uiState = iota
+	globalStats
+)
+
+// inputFocus determines whether keys target the table(s) or the notify checkbox strip.
+type inputFocus int
+
+const (
+	focusTable inputFocus = iota
+	focusNotifyStrip
+)
+
+// Vertical space reserved above and below tables.
+const (
+	layoutHeaderReservedRows = 8
+	layoutFooterRows         = 1
 )
 
 // model implements tea.Model (Init, Update, View).
@@ -24,18 +44,12 @@ type model struct {
 	tables            tuiTables
 	selectedRarityIdx int // rarityBy*; only used when uiState == globalStats
 
-	aircraftSortCol  int  // 0–7: DST, FNO, TID, DEP, ARR, ALT, SPD, HDG
-	aircraftSortDesc bool // false = ascending
-	raritySortCol    [rarityTableCount]int
-	raritySortDesc   [rarityTableCount]bool
-
 	uiState         uiState
 	startTime       time.Time
 	lastUpdate      time.Time
 	aircraftRepo    srv.AircraftDataSource
 	flightrouteRepo srv.FlightRouteDataSource
 	dashboard       *srv.Dashboard
-	notify          *noti.BeeepNotifier
 	options         adsb.RequestOptions
 
 	inputFocus      inputFocus
@@ -46,7 +60,7 @@ type model struct {
 }
 
 // activeTable is the table that receives focus and keyboard navigation for the current view.
-func (m *model) activeTable() *autoFormatTable {
+func (m *model) activeTable() *sortableTable {
 	if m.uiState == globalStats {
 		return &m.tables.rarities[m.selectedRarityIdx]
 	}
@@ -80,4 +94,60 @@ func (m *model) FocusSelectedTable() {
 	at := m.activeTable()
 	at.table.SetStyles(m.tableStyle)
 	at.table.Focus()
+}
+
+func (m *model) resizeTables() {
+	m.tables.setAllHeights(m.height - layoutHeaderReservedRows - layoutFooterRows)
+	m.tables.resizeForTerminal(m.width)
+}
+
+func (m *model) updateAllTables() {
+	acTbl := &m.tables.aircraft
+	records := filteredSortedSightings(
+		m.dashboard.GetCurrentSightings(),
+		acTbl.sortCol,
+		acTbl.sortDesc,
+	)
+	acTbl.SetRows(buildAircraftRows(records))
+	acTbl.syncColumns()
+
+	raritySources := [rarityTableCount]map[string]int{
+		m.dashboard.SeenType,
+		m.dashboard.SeenOperator,
+		m.dashboard.SeenCountry,
+	}
+	for idx := range m.tables.rarities {
+		rTbl := &m.tables.rarities[idx]
+		byProperty := rTbl.sortCol == 1
+		tuples := sortedPropertyCounts(raritySources[idx], byProperty, rTbl.sortDesc)
+		rarityRows := make([]table.Row, len(tuples))
+		for j := range tuples {
+			rarityRows[j] = propertyCountToRow(tuples[j])
+		}
+		rTbl.SetRows(rarityRows)
+		rTbl.syncColumns()
+	}
+}
+
+func (m *model) selectRarityNeighbour(direction int) {
+	if m.uiState != globalStats || !m.activeTable().table.Focused() {
+		return
+	}
+	m.UnfocusSelectedTable()
+	m.selectedRarityIdx = (m.selectedRarityIdx + direction + rarityTableCount) % rarityTableCount
+	m.FocusSelectedTable()
+}
+
+func (m *model) toggleGlobalView() {
+	if m.inputFocus == focusNotifyStrip {
+		return
+	}
+	m.UnfocusSelectedTable()
+	if m.uiState == mainPage {
+		m.uiState = globalStats
+		m.selectedRarityIdx = rarityByType
+	} else {
+		m.uiState = mainPage
+	}
+	m.FocusSelectedTable()
 }

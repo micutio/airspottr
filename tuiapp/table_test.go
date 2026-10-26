@@ -6,176 +6,43 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-func TestTableFormat(t *testing.T) {
-	tests := []struct {
-		name                       string
-		format                     tableFormat
-		expectedFixedWidth         int
-		expectedFillWidthCount     int
-		expectedTotalRelativeWidth float32
-	}{
-		{
-			name:                       "singleFixed",
-			format:                     newTableFormat(columnFormat{fixed, 10.0}),
-			expectedFixedWidth:         10,
-			expectedFillWidthCount:     0,
-			expectedTotalRelativeWidth: 0.0,
-		},
-		{
-			name:                       "singleRelative",
-			format:                     newTableFormat(columnFormat{relative, 0.254}),
-			expectedFixedWidth:         0,
-			expectedFillWidthCount:     0,
-			expectedTotalRelativeWidth: 0.254,
-		},
-		{
-			name:                       "singleFill",
-			format:                     newTableFormat(columnFormat{fill, 0.0}),
-			expectedFixedWidth:         0,
-			expectedFillWidthCount:     1,
-			expectedTotalRelativeWidth: 0.0,
-		},
-		{
-			name: "fixedAndRelative",
-			format: newTableFormat(
-				columnFormat{fixed, 90},
-				columnFormat{relative, 0.67},
-			),
-			expectedFixedWidth:         90,
-			expectedFillWidthCount:     0,
-			expectedTotalRelativeWidth: 0.67,
-		},
-		{
-			name: "multiFill",
-			format: newTableFormat(
-				columnFormat{fill, 0},
-				columnFormat{fixed, 90},
-				columnFormat{fill, 0},
-				columnFormat{relative, 0.67},
-				columnFormat{fill, 0},
-			),
-			expectedFixedWidth:         90,
-			expectedFillWidthCount:     3,
-			expectedTotalRelativeWidth: 0.67,
-		},
+func TestSortableTableResizeAndSortHeaders(t *testing.T) {
+	t.Parallel()
+
+	specs := []colSpec{
+		{title: "Count", width: 6, flex: false},
+		{title: "Type", width: 8, flex: true},
+	}
+	st := newSortableTable(table.DefaultStyles(), specs, 0)
+
+	// Default sort column 0 ascending -> "Count▲"
+	cols := st.table.Columns()
+	if cols[0].Title != "Count▲" || cols[1].Title != "Type" {
+		t.Fatalf("unexpected initial titles: %+v", cols)
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if test.expectedFixedWidth != test.format.fixedWidth {
-				t.Errorf(
-					"Expected fixedWidth %d, got %d",
-					test.expectedFixedWidth,
-					test.format.fixedWidth)
-			}
-
-			if test.expectedFillWidthCount != test.format.fillWidthCount {
-				t.Errorf(
-					"Expected fillWidthCount %d, got %d",
-					test.expectedFillWidthCount,
-					test.format.fillWidthCount)
-			}
-
-			if test.expectedTotalRelativeWidth != test.format.totalRelativeWidth {
-				t.Errorf(
-					"Expected totalRelativeWidth %f, got %f",
-					test.expectedTotalRelativeWidth,
-					test.format.totalRelativeWidth)
-			}
-		})
+	// Resize to 30 total width: 2 cols * 2 padding = 4 padding; 26 remaining; fixed=6 -> flex=20
+	st.resize(30)
+	cols = st.table.Columns()
+	if st.table.Width() != 30 {
+		t.Fatalf("table width = %d, want 30", st.table.Width())
 	}
-}
-
-func TestAutoFormatTableInit(t *testing.T) {
-	tests := []struct {
-		name                            string
-		tableModel                      table.Model
-		tableFormat                     tableFormat
-		resizeWidth                     int
-		expectedTableWidthAfterResize   int
-		expectedColumnWidthsAfterResize []int
-	}{
-		{
-			name: "SingleColumnFixed",
-			tableModel: table.New(
-				table.WithColumns(
-					[]table.Column{
-						{Title: "A", Width: 10},
-					},
-				),
-			),
-			tableFormat: newTableFormat(
-				columnFormat{fixed, 10.0},
-			),
-			resizeWidth:                     20,
-			expectedTableWidthAfterResize:   19,
-			expectedColumnWidthsAfterResize: []int{9},
-		},
-		{
-			name: "SingleColumnRelative",
-			tableModel: table.New(
-				table.WithColumns(
-					[]table.Column{
-						{Title: "A", Width: 5},
-					},
-				),
-			),
-			tableFormat: newTableFormat(
-				columnFormat{relative, .5},
-			),
-			resizeWidth:                     40,
-			expectedTableWidthAfterResize:   39,
-			expectedColumnWidthsAfterResize: []int{18},
-		},
-		{
-			name: "SingleColumnFill",
-			tableModel: table.New(
-				table.WithColumns(
-					[]table.Column{
-						{Title: "A", Width: 10},
-					},
-				),
-			),
-			tableFormat: newTableFormat(
-				columnFormat{fill, .0},
-			),
-			resizeWidth:                     15,
-			expectedTableWidthAfterResize:   14,
-			expectedColumnWidthsAfterResize: []int{12},
-		},
+	if cols[0].Width != 6 || cols[1].Width != 20 {
+		t.Fatalf("column widths = [%d, %d], want [6, 20]", cols[0].Width, cols[1].Width)
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			aft := autoFormatTable{
-				table:  test.tableModel,
-				format: test.tableFormat,
-			}
+	// Narrow terminal clamps flex column to its minimum width (8)
+	st.resize(10)
+	cols = st.table.Columns()
+	if cols[1].Width != 8 {
+		t.Fatalf("flex column width on narrow terminal = %d, want minimum 8", cols[1].Width)
+	}
 
-			err := aft.resize(test.resizeWidth)
-			if err != nil {
-				t.Errorf(
-					"resize(%d) failed: %v",
-					test.resizeWidth,
-					err)
-			}
-
-			if aft.table.Width() != test.expectedTableWidthAfterResize {
-				t.Errorf(
-					"resized table width -> expected: %d, got: %d",
-					test.expectedTableWidthAfterResize,
-					aft.table.Width())
-			}
-
-			for i, col := range aft.table.Columns() {
-				if col.Width != test.expectedColumnWidthsAfterResize[i] {
-					t.Errorf(
-						"resized table col '%s' width -> expected: %d, got: %d",
-						test.tableModel.Columns()[i].Title,
-						test.expectedColumnWidthsAfterResize[i],
-						col.Width)
-				}
-			}
-		})
+	// Cycle sort column and toggle direction
+	st.cycleSortCol(1)
+	st.toggleSortDir()
+	cols = st.table.Columns()
+	if cols[0].Title != "Count" || cols[1].Title != "Type▼" {
+		t.Fatalf("unexpected titles after cycle + toggle: %+v", cols)
 	}
 }

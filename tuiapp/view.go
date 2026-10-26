@@ -32,7 +32,7 @@ func (m *model) View() string {
 		Render(lipgloss.JoinVertical(lipgloss.Left, body...))
 }
 
-func (m *model) viewBorderedTable(tbl *autoFormatTable) string {
+func (m *model) viewBorderedTable(tbl *sortableTable) string {
 	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(tbl.table.View())
 }
 

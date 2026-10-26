@@ -10,55 +10,20 @@ import (
 )
 
 const (
-	aircraftColumnCount = 8
-	groundAltitudeZone  = -1000
-	infinity            = 1e9
+	dstCol = iota
+	fnoCol
+	tidCol
+	depCol
+	arrCol
+	altCol
+	spdCol
+	hdgCol
 )
 
-// Base titles (sort arrows appended in applyAircraftSortHeaders).
-var aircraftColumnTitles = [aircraftColumnCount]string{ //nolint:gochecknoglobals // TODO: Fix
-	"DST", "FNO", "TID", "DEP", "ARR", "ALT", "SPD", "HDG",
-}
-
-func arrowForSort(desc bool) string {
-	if desc {
-		return "▼"
-	}
-	return "▲"
-}
-
-func applyAircraftSortHeaders(tbl *table.Model, sortCol int, desc bool) {
-	old := tbl.Columns()
-	cols := make([]table.Column, len(old))
-	copy(cols, old)
-	for i := range cols {
-		title := aircraftColumnTitles[i]
-		if i == sortCol {
-			title += arrowForSort(desc)
-		}
-		cols[i].Title = title
-	}
-	tbl.SetColumns(cols)
-}
-
-//nolint:gochecknoglobals // TODO: Fix
-var rarityValueColumnTitle = [rarityTableCount]string{"Type", "Operator", "Country"}
-
-func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool) {
-	old := tbl.Columns()
-	cols := make([]table.Column, len(old))
-	copy(cols, old)
-	cols[0].Title = "Count"
-	if sortCol == 0 {
-		cols[0].Title = "Count" + arrowForSort(desc)
-	}
-	second := rarityValueColumnTitle[rarityIdx]
-	if sortCol == 1 {
-		second += arrowForSort(desc)
-	}
-	cols[1].Title = second
-	tbl.SetColumns(cols)
-}
+const (
+	groundAltitudeZone = -1000
+	infinity           = 1e9
+)
 
 func altitudeSortKey(aircraftSighting obs.AircraftSighting) float64 {
 	if n, ok := aircraftSighting.LastRecord.AltBaro.(float64); ok {
@@ -77,49 +42,38 @@ func compareSightingsAscending(
 	sightingA, sightingB obs.AircraftSighting,
 	col int,
 ) bool {
-	dstCol := 0
-	fnoCol := 1
-	tidCol := 2
-	depCol := 3
-	arrCol := 4
-	altCol := 5
-	spdCol := 6
-	hdgCol := 7
 	routeA, routeB := sightingA.Flightroute, sightingB.Flightroute
 	switch col {
-	case dstCol: // DST
+	case dstCol:
 		if sightingA.Distance != sightingB.Distance {
 			return sightingA.Distance < sightingB.Distance
 		}
-	case fnoCol: // FNO
-		sa, sb := sightingA.LastFlightNo, sightingB.LastFlightNo
-		if sa != sb {
-			return sa < sb
+	case fnoCol:
+		if sightingA.LastFlightNo != sightingB.LastFlightNo {
+			return sightingA.LastFlightNo < sightingB.LastFlightNo
 		}
-	case tidCol: // TID
+	case tidCol:
 		if sightingA.TypeDesc != sightingB.TypeDesc {
 			return sightingA.TypeDesc < sightingB.TypeDesc
 		}
-	case depCol: // DEP
-		da, dbi := routeA.Origin.IataCode, routeB.Origin.IataCode
-		if da != dbi {
-			return da < dbi
+	case depCol:
+		if routeA.Origin.IataCode != routeB.Origin.IataCode {
+			return routeA.Origin.IataCode < routeB.Origin.IataCode
 		}
-	case arrCol: // ARR
-		da, dbi := routeA.Destination.IataCode, routeB.Destination.IataCode
-		if da != dbi {
-			return da < dbi
+	case arrCol:
+		if routeA.Destination.IataCode != routeB.Destination.IataCode {
+			return routeA.Destination.IataCode < routeB.Destination.IataCode
 		}
-	case altCol: // ALT
+	case altCol:
 		ka, kb := altitudeSortKey(sightingA), altitudeSortKey(sightingB)
 		if ka != kb {
 			return ka < kb
 		}
-	case spdCol: // SPD
+	case spdCol:
 		if sightingA.LastRecord.GroundSpeed != sightingB.LastRecord.GroundSpeed {
 			return sightingA.LastRecord.GroundSpeed < sightingB.LastRecord.GroundSpeed
 		}
-	case hdgCol: // HDG
+	case hdgCol:
 		if sightingA.LastRecord.NavHeading != sightingB.LastRecord.NavHeading {
 			return sightingA.LastRecord.NavHeading < sightingB.LastRecord.NavHeading
 		}
@@ -177,34 +131,11 @@ func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []reference.P
 	return tuples
 }
 
-// cycleSortColumn steps sort column (focused table). dir +1 or -1.
-func (m *model) cycleSortColumn(dir int) {
-	if m.uiState == mainPage {
-		m.aircraftSortCol = (m.aircraftSortCol + dir + aircraftColumnCount) % aircraftColumnCount
-	} else {
-		idx := m.selectedRarityIdx
-		//nolint:mnd // Don't care about this magic number.
-		m.raritySortCol[idx] = (m.raritySortCol[idx] + dir + 2) % 2
-	}
-	m.updateAllTables()
-}
-
-func (m *model) toggleSortDirection() {
-	if m.uiState == mainPage {
-		m.aircraftSortDesc = !m.aircraftSortDesc
-	} else {
-		idx := m.selectedRarityIdx
-		m.raritySortDesc[idx] = !m.raritySortDesc[idx]
-	}
-	m.updateAllTables()
-}
-
 func buildAircraftRows(records []obs.AircraftSighting) []table.Row {
 	rows := make([]table.Row, 0, len(records))
 	for i := range records {
 		ac := records[i]
-		route := ac.Flightroute
-		rows = append(rows, aircraftToRow(ac, route))
+		rows = append(rows, aircraftToRow(ac, ac.Flightroute))
 	}
 	return rows
 }
