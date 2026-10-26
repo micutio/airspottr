@@ -16,7 +16,7 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 
 ## TODO
 
-- [ ] !High Priority! **separate history per location**
+- [x] !High Priority! **separate history per location**
 - [ ] allow tracking individual aircraft
 - [ ] option to clear history
 - [ ] graphs for aircraft type count over time
