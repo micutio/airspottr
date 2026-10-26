@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -147,13 +147,11 @@ func mapAircraftRecords(aircraft []aircraftDTO) []obs.AircraftRecord {
 }
 
 // AircraftRequest handles http request commands.
-// Should implement:
-//   - application.AircraftRepository
 type AircraftRequest struct {
 	aircraftReqURL string
 	apiClient      *http.Client
 	waitGroup      sync.WaitGroup
-	errOut         log.Logger
+	errOut         *slog.Logger
 }
 
 func NewAircraftRequest(opts RequestOptions, stderr io.Writer) (*AircraftRequest, error) {
@@ -162,10 +160,14 @@ func NewAircraftRequest(opts RequestOptions, stderr io.Writer) (*AircraftRequest
 		return nil, fmt.Errorf("NewRequest: %w", urlErr)
 	}
 
+	if stderr == nil {
+		stderr = io.Discard
+	}
+
 	client := &http.Client{
 		Timeout: reqTimeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{ //nolint:exhaustruct_v5 // too large
+			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS13,
 				MaxVersion: tls.VersionTLS13,
 			},
@@ -176,10 +178,10 @@ func NewAircraftRequest(opts RequestOptions, stderr io.Writer) (*AircraftRequest
 		aircraftReqURL: aircraftReqURL,
 		apiClient:      client,
 		waitGroup:      sync.WaitGroup{},
-		errOut:         *log.New(stderr, "request ", log.LstdFlags),
+		errOut:         slog.New(slog.NewTextHandler(stderr, nil)),
 	}
 
-	request.errOut.Println("Request init")
+	request.errOut.Info("Request init")
 
 	return request, nil
 }
@@ -200,13 +202,13 @@ func createAircraftReqURL(opts RequestOptions) (string, error) {
 func (r *AircraftRequest) RequestAircraft() []obs.AircraftRecord {
 	body, requestErr := r.sendRequest(r.aircraftReqURL)
 	if requestErr != nil {
-		r.errOut.Println(fmt.Errorf("RequestAircraft: error during request: %w", requestErr))
+		r.errOut.Error("RequestAircraft: error during request", slog.Any("error", requestErr))
 		return []obs.AircraftRecord{}
 	}
 
 	var data aircraftQueryResponse
 	if err := json.Unmarshal(body, &data); err != nil {
-		r.errOut.Println(fmt.Errorf("RequestAircraft: failed to unmarshal Json: %w", err))
+		r.errOut.Error("RequestAircraft: failed to unmarshal Json", slog.Any("error", err))
 		return []obs.AircraftRecord{}
 	}
 

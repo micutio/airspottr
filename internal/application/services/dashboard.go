@@ -4,7 +4,7 @@ package services
 import (
 	"errors"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
+	"log/slog"
 	"time"
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
@@ -38,7 +38,7 @@ type Dashboard struct {
 	IsWarmup          bool
 	Lat               float64
 	Lon               float64
-	ErrOut            log.Logger
+	ErrOut            *slog.Logger
 }
 
 func NewDashboard(lat, lon float64,
@@ -48,6 +48,10 @@ func NewDashboard(lat, lon float64,
 	if classifier == nil {
 		classifier = noopClassifier{}
 	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	logger := slog.New(slog.NewTextHandler(stderr, nil))
 	dashboard := Dashboard{
 		State: obs.State{
 			Observer:         ref.NewCoordinates(lat, lon),
@@ -68,10 +72,10 @@ func NewDashboard(lat, lon float64,
 		IsWarmup:          true,
 		Lat:               lat,
 		Lon:               lon,
-		ErrOut:            *log.New(stderr, "dashboard ", log.LstdFlags),
+		ErrOut:            logger,
 	}
 
-	dashboard.ErrOut.Println("Dashboard init")
+	dashboard.ErrOut.Info("Dashboard init")
 
 	return &dashboard
 }

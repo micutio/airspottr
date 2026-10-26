@@ -1,44 +1,47 @@
 package services
 
 import (
+	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
 
 	"github.com/micutio/airspottr/internal/domain/reference"
 )
 
 // Notify prints console summaries of sighting statistics.
 type Notify struct {
-	Stdout log.Logger
+	out io.Writer
 }
 
 func NewNotify(appName string, consoleOut io.Writer) *Notify {
 	_ = appName
+	if consoleOut == nil {
+		consoleOut = io.Discard
+	}
 	return &Notify{
-		Stdout: *log.New(consoleOut, "", 0),
+		out: consoleOut,
 	}
 }
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
 func (notify *Notify) PrintSummary(dash *Dashboard) {
-	notify.Stdout.Println("=== Summary ===")
+	_, _ = fmt.Fprintln(notify.out, "=== Summary ===")
 	notify.listByRarity("aircraft", dash.SeenType)
 	notify.listByRarity("operator", dash.SeenOperator)
 	notify.listByRarity("country", dash.SeenCountry)
-	notify.Stdout.Println("Fastest Aircraft:")
+	_, _ = fmt.Fprintln(notify.out, "Fastest Aircraft:")
 	fastest := dash.GetFastest()
-	notify.Stdout.Println(fastest.AircraftToString())
-	notify.Stdout.Println("Highest Aircraft:")
+	_, _ = fmt.Fprintln(notify.out, fastest.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, "Highest Aircraft:")
 	highest := dash.GetHighest()
-	notify.Stdout.Println(highest.AircraftToString())
-	notify.Stdout.Println("=== End Summary ===")
+	_, _ = fmt.Fprintln(notify.out, highest.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, "=== End Summary ===")
 }
 
 func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[string]int) {
 	propertyCounts := reference.GetSortedCountsForProperty(propertyCountMap)
 
-	notify.Stdout.Printf("Rarity from least to most common %s", propertyName)
+	_, _ = fmt.Fprintf(notify.out, "Rarity from least to most common %s\n", propertyName)
 	for j := range propertyCounts {
-		notify.Stdout.Printf("%6d - %s\n", propertyCounts[j].Count, propertyCounts[j].Property)
+		_, _ = fmt.Fprintf(notify.out, "%6d - %s\n", propertyCounts[j].Count, propertyCounts[j].Property)
 	}
 }

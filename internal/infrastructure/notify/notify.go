@@ -3,7 +3,6 @@ package notify
 import (
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
 
 	"github.com/gen2brain/beeep"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
@@ -13,13 +12,16 @@ const appIconPath = "./assets/icon.png"
 
 // BeeepNotifier emits desktop notifications for rare sighting events.
 type BeeepNotifier struct {
-	Stdout log.Logger
+	out io.Writer
 }
 
 func NewBeeepNotifier(appName string, consoleOut io.Writer) *BeeepNotifier {
 	beeep.AppName = appName //nolint:reassign // This is the only way to set app name in beeep.
+	if consoleOut == nil {
+		consoleOut = io.Discard
+	}
 	return &BeeepNotifier{
-		Stdout: *log.New(consoleOut, "", 0),
+		out: consoleOut,
 	}
 }
 
@@ -53,9 +55,9 @@ func (n *BeeepNotifier) emitRarityWithToggles(
 	}
 
 	title, body, logLine := formatRareSighting(sighting, rarityFlag)
-	n.Stdout.Println(logLine)
+	_, _ = fmt.Fprintln(n.out, logLine)
 	if err := beeep.Notify(title, body, appIconPath); err != nil {
-		n.Stdout.Printf("warning: desktop notification failed: %v\n", err)
+		_, _ = fmt.Fprintf(n.out, "warning: desktop notification failed: %v\n", err)
 	}
 }
 

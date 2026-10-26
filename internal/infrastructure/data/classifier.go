@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -45,7 +45,7 @@ type Classifier struct {
 	milCodeToOperator map[string]string
 	hexRangeToCountry map[ref.HexRange]string
 	regPrefixes       []regPrefixEntry
-	errOut            *log.Logger
+	errOut            *slog.Logger
 }
 
 var _ obs.Classifier = (*Classifier)(nil)
@@ -60,7 +60,7 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 		milCodeToOperator: make(map[string]string),
 		hexRangeToCountry: make(map[ref.HexRange]string),
 		regPrefixes:       nil,
-		errOut:            log.New(stderr, "classifier ", log.LstdFlags),
+		errOut:            slog.New(slog.NewTextHandler(stderr, nil)),
 	}
 
 	if err := readCSV(icaoListPath, icaoAircraftHeaderCount, func(r []string) error {
@@ -153,7 +153,7 @@ func (c *Classifier) CountryByHex(hexCode string) (string, bool) {
 	hexAsInt, err := strconv.ParseInt(hexCode, 16, 64)
 	if err != nil {
 		if c.errOut != nil {
-			c.errOut.Printf("warning: invalid hex code: %v", err)
+			c.errOut.Warn("invalid hex code", slog.String("hex", hexCode), slog.Any("error", err))
 		}
 		return "", false
 	}

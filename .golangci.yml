@@ -243,33 +243,11 @@ linters:
         - mapliteral
 
     exhaustruct_v5:
-      # List of regular expressions to exclude struct packages and their names from checks.
+      # List of regular expressions to match struct packages and their names.
       # Regular expressions must match complete canonical struct package/name/structname.
-      # Default: []
-      ignore-patterns:
-        # std libs
-        - ^net/http.Client$
-        - ^net/http.Cookie$
-        - ^net/http.Request$
-        - ^net/http.Response$
-        - ^net/http.Server$
-        - ^net/http.Transport$
-        - ^net/url.URL$
-        - ^os/exec.Cmd$
-        - ^reflect.StructField$
-        # public libs
-        - ^github.com/Shopify/sarama.Config$
-        - ^github.com/Shopify/sarama.ProducerMessage$
-        - ^github.com/mitchellh/mapstructure.DecoderConfig$
-        - ^github.com/prometheus/client_golang/.+Opts$
-        - ^github.com/spf13/cobra.Command$
-        - ^github.com/spf13/cobra.CompletionOptions$
-        - ^github.com/stretchr/testify/mock.Mock$
-        - ^github.com/testcontainers/testcontainers-go.+Request$
-        - ^github.com/testcontainers/testcontainers-go.FromDockerfile$
-        - ^golang.org/x/tools/go/analysis.Analyzer$
-        - ^google.golang.org/protobuf/.+Options$
-        - ^gopkg.in/yaml.v3.Node$
+      # Only enforce exhaustruct on structs defined within this repository.
+      include:
+        - ^github\.com/micutio/airspottr/.*$
 
     funcorder:
       # Checks if the exported methods of a structure are placed before the non-exported ones.

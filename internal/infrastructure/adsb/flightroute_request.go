@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log" //nolint:depguard // Don't feel like using slog
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -97,12 +97,10 @@ func (dto flightRouteDTO) toDomain() ref.FlightrouteRecord {
 }
 
 // FlightrouteRequest handles http request commands.
-// Should implement:
-//   - application.FlightrouteRepository
 type FlightrouteRequest struct {
 	apiClient            *http.Client
 	waitGroup            sync.WaitGroup
-	errOut               log.Logger
+	errOut               *slog.Logger
 	pendingCallsigns     []string
 	pendingCallsignsMu   sync.Mutex
 	cachedFlightroutes   map[string]ref.FlightrouteRecord
@@ -110,10 +108,13 @@ type FlightrouteRequest struct {
 }
 
 func NewFlightrouteRequest(stderr io.Writer) (*FlightrouteRequest, error) {
+	if stderr == nil {
+		stderr = io.Discard
+	}
 	client := &http.Client{
 		Timeout: reqTimeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{ //nolint:exhaustruct_v5 // too large
+			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS13,
 				MaxVersion: tls.VersionTLS13,
 			},
@@ -123,14 +124,14 @@ func NewFlightrouteRequest(stderr io.Writer) (*FlightrouteRequest, error) {
 	request := &FlightrouteRequest{
 		apiClient:            client,
 		waitGroup:            sync.WaitGroup{},
-		errOut:               *log.New(stderr, "request ", log.LstdFlags),
+		errOut:               slog.New(slog.NewTextHandler(stderr, nil)),
 		pendingCallsigns:     []string{},
 		pendingCallsignsMu:   sync.Mutex{},
 		cachedFlightroutes:   make(map[string]ref.FlightrouteRecord),
 		cachedFlightroutesMu: sync.Mutex{},
 	}
 
-	request.errOut.Println("Request init")
+	request.errOut.Info("Request init")
 
 	return request, nil
 }
@@ -166,10 +167,10 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	r.pendingCallsignsMu.Lock()
 	// Add new callsigns to the pending queue
 	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
-	r.errOut.Printf(
-		"RequestFlightRoutesForCallsigns: %d callsigns requested, %d total pending\n",
-		len(callsigns),
-		len(r.pendingCallsigns),
+	r.errOut.Info(
+		"RequestFlightRoutesForCallsigns: callsigns queued",
+		slog.Int("requested", len(callsigns)),
+		slog.Int("pending", len(r.pendingCallsigns)),
 	)
 
 	// Determine how many to process this time
@@ -183,7 +184,7 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	r.pendingCallsigns = r.pendingCallsigns[toProcess:]
 	r.pendingCallsignsMu.Unlock()
 
-	r.errOut.Printf("RequestFlightRoutesForCallsigns: processing %d callsigns this batch\n", len(selectedCallsigns))
+	r.errOut.Info("RequestFlightRoutesForCallsigns: processing batch", slog.Int("batch_size", len(selectedCallsigns)))
 
 	// 0. Put dummies for the selected callsigns into the cache, so that we do not query for them
 	// again if the database does not have them.
@@ -209,10 +210,11 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 			body, reqErr := r.sendRequest(urlStr)
 			// Only send body to results if there is no error.
 			if reqErr != nil {
-				r.errOut.Println(
-					fmt.Errorf("RequestFlightRoutesForCallsigns: error requesting url: %s: %w",
-						urlStr,
-						reqErr))
+				r.errOut.Error(
+					"RequestFlightRoutesForCallsigns: error requesting url",
+					slog.String("url", urlStr),
+					slog.Any("error", reqErr),
+				)
 			} else {
 				results <- body
 			}
@@ -229,9 +231,7 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	for result := range results {
 		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
 		if err != nil {
-			r.errOut.Println(
-				fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w",
-					err))
+			r.errOut.Error("RequestFlightRoutesForCallsigns: error parsing json", slog.Any("error", err))
 			continue
 		}
 		if flightrouteRecord.Callsign == "" {
@@ -243,13 +243,12 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 		r.cachedFlightroutes[flightrouteRecord.Callsign] = flightrouteRecord
 		r.cachedFlightroutesMu.Unlock()
 	}
-	r.errOut.Printf(
-		"RequestFlightRoutesForCallsigns: %d callsigns processed, %d routes found\n",
-		len(callsigns),
-		len(flightrouteRecords))
-	r.errOut.Printf(
-		"RequestFlightRoutesForCallsigns: total flightroutes cached: %d\n",
-		len(r.cachedFlightroutes))
+	r.errOut.Info(
+		"RequestFlightRoutesForCallsigns: batch complete",
+		slog.Int("processed", len(callsigns)),
+		slog.Int("found", len(flightrouteRecords)),
+		slog.Int("cached", len(r.cachedFlightroutes)),
+	)
 }
 
 func (r *FlightrouteRequest) createFlightrouteRequestURLs(selectedCallsigns []string) []string {
@@ -259,10 +258,11 @@ func (r *FlightrouteRequest) createFlightrouteRequestURLs(selectedCallsigns []st
 		callsignURL, urlErr := createFlightRouteRequestURL(callsign)
 		if urlErr != nil {
 			// Skip invalid urls.
-			r.errOut.Println(
-				fmt.Errorf(
-					"RequestFlightRoutesForCallsigns: error constructing url for %s: %w",
-					callsign, urlErr))
+			r.errOut.Error(
+				"RequestFlightRoutesForCallsigns: error constructing url",
+				slog.String("callsign", callsign),
+				slog.Any("error", urlErr),
+			)
 			continue
 		}
 		urls = append(urls, callsignURL)
@@ -288,7 +288,7 @@ func (r *FlightrouteRequest) flightRouteJSONToRecord(jsonBytes []byte) (ref.Flig
 	var data flightRouteQueryResponse
 	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
-		r.errOut.Println(jsonErr)
+		r.errOut.Error("RequestFlightRoutesForCallsigns: error parsing json", slog.Any("error", err))
 		return ref.FlightrouteRecord{}, jsonErr
 	}
 	return data.Response.Flightroute.toDomain(), nil

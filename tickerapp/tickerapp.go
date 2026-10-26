@@ -49,7 +49,11 @@ type TickerApp struct {
 
 func NewWithDependencies(deps Dependencies) *TickerApp {
 	if deps.Logger == nil {
-		deps.Logger = slog.Default()
+		errOut := deps.Stderr
+		if errOut == nil {
+			errOut = io.Discard
+		}
+		deps.Logger = slog.New(slog.NewTextHandler(errOut, nil))
 	}
 	if deps.Done == nil {
 		deps.Done = make(chan bool)

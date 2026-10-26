@@ -2,7 +2,7 @@ package tuiapp
 
 import (
 	"io"
-	"log" //nolint:depguard // TODO: Change later.
+	"log/slog"
 	"os"
 	"time"
 
@@ -28,13 +28,13 @@ func RunWithDependencies(deps Dependencies) {
 	if deps.ErrorLog == nil {
 		deps.ErrorLog = io.Discard
 	}
-	log.SetOutput(deps.ErrorLog)
+	logger := slog.New(slog.NewTextHandler(deps.ErrorLog, nil))
 	if deps.Dashboard == nil {
-		log.Printf("dashboard is required for TUI startup")
+		logger.Error("dashboard is required for TUI startup")
 		return
 	}
 	if deps.AircraftSource == nil || deps.FlightRouteSource == nil {
-		log.Printf("aircraft and route sources are required for TUI startup")
+		logger.Error("aircraft and route sources are required for TUI startup")
 		return
 	}
 	if deps.NotificationService == nil {
@@ -73,10 +73,10 @@ func RunWithDependencies(deps Dependencies) {
 
 	p := tea.NewProgram(appModel, tea.WithAltScreen())
 	if _, progErr := p.Run(); progErr != nil {
-		log.Printf("error running program: %v", progErr)
+		logger.Error("error running program", slog.Any("error", progErr))
 	}
 	state := deps.Dashboard.SaveState(deps.FlightRouteSource.GetPendingCallsigns())
 	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {
-		log.Printf("failed to save persistent state: %v", saveErr)
+		logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }

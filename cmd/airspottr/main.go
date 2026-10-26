@@ -107,7 +107,7 @@ func buildTickerApp(appName string, options adsb.RequestOptions) (tickerapp.Depe
 	return tickerapp.Dependencies{
 		AppName:            appName,
 		Options:            options,
-		Logger:             slog.Default(),
+		Logger:             slog.New(slog.NewTextHandler(stderr, nil)),
 		AircraftRequest:    aircraftReq,
 		FlightrouteRequest: flightrouteReq,
 		Dashboard:          dashboard,
