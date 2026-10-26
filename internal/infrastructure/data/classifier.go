@@ -48,7 +48,7 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 	if stderr == nil {
 		stderr = io.Discard
 	}
-	c := &Classifier{
+	classifier := &Classifier{
 		icaoToAircraft:     make(map[string]ref.IcaoAircraftSpec),
 		icaoToOperator:     make(map[string]ref.IcaoOperator),
 		milCodeToOperator:  make(map[string]string),
@@ -58,7 +58,7 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 	}
 
 	if err := readCSV(icaoListPath, icaoAircraftHeaderCount, func(r []string) error {
-		c.icaoToAircraft[r[0]] = ref.IcaoAircraftSpec{
+		classifier.icaoToAircraft[r[0]] = ref.IcaoAircraftSpec{
 			Class:  r[1],
 			Engine: r[2],
 			Make:   strings.Trim(r[3], "\""),
@@ -69,7 +69,7 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 	}
 
 	if err := readCSV(airlineListPath, icaoAirlineHeaderCount, func(r []string) error {
-		c.icaoToOperator[r[3][:airlineCodeLen]] = ref.IcaoOperator{
+		classifier.icaoToOperator[r[3][:airlineCodeLen]] = ref.IcaoOperator{
 			Company: r[0],
 			Country: r[1],
 		}
@@ -80,36 +80,36 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 
 	if err := readCSV(milCodeFilePath, milCodeHeaderCount, func(r []string) error {
 		if r[1] != "" {
-			c.milCodeToOperator[r[1]] = r[0]
+			classifier.milCodeToOperator[r[1]] = r[0]
 		}
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("load mil operators: %w", err)
 	}
 
-	if err := readCSV(hexRangeListPath, 0, func(r []string) error {
-		lower, lowerErr := strconv.ParseInt(r[0], 16, 64)
+	if err := readCSV(hexRangeListPath, 0, func(hexRange []string) error {
+		lower, lowerErr := strconv.ParseInt(hexRange[0], 16, 64)
 		if lowerErr != nil {
-			return fmt.Errorf("%w: %s", errParseHex, r[0])
+			return fmt.Errorf("%w: %s", errParseHex, hexRange[0])
 		}
-		upper, upperErr := strconv.ParseInt(r[1], 16, 64)
+		upper, upperErr := strconv.ParseInt(hexRange[1], 16, 64)
 		if upperErr != nil {
-			return fmt.Errorf("%w: %s", errParseHex, r[1])
+			return fmt.Errorf("%w: %s", errParseHex, hexRange[1])
 		}
-		c.hexRangeToCountry[ref.HexRange{LowerBound: lower, UpperBound: upper}] = r[2]
+		classifier.hexRangeToCountry[ref.HexRange{LowerBound: lower, UpperBound: upper}] = hexRange[2]
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("load hex ranges: %w", err)
 	}
 
 	if err := readCSV(regPrefixListPath, regPrefixHeaderCount, func(r []string) error {
-		c.regPrefixToCountry[r[1]] = r[0]
+		classifier.regPrefixToCountry[r[1]] = r[0]
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("load registration prefixes: %w", err)
 	}
 
-	return c, nil
+	return classifier, nil
 }
 
 func (c *Classifier) AircraftMake(icaoType string) (string, bool) {

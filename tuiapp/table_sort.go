@@ -36,8 +36,6 @@ func altitudeSortKey(aircraftSighting obs.AircraftSighting) float64 {
 }
 
 // compareSightingsAscending reports whether a should sort before b (ascending).
-//
-//nolint:gocognit
 func compareSightingsAscending(
 	sightingA, sightingB obs.AircraftSighting,
 	col int,

@@ -10,6 +10,8 @@ const (
 )
 
 // handleKey processes keyboard input for the TUI.
+//
+//nolint:funlen // Number of statements are naturally high for input checking.
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	key := msg.String()
 

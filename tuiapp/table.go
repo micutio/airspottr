@@ -52,15 +52,15 @@ func newSortableTable(style table.Styles, specs []colSpec, defaultSortCol int) s
 	)
 	tbl.Blur()
 
-	st := sortableTable{
+	sortableTbl := sortableTable{
 		table:    tbl,
 		specs:    specs,
 		sortCol:  defaultSortCol,
 		sortDesc: false,
 		width:    0,
 	}
-	st.syncColumns()
-	return st
+	sortableTbl.syncColumns()
+	return sortableTbl
 }
 
 // resize updates the target inner width of the table and recalculates column widths.
@@ -93,16 +93,16 @@ func (st *sortableTable) syncColumns() {
 	}
 
 	cols := make([]table.Column, colCount)
-	for i, spec := range st.specs {
-		w := spec.width
+	for idx, spec := range st.specs {
+		width := spec.width
 		if spec.flex {
-			w = max(spec.width, flexWidth)
+			width = max(spec.width, flexWidth)
 		}
 		title := spec.title
-		if i == st.sortCol {
+		if idx == st.sortCol {
 			title += arrowForSort(st.sortDesc)
 		}
-		cols[i] = table.Column{Title: title, Width: w}
+		cols[idx] = table.Column{Title: title, Width: width}
 	}
 
 	st.table.SetColumns(cols)
@@ -157,6 +157,7 @@ func initTableStyle(theme Theme) table.Styles {
 	return tableStyle
 }
 
+//nolint:mnd // Allow magic numbers here.
 func newCurrentAircraftTable(tableStyle table.Styles) sortableTable {
 	specs := []colSpec{
 		{title: "DST", width: 4, flex: false},
@@ -171,6 +172,7 @@ func newCurrentAircraftTable(tableStyle table.Styles) sortableTable {
 	return newSortableTable(tableStyle, specs, fnoCol)
 }
 
+//nolint:mnd // Allow magic numbers here.
 func newRarityTable(tableStyle table.Styles, valueColumnTitle string) sortableTable {
 	specs := []colSpec{
 		{title: "Count", width: 6, flex: false},
@@ -204,6 +206,8 @@ func (t *tuiTables) setAllHeights(height int) {
 }
 
 // resizeForTerminal applies widths for main view (aircraft full width) and global stats (thirds).
+//
+//nolint:mnd // Allow magic numbers here.
 func (t *tuiTables) resizeForTerminal(terminalWidth int) {
 	const borderWidth = 2 // left + right rounded border characters
 	t.aircraft.resize(max(0, terminalWidth-borderWidth))

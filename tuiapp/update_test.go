@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5 // Don't enforce for bubbletea.
 package tuiapp
 
 import (
@@ -26,25 +27,25 @@ func TestHandleKeyCtrlC(t *testing.T) {
 
 func TestNavigateNotifyStripWrapsAround(t *testing.T) {
 	t.Parallel()
-	m := model{
+	testModel := model{
 		inputFocus:     focusNotifyStrip,
 		notifyStripIdx: 0,
 	}
 	// Moving left from index 0 should wrap to index 2, not become -1.
-	m.navigateNotifyStrip("left")
-	if m.notifyStripIdx != notifyCountry {
-		t.Fatalf("notifyStripIdx after left wrap = %d, want %d", m.notifyStripIdx, notifyCountry)
+	testModel.navigateNotifyStrip("left")
+	if testModel.notifyStripIdx != notifyCountry {
+		t.Fatalf("notifyStripIdx after left wrap = %d, want %d", testModel.notifyStripIdx, notifyCountry)
 	}
 
 	// Spacebar toggles the selected notify flag.
-	m.navigateNotifyStrip(" ")
-	if !m.notifyOnCountry {
+	testModel.navigateNotifyStrip(" ")
+	if !testModel.notifyOnCountry {
 		t.Fatal("expected notifyOnCountry to be toggled true")
 	}
 
 	// Moving right from index 2 should wrap back to index 0.
-	m.navigateNotifyStrip("right")
-	if m.notifyStripIdx != notifyType {
-		t.Fatalf("notifyStripIdx after right wrap = %d, want %d", m.notifyStripIdx, notifyType)
+	testModel.navigateNotifyStrip("right")
+	if testModel.notifyStripIdx != notifyType {
+		t.Fatalf("notifyStripIdx after right wrap = %d, want %d", testModel.notifyStripIdx, notifyType)
 	}
 }

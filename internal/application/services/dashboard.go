@@ -30,6 +30,7 @@ func (noopClassifier) CountryByRegistration(string) (string, bool)  { return "",
 // Dashboard coordinates aircraft observation evaluation, route lookups, and notifications.
 type Dashboard struct {
 	obs.State
+
 	currentSightings  []obs.AircraftSighting // volatile cache of recently sighted aircraft
 	classifier        obs.Classifier
 	notifier          NotificationService
