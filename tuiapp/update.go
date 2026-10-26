@@ -36,6 +36,19 @@ func requestAircraftDataCmd(frr srv.AircraftDataSource) tea.Cmd {
 
 type FlightRoutesResponseMsg map[string]ref.FlightrouteRecord
 
+func requestFlightRoutesCmd(frr srv.FlightRouteDataSource, callsigns []string) tea.Cmd {
+	if frr == nil || len(callsigns) == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		routes := frr.GetFlightroutes(callsigns)
+		if len(routes) == 0 {
+			return nil
+		}
+		return FlightRoutesResponseMsg(routes)
+	}
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // tea.Model interface
 	switch thisMsg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -49,22 +62,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:ireturn // t
 	case AircraftQueryTickMsg:
 		return m, tea.Batch(requestAircraftDataCmd(m.aircraftRepo), aircraftQueryTick())
 	case AircraftResponseMsg:
-		m.processAircraftResponse(thisMsg)
+		return m, m.processAircraftResponse(thisMsg)
 	case FlightRoutesResponseMsg:
 		m.processFlightRouteResponse(thisMsg)
 	}
 	return m, nil
 }
 
-func (m *model) processAircraftResponse(msg AircraftResponseMsg) {
+func (m *model) processAircraftResponse(msg AircraftResponseMsg) tea.Cmd {
 	m.lastUpdate = time.Now()
 	aircraftRecords := []obs.AircraftRecord(msg)
-	m.dashboard.RefreshBatch(aircraftRecords, obs.RarityNotifyToggles{
+	currentSightings := m.dashboard.RefreshBatch(aircraftRecords, obs.RarityNotifyToggles{
 		Type:     m.notifyOnType,
 		Operator: m.notifyOnOp,
 		Country:  m.notifyOnCountry,
 	})
 	m.updateAllTables()
+
+	missingCallsigns := srv.GetCallsignsRequiringRoutes(currentSightings)
+	return requestFlightRoutesCmd(m.flightrouteRepo, missingCallsigns)
 }
 
 func (m *model) processFlightRouteResponse(msg FlightRoutesResponseMsg) {

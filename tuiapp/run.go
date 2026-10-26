@@ -45,7 +45,7 @@ func RunWithDependencies(deps Dependencies) {
 	tableStyle := initTableStyle(theme)
 	deps.Dashboard.ConfigureRefresh(
 		deps.NotificationService,
-		deps.FlightRouteSource.GetFlightroutes,
+		nil, // Flight routes are fetched asynchronously via tea.Cmd in Update.
 	)
 	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(os.Stdout))
 	appModel := &model{

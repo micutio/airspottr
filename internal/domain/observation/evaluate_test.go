@@ -8,7 +8,7 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-type stubClassifier struct {
+type mockClassifier struct {
 	makeByIcao   map[string]string
 	opByIcao     map[string][2]string // company, country
 	opByMil      map[string]string
@@ -16,27 +16,27 @@ type stubClassifier struct {
 	countryByReg map[string]string
 }
 
-func (s stubClassifier) AircraftMake(icaoType string) (string, bool) {
+func (s mockClassifier) AircraftMake(icaoType string) (string, bool) {
 	makeName, ok := s.makeByIcao[icaoType]
 	return makeName, ok
 }
 
-func (s stubClassifier) OperatorByIcao(code string) (string, string, bool) {
+func (s mockClassifier) OperatorByIcao(code string) (string, string, bool) {
 	pair, ok := s.opByIcao[code]
 	return pair[0], pair[1], ok
 }
 
-func (s stubClassifier) OperatorByMil(code string) (string, bool) {
+func (s mockClassifier) OperatorByMil(code string) (string, bool) {
 	name, ok := s.opByMil[code]
 	return name, ok
 }
 
-func (s stubClassifier) CountryByHex(hex string) (string, bool) {
+func (s mockClassifier) CountryByHex(hex string) (string, bool) {
 	country, ok := s.countryByHex[hex]
 	return country, ok
 }
 
-func (s stubClassifier) CountryByRegistration(reg string) (string, bool) {
+func (s mockClassifier) CountryByRegistration(reg string) (string, bool) {
 	country, ok := s.countryByReg[reg]
 	return country, ok
 }
@@ -120,7 +120,7 @@ func TestEvaluateBatchNewAircraftUnknownUntilIdentified(t *testing.T) {
 	record := baseRecord()
 	record.Flight = ""
 	state := emptyState()
-	current := EvaluateBatch(&state, []AircraftRecord{record}, stubClassifier{}, time.Now())
+	current := EvaluateBatch(&state, []AircraftRecord{record}, mockClassifier{}, time.Now())
 	if len(current) != 1 {
 		t.Fatalf("expected 1 current sighting, got %d", len(current))
 	}
@@ -135,7 +135,7 @@ func TestEvaluateBatchNewAircraftUnknownUntilIdentified(t *testing.T) {
 func TestEvaluateBatchSameFlightDoesNotIncrementAgain(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	record := baseRecord()
@@ -156,7 +156,7 @@ func TestEvaluateBatchSameFlightDoesNotIncrementAgain(t *testing.T) {
 func TestEvaluateBatchDifferentFlightIncrementsAgain(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	first := baseRecord()
@@ -184,7 +184,7 @@ func TestEvaluateBatchDifferentFlightIncrementsAgain(t *testing.T) {
 func TestEvaluateBatchIdentifyingCallsignDoesNotCountAsNewFlight(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	unknown := baseRecord()
@@ -212,7 +212,7 @@ func TestEvaluateBatchIdentifyingCallsignDoesNotCountAsNewFlight(t *testing.T) {
 func TestEvaluateBatchRareType(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		makeByIcao: map[string]string{"B738": "Boeing 737-800"},
 	}
 	state := emptyState()
@@ -227,7 +227,7 @@ func TestEvaluateBatchRareType(t *testing.T) {
 func TestEvaluateBatchOperatorIcaoFallback(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		opByIcao: map[string][2]string{"BAW": {"British Airways", "united kingdom"}},
 	}
 	record := baseRecord()
@@ -241,7 +241,7 @@ func TestEvaluateBatchOperatorIcaoFallback(t *testing.T) {
 func TestEvaluateBatchOperatorMilFallback(t *testing.T) {
 	t.Parallel()
 
-	classifier := stubClassifier{
+	classifier := mockClassifier{
 		opByMil: map[string]string{"RCH": "US Air Mobility Command"},
 	}
 	record := baseRecord()
@@ -259,7 +259,7 @@ func TestEvaluateBatchOperatorOwnOpFallback(t *testing.T) {
 	record := baseRecord()
 	record.OwnOp = "Private Owner"
 	state := emptyState()
-	current := EvaluateBatch(&state, []AircraftRecord{record}, stubClassifier{}, time.Now())
+	current := EvaluateBatch(&state, []AircraftRecord{record}, mockClassifier{}, time.Now())
 	if current[0].Operator != "Private Owner" {
 		t.Fatalf("Operator = %q, want Private Owner", current[0].Operator)
 	}
@@ -270,7 +270,7 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 
 	t.Run("operator country", func(t *testing.T) {
 		t.Parallel()
-		classifier := stubClassifier{
+		classifier := mockClassifier{
 			opByIcao: map[string][2]string{"BAW": {"British Airways", "united kingdom"}},
 		}
 		state := emptyState()
@@ -282,7 +282,7 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 
 	t.Run("hex country", func(t *testing.T) {
 		t.Parallel()
-		classifier := stubClassifier{
+		classifier := mockClassifier{
 			countryByHex: map[string]string{"abc123": "germany"},
 		}
 		state := emptyState()
@@ -294,7 +294,7 @@ func TestEvaluateBatchCountryOperatorThenHexThenRegistration(t *testing.T) {
 
 	t.Run("registration country", func(t *testing.T) {
 		t.Parallel()
-		classifier := stubClassifier{
+		classifier := mockClassifier{
 			countryByReg: map[string]string{"G-ABCD": "united kingdom"},
 		}
 		state := emptyState()

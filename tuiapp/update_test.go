@@ -2,9 +2,13 @@
 package tuiapp
 
 import (
+	"io"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	srv "github.com/micutio/airspottr/internal/application/services"
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
 func TestHandleKeyQuit(t *testing.T) {
@@ -47,5 +51,62 @@ func TestNavigateNotifyStripWrapsAround(t *testing.T) {
 	testModel.navigateNotifyStrip("right")
 	if testModel.notifyStripIdx != notifyType {
 		t.Fatalf("notifyStripIdx after right wrap = %d, want %d", testModel.notifyStripIdx, notifyType)
+	}
+}
+
+type mockRouteSource struct {
+	routes map[string]ref.FlightrouteRecord
+}
+
+func (f mockRouteSource) GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord {
+	out := make(map[string]ref.FlightrouteRecord, len(callsigns))
+	for _, cs := range callsigns {
+		if r, ok := f.routes[cs]; ok {
+			out[cs] = r
+		}
+	}
+	return out
+}
+
+func (mockRouteSource) GetPendingCallsigns() []string     { return nil }
+func (mockRouteSource) RestorePendingCallsigns([]string) {}
+
+func TestUpdateFetchesFlightRoutesAsynchronously(t *testing.T) {
+	t.Parallel()
+
+	route := *ref.GetDefaultFlightrouteRecord()
+	route.Callsign = "BAW123"
+	route.Origin.IataCode = "LHR"
+	route.Destination.IataCode = "JFK"
+
+	theme := getDefaultTheme()
+	style := initTableStyle(theme)
+	testModel := &model{
+		tableStyle:      style,
+		theme:           theme,
+		tables:          newTuiTables(style),
+		dashboard:       srv.NewDashboard(53.55, 9.99, nil, io.Discard),
+		flightrouteRepo: mockRouteSource{routes: map[string]ref.FlightrouteRecord{"BAW123": route}},
+	}
+
+	records := AircraftResponseMsg{
+		obs.AircraftRecord{Hex: "abc123", Flight: "BAW123", Lat: 53.6, Lon: 10.0},
+	}
+
+	_, cmd := testModel.Update(records)
+	if cmd == nil {
+		t.Fatal("expected async flight route command after AircraftResponseMsg")
+	}
+
+	msg := cmd()
+	routesMsg, ok := msg.(FlightRoutesResponseMsg)
+	if !ok {
+		t.Fatalf("expected FlightRoutesResponseMsg, got %T", msg)
+	}
+
+	testModel.Update(routesMsg)
+	sightings := testModel.dashboard.GetCurrentSightings()
+	if len(sightings) != 1 || sightings[0].Flightroute.Origin.IataCode != "LHR" {
+		t.Fatalf("expected route LHR->JFK assigned after FlightRoutesResponseMsg, got %+v", sightings)
 	}
 }
