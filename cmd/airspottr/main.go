@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/spf13/pflag"
+
 	srv "github.com/micutio/airspottr/internal/application/services"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 	"github.com/micutio/airspottr/internal/infrastructure/data"
@@ -14,7 +16,6 @@ import (
 	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 	"github.com/micutio/airspottr/tickerapp"
 	"github.com/micutio/airspottr/tuiapp"
-	"github.com/spf13/pflag"
 )
 
 const (

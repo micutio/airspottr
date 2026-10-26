@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/gen2brain/beeep"
+
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
 

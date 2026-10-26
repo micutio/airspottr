@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	srv "github.com/micutio/airspottr/internal/application/services"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	ref "github.com/micutio/airspottr/internal/domain/reference"
@@ -68,7 +69,7 @@ func (f mockRouteSource) GetFlightroutes(callsigns []string) map[string]ref.Flig
 	return out
 }
 
-func (mockRouteSource) GetPendingCallsigns() []string     { return nil }
+func (mockRouteSource) GetPendingCallsigns() []string    { return nil }
 func (mockRouteSource) RestorePendingCallsigns([]string) {}
 
 func TestUpdateFetchesFlightRoutesAsynchronously(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
+
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 	"github.com/micutio/airspottr/internal/domain/reference"
 )
