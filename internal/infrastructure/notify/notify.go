@@ -55,7 +55,7 @@ func (n *BeeepNotifier) emitRarityWithToggles(
 	title, body, logLine := formatRareSighting(sighting, rarityFlag)
 	n.Stdout.Println(logLine)
 	if err := beeep.Notify(title, body, appIconPath); err != nil {
-		panic(err)
+		n.Stdout.Printf("warning: desktop notification failed: %v\n", err)
 	}
 }
 

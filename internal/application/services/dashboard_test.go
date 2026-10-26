@@ -94,3 +94,35 @@ func TestRefreshBatchAssignsFlightRoutesByCallsign(t *testing.T) {
 		t.Fatalf("expected route preserved on second pass, got %#v", current[0].Flightroute)
 	}
 }
+
+type mockNotifier struct {
+	called int
+}
+
+func (m *mockNotifier) EmitRarityNotifications([]obs.AircraftSighting, obs.RarityNotifyToggles) {
+	m.called++
+}
+
+func (m *mockNotifier) DefaultRarityNotifyToggles() obs.RarityNotifyToggles {
+	return obs.RarityNotifyToggles{Type: true, Operator: true, Country: true}
+}
+
+func TestRefreshBatchSuppressesNotificationsDuringWarmup(t *testing.T) {
+	t.Parallel()
+
+	dashboard := NewDashboard(53.55, 9.99, nil, io.Discard)
+	notifier := &mockNotifier{}
+	dashboard.ConfigureRefresh(notifier, nil)
+
+	records := []obs.AircraftRecord{{Hex: "abc123", Flight: "BAW123"}}
+	dashboard.RefreshBatch(records, notifier.DefaultRarityNotifyToggles())
+	if notifier.called != 0 {
+		t.Fatalf("expected 0 notifications during warmup, got %d", notifier.called)
+	}
+
+	dashboard.FinishWarmupPeriod()
+	dashboard.RefreshBatch(records, notifier.DefaultRarityNotifyToggles())
+	if notifier.called != 1 {
+		t.Fatalf("expected 1 notification call after warmup finished, got %d", notifier.called)
+	}
+}

@@ -91,7 +91,7 @@ func (db *Dashboard) RefreshBatch(
 	toggles obs.RarityNotifyToggles,
 ) []obs.AircraftSighting {
 	db.ProcessAircraftRecords(records)
-	if db.notifier != nil {
+	if !db.IsWarmup && db.notifier != nil {
 		db.notifier.EmitRarityNotifications(db.currentSightings, toggles)
 	}
 	if db.flightRouteLookup != nil {

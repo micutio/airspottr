@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log" //nolint:depguard // Don't feel like using slog
+	"slices"
 	"strconv"
 	"strings"
 
@@ -32,14 +33,19 @@ var (
 	errParseHex  = errors.New("unable to parse hexadecimal string")
 )
 
+type regPrefixEntry struct {
+	prefix  string
+	country string
+}
+
 // Classifier loads CSV reference datasets and implements obs.Classifier.
 type Classifier struct {
-	icaoToAircraft     map[string]ref.IcaoAircraftSpec
-	icaoToOperator     map[string]ref.IcaoOperator
-	milCodeToOperator  map[string]string
-	hexRangeToCountry  map[ref.HexRange]string
-	regPrefixToCountry map[string]string
-	errOut             *log.Logger
+	icaoToAircraft    map[string]ref.IcaoAircraftSpec
+	icaoToOperator    map[string]ref.IcaoOperator
+	milCodeToOperator map[string]string
+	hexRangeToCountry map[ref.HexRange]string
+	regPrefixes       []regPrefixEntry
+	errOut            *log.Logger
 }
 
 var _ obs.Classifier = (*Classifier)(nil)
@@ -49,12 +55,12 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 		stderr = io.Discard
 	}
 	classifier := &Classifier{
-		icaoToAircraft:     make(map[string]ref.IcaoAircraftSpec),
-		icaoToOperator:     make(map[string]ref.IcaoOperator),
-		milCodeToOperator:  make(map[string]string),
-		hexRangeToCountry:  make(map[ref.HexRange]string),
-		regPrefixToCountry: make(map[string]string),
-		errOut:             log.New(stderr, "classifier ", log.LstdFlags),
+		icaoToAircraft:    make(map[string]ref.IcaoAircraftSpec),
+		icaoToOperator:    make(map[string]ref.IcaoOperator),
+		milCodeToOperator: make(map[string]string),
+		hexRangeToCountry: make(map[ref.HexRange]string),
+		regPrefixes:       nil,
+		errOut:            log.New(stderr, "classifier ", log.LstdFlags),
 	}
 
 	if err := readCSV(icaoListPath, icaoAircraftHeaderCount, func(r []string) error {
@@ -103,11 +109,21 @@ func NewClassifier(stderr io.Writer) (*Classifier, error) {
 	}
 
 	if err := readCSV(regPrefixListPath, regPrefixHeaderCount, func(r []string) error {
-		classifier.regPrefixToCountry[r[1]] = r[0]
+		if r[1] != "" {
+			classifier.regPrefixes = append(classifier.regPrefixes, regPrefixEntry{
+				prefix:  r[1],
+				country: r[0],
+			})
+		}
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("load registration prefixes: %w", err)
 	}
+
+	// Sort longest prefix first so more specific prefixes (e.g. "VP-B") match before shorter ones.
+	slices.SortFunc(classifier.regPrefixes, func(a, b regPrefixEntry) int {
+		return len(b.prefix) - len(a.prefix)
+	})
 
 	return classifier, nil
 }
@@ -142,7 +158,7 @@ func (c *Classifier) CountryByHex(hexCode string) (string, bool) {
 		return "", false
 	}
 	for key, value := range c.hexRangeToCountry {
-		if hexAsInt > key.LowerBound && hexAsInt < key.UpperBound {
+		if hexAsInt >= key.LowerBound && hexAsInt <= key.UpperBound {
 			return value, true
 		}
 	}
@@ -150,9 +166,12 @@ func (c *Classifier) CountryByHex(hexCode string) (string, bool) {
 }
 
 func (c *Classifier) CountryByRegistration(registration string) (string, bool) {
-	for key, value := range c.regPrefixToCountry {
-		if strings.Contains(registration, key) {
-			return value, true
+	if registration == "" {
+		return "", false
+	}
+	for _, entry := range c.regPrefixes {
+		if strings.HasPrefix(registration, entry.prefix) {
+			return entry.country, true
 		}
 	}
 	return "", false
