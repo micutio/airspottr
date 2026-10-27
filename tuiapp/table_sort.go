@@ -5,147 +5,95 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/micutio/airspottr/internal"
+
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	"github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
-	aircraftColumnCount = 8
-	groundAltitudeZone  = -1000
-	infinity            = 1e9
+	dstCol = iota
+	fnoCol
+	tidCol
+	depCol
+	arrCol
+	altCol
+	spdCol
+	hdgCol
 )
 
-// Base titles (sort arrows appended in applyAircraftSortHeaders).
-var aircraftColumnTitles = [aircraftColumnCount]string{ //nolint:gochecknoglobals // TODO: Fix
-	"DST", "FNO", "TID", "DEP", "ARR", "ALT", "SPD", "HDG",
-}
+const (
+	groundAltitudeZone = -1000
+	infinity           = 1e9
+)
 
-func arrowForSort(desc bool) string {
-	if desc {
-		return "▼"
-	}
-	return "▲"
-}
-
-func applyAircraftSortHeaders(tbl *table.Model, sortCol int, desc bool) {
-	old := tbl.Columns()
-	cols := make([]table.Column, len(old))
-	copy(cols, old)
-	for i := range cols {
-		title := aircraftColumnTitles[i]
-		if i == sortCol {
-			title += arrowForSort(desc)
-		}
-		cols[i].Title = title
-	}
-	tbl.SetColumns(cols)
-}
-
-//nolint:gochecknoglobals // TODO: Fix
-var rarityValueColumnTitle = [rarityTableCount]string{"Type", "Operator", "Country"}
-
-func applyRaritySortHeaders(tbl *table.Model, rarityIdx, sortCol int, desc bool) {
-	old := tbl.Columns()
-	cols := make([]table.Column, len(old))
-	copy(cols, old)
-	cols[0].Title = "Count"
-	if sortCol == 0 {
-		cols[0].Title = "Count" + arrowForSort(desc)
-	}
-	second := rarityValueColumnTitle[rarityIdx]
-	if sortCol == 1 {
-		second += arrowForSort(desc)
-	}
-	cols[1].Title = second
-	tbl.SetColumns(cols)
-}
-
-func routeFor(db *internal.Dashboard, ac *internal.AircraftRecord) *internal.FlightRouteRecord {
-	r, ok := db.CachedFlightRoutes[ac.GetFlightNoAsStr()]
-	if !ok {
-		return internal.GetDefaultFlightrouteRecord()
-	}
-	return r
-}
-
-func altitudeSortKey(aircraftRecord *internal.AircraftRecord) float64 {
-	if n, ok := aircraftRecord.AltBaro.(float64); ok {
+func altitudeSortKey(aircraftSighting obs.AircraftSighting) float64 {
+	if n, ok := aircraftSighting.LastRecord.AltBaro.(float64); ok {
 		return n
 	}
-	if s, ok := aircraftRecord.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
+	if s, ok := aircraftSighting.LastRecord.AltBaro.(string); ok && strings.EqualFold(s, "ground") {
 		return groundAltitudeZone
 	}
 	return infinity
 }
 
-// compareAircraftAscending reports whether a should sort before b (ascending).
-func compareAircraftAscending(
-	recordA, recordB *internal.AircraftRecord,
+// compareSightingsAscending reports whether a should sort before b (ascending).
+func compareSightingsAscending(
+	sightingA, sightingB obs.AircraftSighting,
 	col int,
-	dashboard *internal.Dashboard,
 ) bool {
-	dstCol := 0
-	fnoCol := 1
-	tidCol := 2
-	depCol := 3
-	arrCol := 4
-	altCol := 5
-	spdCol := 6
-	hdgCol := 7
-	routeA, routeB := routeFor(dashboard, recordA), routeFor(dashboard, recordB)
+	routeA, routeB := sightingA.Flightroute, sightingB.Flightroute
 	switch col {
-	case dstCol: // DST
-		if recordA.CachedDist != recordB.CachedDist {
-			return recordA.CachedDist < recordB.CachedDist
+	case dstCol:
+		if sightingA.Distance != sightingB.Distance {
+			return sightingA.Distance < sightingB.Distance
 		}
-	case fnoCol: // FNO
-		sa, sb := recordA.GetFlightNoAsStr(), recordB.GetFlightNoAsStr()
-		if sa != sb {
-			return sa < sb
+	case fnoCol:
+		if sightingA.LastFlightNo != sightingB.LastFlightNo {
+			return sightingA.LastFlightNo < sightingB.LastFlightNo
 		}
-	case tidCol: // TID
-		ta := dashboard.IcaoToAircraft[recordA.IcaoType].Make
-		tb := dashboard.IcaoToAircraft[recordB.IcaoType].Make
-		if ta != tb {
-			return ta < tb
+	case tidCol:
+		if sightingA.TypeDesc != sightingB.TypeDesc {
+			return sightingA.TypeDesc < sightingB.TypeDesc
 		}
-	case depCol: // DEP
-		da, dbi := routeA.Origin.IataCode, routeB.Origin.IataCode
-		if da != dbi {
-			return da < dbi
+	case depCol:
+		if routeA.Origin.IataCode != routeB.Origin.IataCode {
+			return routeA.Origin.IataCode < routeB.Origin.IataCode
 		}
-	case arrCol: // ARR
-		da, dbi := routeA.Destination.IataCode, routeB.Destination.IataCode
-		if da != dbi {
-			return da < dbi
+	case arrCol:
+		if routeA.Destination.IataCode != routeB.Destination.IataCode {
+			return routeA.Destination.IataCode < routeB.Destination.IataCode
 		}
-	case altCol: // ALT
-		ka, kb := altitudeSortKey(recordA), altitudeSortKey(recordB)
+	case altCol:
+		ka, kb := altitudeSortKey(sightingA), altitudeSortKey(sightingB)
 		if ka != kb {
 			return ka < kb
 		}
-	case spdCol: // SPD
-		if recordA.GroundSpeed != recordB.GroundSpeed {
-			return recordA.GroundSpeed < recordB.GroundSpeed
+	case spdCol:
+		if sightingA.LastRecord.GroundSpeed != sightingB.LastRecord.GroundSpeed {
+			return sightingA.LastRecord.GroundSpeed < sightingB.LastRecord.GroundSpeed
 		}
-	case hdgCol: // HDG
-		if recordA.NavHeading != recordB.NavHeading {
-			return recordA.NavHeading < recordB.NavHeading
+	case hdgCol:
+		if sightingA.LastRecord.NavHeading != sightingB.LastRecord.NavHeading {
+			return sightingA.LastRecord.NavHeading < sightingB.LastRecord.NavHeading
 		}
 	}
-	return recordA.Hex < recordB.Hex
+	return sightingA.LastRecord.Hex < sightingB.LastRecord.Hex
 }
 
-func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc bool) []internal.AircraftRecord {
-	var rows []internal.AircraftRecord
-	for _, ac := range dashboard.CurrentAircraft {
-		aircraftType := dashboard.IcaoToAircraft[ac.IcaoType].Make
-		if ac.GetFlightNoAsStr() == "" && aircraftType == "" {
+func filteredSortedSightings(
+	currentSightings []obs.AircraftSighting,
+	sortCol int,
+	desc bool,
+) []obs.AircraftSighting {
+	var rows []obs.AircraftSighting
+	for _, ac := range currentSightings {
+		if ac.TypeDesc == obs.TypeUnknown || (ac.LastFlightNo == "" && ac.TypeDesc == "") {
 			continue
 		}
 		rows = append(rows, ac)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		less := compareAircraftAscending(&rows[i], &rows[j], sortCol, dashboard)
+		less := compareSightingsAscending(rows[i], rows[j], sortCol)
 		if desc {
 			return !less
 		}
@@ -154,7 +102,7 @@ func filteredSortedAircraft(dashboard *internal.Dashboard, sortCol int, desc boo
 	return rows
 }
 
-func compareRarityAscending(propertyA, propertyB internal.PropertyCountTuple, byProperty bool) bool {
+func compareRarityAscending(propertyA, propertyB reference.PropertyCountTuple, byProperty bool) bool {
 	if byProperty {
 		if propertyA.Property != propertyB.Property {
 			return propertyA.Property < propertyB.Property
@@ -167,10 +115,10 @@ func compareRarityAscending(propertyA, propertyB internal.PropertyCountTuple, by
 	return propertyA.Property < propertyB.Property
 }
 
-func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []internal.PropertyCountTuple {
-	tuples := make([]internal.PropertyCountTuple, 0, len(m))
+func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []reference.PropertyCountTuple {
+	tuples := make([]reference.PropertyCountTuple, 0, len(m))
 	for k, v := range m {
-		tuples = append(tuples, internal.PropertyCountTuple{Property: k, Count: v})
+		tuples = append(tuples, reference.PropertyCountTuple{Property: k, Count: v})
 	}
 	sort.SliceStable(tuples, func(i, j int) bool {
 		less := compareRarityAscending(tuples[i], tuples[j], byProperty)
@@ -182,34 +130,11 @@ func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []internal.Pr
 	return tuples
 }
 
-// cycleSortColumn steps sort column (focused table). dir +1 or -1.
-func (m *model) cycleSortColumn(dir int) {
-	if m.uiState == mainPage {
-		m.aircraftSortCol = (m.aircraftSortCol + dir + aircraftColumnCount) % aircraftColumnCount
-	} else {
-		idx := m.selectedRarityIdx
-		//nolint:mnd // Don't care about this magic number.
-		m.raritySortCol[idx] = (m.raritySortCol[idx] + dir + 2) % 2
-	}
-	m.updateAllTables()
-}
-
-func (m *model) toggleSortDirection() {
-	if m.uiState == mainPage {
-		m.aircraftSortDesc = !m.aircraftSortDesc
-	} else {
-		idx := m.selectedRarityIdx
-		m.raritySortDesc[idx] = !m.raritySortDesc[idx]
-	}
-	m.updateAllTables()
-}
-
-func buildAircraftRows(db *internal.Dashboard, records []internal.AircraftRecord) []table.Row {
+func buildAircraftRows(records []obs.AircraftSighting) []table.Row {
 	rows := make([]table.Row, 0, len(records))
 	for i := range records {
-		ac := &records[i]
-		route := routeFor(db, ac)
-		rows = append(rows, aircraftToRow(ac, route))
+		ac := records[i]
+		rows = append(rows, aircraftToRow(ac, ac.Flightroute))
 	}
 	return rows
 }

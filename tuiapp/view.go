@@ -32,7 +32,7 @@ func (m *model) View() string {
 		Render(lipgloss.JoinVertical(lipgloss.Left, body...))
 }
 
-func (m *model) viewBorderedTable(tbl *autoFormatTable) string {
+func (m *model) viewBorderedTable(tbl *sortableTable) string {
 	return m.viewStyle.Border(lipgloss.RoundedBorder()).Render(tbl.table.View())
 }
 
@@ -71,26 +71,28 @@ func (m *model) viewHeader() string {
 	notifyPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewNotifyListContent())
 
 	var rightPanel string
-	highest := m.dashboard.Highest
-	fastest := m.dashboard.Fastest
-	if highest != nil && fastest != nil {
+	highest := m.dashboard.GetHighest()
+	fastest := m.dashboard.GetFastest()
+	highestMake, htExists := m.dashboard.AircraftMake(highest.IcaoType)
+	fastestMake, ftExists := m.dashboard.AircraftMake(fastest.IcaoType)
+	if htExists && ftExists {
 		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				listHeader("Highest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("ALT", highest.GetAltitudeAsStr()),
-					listItem("FNO", highest.GetFlightNoAsStr()),
+					listItem("FNO", highest.GetCallsignAsStr()),
 					listItem("REG", highest.Registration),
-					listItem("TID", m.dashboard.IcaoToAircraft[highest.IcaoType].Make),
+					listItem("TID", highestMake),
 				),
 				listHeader("Fastest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
-					listItem("FNO", fastest.GetFlightNoAsStr()),
+					listItem("FNO", fastest.GetCallsignAsStr()),
 					listItem("REG", fastest.Registration),
-					listItem("TID", m.dashboard.IcaoToAircraft[fastest.IcaoType].Make),
+					listItem("TID", fastestMake),
 				),
 			),
 		)

@@ -1,0 +1,324 @@
+package adsb
+
+import (
+	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+
+	ref "github.com/micutio/airspottr/internal/domain/reference"
+)
+
+const (
+	reqHostFlightroute = "api.adsbdb.com"
+	// FlightRouteQueryThreshold limits the number of concurrent flight route queries to avoid overwhelming the server.
+	FlightRouteQueryThreshold = 10
+)
+
+type flightRouteQueryResponse struct {
+	Response flightRouteResponse `json:"response"`
+}
+
+type flightRouteResponse struct {
+	Flightroute flightRouteDTO `json:"flightroute"`
+}
+
+type flightRouteDTO struct {
+	Callsign     string      `json:"callsign"`
+	CallsignIcao string      `json:"callsign_icao"`
+	CallsignIata string      `json:"callsign_iata"`
+	Airline      airlineDTO  `json:"airline"`
+	Origin       locationDTO `json:"origin"`
+	Destination  locationDTO `json:"destination"`
+}
+
+type airlineDTO struct {
+	Name       string `json:"name"`
+	Icao       string `json:"icao"`
+	Iata       string `json:"iata"`
+	Country    string `json:"country"`
+	CountryIso string `json:"country_iso"`
+	Callsign   string `json:"callsign"`
+}
+
+type locationDTO struct {
+	CountryIsoName string  `json:"country_iso_name"`
+	CountryName    string  `json:"country_name"`
+	Elevation      int     `json:"elevation"`
+	IataCode       string  `json:"iata_code"`
+	IcaoCode       string  `json:"icao_code"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	Municipality   string  `json:"municipality"`
+	Airport        string  `json:"name"`
+}
+
+func (dto flightRouteDTO) toDomain() ref.FlightrouteRecord {
+	return ref.FlightrouteRecord{
+		Callsign:     dto.Callsign,
+		CallsignIcao: dto.CallsignIcao,
+		CallsignIata: dto.CallsignIata,
+		Airline: ref.AirlineRecord{
+			Name:       dto.Airline.Name,
+			Icao:       dto.Airline.Icao,
+			Iata:       dto.Airline.Iata,
+			Country:    dto.Airline.Country,
+			CountryIso: dto.Airline.CountryIso,
+			Callsign:   dto.Airline.Callsign,
+		},
+		Origin: ref.LocationRecord{
+			CountryIsoName: dto.Origin.CountryIsoName,
+			CountryName:    dto.Origin.CountryName,
+			Elevation:      dto.Origin.Elevation,
+			IataCode:       dto.Origin.IataCode,
+			IcaoCode:       dto.Origin.IcaoCode,
+			Latitude:       dto.Origin.Latitude,
+			Longitude:      dto.Origin.Longitude,
+			Municipality:   dto.Origin.Municipality,
+			Airport:        dto.Origin.Airport,
+		},
+		Destination: ref.LocationRecord{
+			CountryIsoName: dto.Destination.CountryIsoName,
+			CountryName:    dto.Destination.CountryName,
+			Elevation:      dto.Destination.Elevation,
+			IataCode:       dto.Destination.IataCode,
+			IcaoCode:       dto.Destination.IcaoCode,
+			Latitude:       dto.Destination.Latitude,
+			Longitude:      dto.Destination.Longitude,
+			Municipality:   dto.Destination.Municipality,
+			Airport:        dto.Destination.Airport,
+		},
+	}
+}
+
+// FlightrouteRequest handles http request commands.
+type FlightrouteRequest struct {
+	apiClient            *http.Client
+	waitGroup            sync.WaitGroup
+	errOut               *slog.Logger
+	pendingCallsigns     []string
+	pendingCallsignsMu   sync.Mutex
+	cachedFlightroutes   map[string]ref.FlightrouteRecord
+	cachedFlightroutesMu sync.Mutex
+}
+
+func NewFlightrouteRequest(stderr io.Writer) (*FlightrouteRequest, error) {
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	client := &http.Client{
+		Timeout: reqTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS13,
+				MaxVersion: tls.VersionTLS13,
+			},
+		},
+	}
+
+	request := &FlightrouteRequest{
+		apiClient:            client,
+		waitGroup:            sync.WaitGroup{},
+		errOut:               slog.New(slog.NewTextHandler(stderr, nil)),
+		pendingCallsigns:     []string{},
+		pendingCallsignsMu:   sync.Mutex{},
+		cachedFlightroutes:   make(map[string]ref.FlightrouteRecord),
+		cachedFlightroutesMu: sync.Mutex{},
+	}
+
+	request.errOut.Info("Request init")
+
+	return request, nil
+}
+
+func (r *FlightrouteRequest) GetFlightroutes(callsigns []string) map[string]ref.FlightrouteRecord {
+	// Retrieve routes from cache first, if available.
+	r.cachedFlightroutesMu.Lock()
+	flightrouteRecords := make(map[string]ref.FlightrouteRecord)
+	var callsignsWithoutRoute []string
+	for _, callsign := range callsigns {
+		if route, exists := r.cachedFlightroutes[callsign]; exists {
+			flightrouteRecords[callsign] = route
+		} else {
+			callsignsWithoutRoute = append(callsignsWithoutRoute, callsign)
+		}
+	}
+	r.cachedFlightroutesMu.Unlock()
+
+	// Best case: all routes have been found, return right here
+	if len(callsignsWithoutRoute) == 0 {
+		return flightrouteRecords
+	}
+
+	// For missing routes make a web request to adsbdb.
+	r.requestFlightroutesFromWeb(flightrouteRecords, callsignsWithoutRoute)
+	return flightrouteRecords
+}
+
+func (r *FlightrouteRequest) requestFlightroutesFromWeb(
+	flightrouteRecords map[string]ref.FlightrouteRecord,
+	callsigns []string,
+) {
+	r.pendingCallsignsMu.Lock()
+	// Add new callsigns to the pending queue
+	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
+	r.errOut.Info(
+		"RequestFlightRoutesForCallsigns: callsigns queued",
+		slog.Int("requested", len(callsigns)),
+		slog.Int("pending", len(r.pendingCallsigns)),
+	)
+
+	// Determine how many to process this time
+	toProcess := min(len(r.pendingCallsigns), FlightRouteQueryThreshold)
+
+	// Take the first 'toProcess' callsigns from the queue
+	selectedCallsigns := make([]string, toProcess)
+	copy(selectedCallsigns, r.pendingCallsigns[:toProcess])
+
+	// Remove the processed callsigns from the queue
+	r.pendingCallsigns = r.pendingCallsigns[toProcess:]
+	r.pendingCallsignsMu.Unlock()
+
+	r.errOut.Info("RequestFlightRoutesForCallsigns: processing batch", slog.Int("batch_size", len(selectedCallsigns)))
+
+	// 0. Put dummies for the selected callsigns into the cache, so that we do not query for them
+	// again if the database does not have them.
+	for _, callsign := range selectedCallsigns {
+		defaultRoute := *ref.GetDefaultFlightrouteRecord()
+		r.cachedFlightroutesMu.Lock()
+		r.cachedFlightroutes[callsign] = defaultRoute
+		r.cachedFlightroutesMu.Unlock()
+		flightrouteRecords[callsign] = defaultRoute
+	}
+
+	// 1. Build input urls for selected callsigns
+	urls := r.createFlightrouteRequestURLs(selectedCallsigns)
+
+	// 2. Fan-out: Launch a goroutine for each URL
+	results := make(chan []byte, len(urls))
+	var waitGroup sync.WaitGroup
+	for _, reqURL := range urls {
+		waitGroup.Add(1)
+		go func(urlStr string) {
+			defer waitGroup.Done()
+
+			body, reqErr := r.sendRequest(urlStr)
+			// Only send body to results if there is no error.
+			if reqErr != nil {
+				r.errOut.Error(
+					"RequestFlightRoutesForCallsigns: error requesting url",
+					slog.String("url", urlStr),
+					slog.Any("error", reqErr),
+				)
+			} else {
+				results <- body
+			}
+		}(reqURL)
+	}
+
+	// 3. Wait and Close: Close the channel once all goroutines finish
+	go func() {
+		waitGroup.Wait()
+		close(results)
+	}()
+
+	// 4. Fan-in: Collect and process results
+	for result := range results {
+		flightrouteRecord, err := r.flightRouteJSONToRecord(result)
+		if err != nil {
+			r.errOut.Error("RequestFlightRoutesForCallsigns: error parsing json", slog.Any("error", err))
+			continue
+		}
+		if flightrouteRecord.Callsign == "" {
+			continue
+		}
+		flightrouteRecords[flightrouteRecord.Callsign] = flightrouteRecord
+		// Cache the found flightroutes.
+		r.cachedFlightroutesMu.Lock()
+		r.cachedFlightroutes[flightrouteRecord.Callsign] = flightrouteRecord
+		r.cachedFlightroutesMu.Unlock()
+	}
+	r.errOut.Info(
+		"RequestFlightRoutesForCallsigns: batch complete",
+		slog.Int("processed", len(callsigns)),
+		slog.Int("found", len(flightrouteRecords)),
+		slog.Int("cached", len(r.cachedFlightroutes)),
+	)
+}
+
+func (r *FlightrouteRequest) createFlightrouteRequestURLs(selectedCallsigns []string) []string {
+	urlCount := len(selectedCallsigns)
+	urls := make([]string, 0, urlCount)
+	for _, callsign := range selectedCallsigns {
+		callsignURL, urlErr := createFlightRouteRequestURL(callsign)
+		if urlErr != nil {
+			// Skip invalid urls.
+			r.errOut.Error(
+				"RequestFlightRoutesForCallsigns: error constructing url",
+				slog.String("callsign", callsign),
+				slog.Any("error", urlErr),
+			)
+			continue
+		}
+		urls = append(urls, callsignURL)
+	}
+	return urls
+}
+
+func createFlightRouteRequestURL(callsign string) (string, error) {
+	baseURL := &url.URL{Scheme: reqProtocolHTTPS, Host: reqHostFlightroute}
+	fullURL := baseURL.JoinPath("v0", "callsign", strings.TrimSpace(callsign))
+	targetURL := fullURL.String()
+	validatedURL, valErr := validateURL(targetURL)
+	if valErr != nil {
+		return "", fmt.Errorf("sendRequest: error validating URL: %w", valErr)
+	}
+	return validatedURL, nil
+}
+
+// flightRouteJSONToRecord takes a JSON record in form of a byte array and transforms it into a
+// FlightRouteRecord.
+// It is then assigned to all flights matching the callsign.
+func (r *FlightrouteRequest) flightRouteJSONToRecord(jsonBytes []byte) (ref.FlightrouteRecord, error) {
+	var data flightRouteQueryResponse
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		jsonErr := fmt.Errorf("RequestFlightRoutesForCallsigns: error parsing json: %w", err)
+		r.errOut.Error("RequestFlightRoutesForCallsigns: error parsing json", slog.Any("error", err))
+		return ref.FlightrouteRecord{}, jsonErr
+	}
+	return data.Response.Flightroute.toDomain(), nil
+}
+
+// sendRequest builds the API URL from opts, sends an HTTP GET request, and returns the response body.
+// The URL is constructed only from the fixed host and opts (lat/lon); no user-controlled URL input.
+func (r *FlightrouteRequest) sendRequest(targetURL string) ([]byte, error) {
+	body, requestSendErr := sendRequest(targetURL, r.apiClient)
+	if requestSendErr != nil {
+		return nil, fmt.Errorf("sendRequest: error sending request: %w", requestSendErr)
+	}
+
+	return body, nil
+}
+
+func (r *FlightrouteRequest) ClearFlightrouteCache() {
+	r.cachedFlightroutes = make(map[string]ref.FlightrouteRecord)
+}
+
+func (r *FlightrouteRequest) GetPendingCallsigns() []string {
+	r.pendingCallsignsMu.Lock()
+	defer r.pendingCallsignsMu.Unlock()
+	cp := make([]string, len(r.pendingCallsigns))
+	copy(cp, r.pendingCallsigns)
+	return cp
+}
+
+func (r *FlightrouteRequest) RestorePendingCallsigns(pendingCallsigns []string) {
+	r.pendingCallsignsMu.Lock()
+	defer r.pendingCallsignsMu.Unlock()
+	r.pendingCallsigns = append([]string(nil), pendingCallsigns...)
+}

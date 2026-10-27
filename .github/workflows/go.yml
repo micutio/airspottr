@@ -18,38 +18,33 @@ jobs:
   govulncheck:
     strategy:
       matrix:
-        go: [stable]
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
       - uses: imjasonh/govulncheck-action@v01
 
   golangci:
     name: lint
     strategy:
       matrix:
-        go: [stable]
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
-        with:
-          go-version: ${{ matrix.go }}
 
   build:
     strategy:
       fail-fast: false
       matrix:
-        go: [stable]
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -57,8 +52,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
       - name: Build
-        run: go build -v
+        run: go build -v ./...
       - name: Test
         run: go test -v ./...

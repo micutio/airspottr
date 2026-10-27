@@ -1,207 +1,240 @@
 package tuiapp
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/micutio/airspottr/internal"
+	"github.com/charmbracelet/lipgloss"
+
+	obs "github.com/micutio/airspottr/internal/domain/observation"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// Error types
-
-var errColumnMismatch = errors.New("number of columns does not match number of format columns")
-
-// Automated Table Formatting
-
-type tableColumnSizingOption int
+// Rarity table column order on the global-stats row: Type | Operator | Country.
+const (
+	rarityByType = iota
+	rarityByOperator
+	rarityByCountry
+	rarityTableCount = 3
+)
 
 const (
-	// fixed column width, regardless of table width.
-	fixed tableColumnSizingOption = iota
-	// relative column with, given as percentage of the total table width.
-	relative
-	// fill columns receive any remaining table space, evenly distributed.
-	fill
+	cellHorizontalPadding = 2 // default bubbles/table cell padding (1 left + 1 right)
+	initialTableHeight    = 5
 )
 
-// TODO: Add header name (string) to the format.
-type columnFormat struct {
-	option tableColumnSizingOption
-	value  float32
+// colSpec defines a single column's base title and width behavior.
+type colSpec struct {
+	title string
+	width int  // fixed width, or minimum width when flex is true
+	flex  bool // absorbs remaining horizontal space
 }
 
-type tableFormat struct {
-	columnSizes        []columnFormat
-	fixedWidth         int     // fixedWidth is the total space taken up by all fixed-width columns.
-	fillWidthCount     int     // fillWidthCount indicates how many columns have fill width.
-	totalRelativeWidth float32 // how much width is taken by relative columns.
+// sortableTable wraps a bubbles/table.Model with declarative column specs and sort state.
+type sortableTable struct {
+	table    table.Model
+	specs    []colSpec
+	sortCol  int
+	sortDesc bool
+	width    int
 }
 
-func newTableFormat(items ...columnFormat) tableFormat {
-	var totalRelativeWidth float32
-	fixedWidth := 0
-	fillWidthCount := 0
-
-	for _, item := range items {
-		switch item.option {
-		case relative:
-			totalRelativeWidth += item.value
-			continue
-		case fixed:
-			fixedWidth += int(item.value)
-			continue
-		case fill:
-			fillWidthCount++
-			continue
-		}
+func newSortableTable(style table.Styles, specs []colSpec, defaultSortCol int) sortableTable {
+	cols := make([]table.Column, len(specs))
+	for i, s := range specs {
+		cols[i] = table.Column{Title: s.title, Width: s.width}
 	}
-
-	return tableFormat{
-		columnSizes:        items,
-		fixedWidth:         fixedWidth,
-		fillWidthCount:     fillWidthCount,
-		totalRelativeWidth: totalRelativeWidth,
-	}
-}
-
-// Integrated Formatted Table Type
-
-type autoFormatTable struct {
-	table  table.Model
-	format tableFormat
-}
-
-// TODO: Take table padding into account!
-func (aft *autoFormatTable) resize(newWidth int) error {
-	columnCount := len(aft.table.Columns())
-	if columnCount != len(aft.format.columnSizes) {
-		return fmt.Errorf(
-			"table.resize: %w -> %d in table, %d in tableFormat",
-			errColumnMismatch,
-			columnCount,
-			len(aft.format.columnSizes))
-	}
-
-	adjustedWidth := newWidth - columnCount
-	aft.table.SetWidth(newWidth - 1)
-
-	totalRelativeWidth := int(float32(adjustedWidth) * aft.format.totalRelativeWidth)
-	totalFillWidth := adjustedWidth - totalRelativeWidth - aft.format.fixedWidth
-	fillPerColumn := int(float32(totalFillWidth) / float32(aft.format.fillWidthCount))
-
-	fillPerColumnOffset := 2 // TODO: figure out why 2 works.
-	oneOffset := 1
-
-	// TODO: Find a better way to subtract 1 everywhere to factor in padding.
-	for idx := range columnCount {
-		format := aft.format.columnSizes[idx]
-		switch format.option {
-		case fixed:
-			aft.table.Columns()[idx].Width = int(format.value) - oneOffset
-			continue
-		case relative:
-			aft.table.Columns()[idx].Width = int(format.value*float32(adjustedWidth)) - oneOffset
-			continue
-		case fill:
-			aft.table.Columns()[idx].Width = fillPerColumn - fillPerColumnOffset
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (aft *autoFormatTable) SetHeight(height int) {
-	aft.table.SetHeight(height)
-}
-
-func newCurrentAircraftTable(tableStyle table.Styles) autoFormatTable {
-	dstLen := 5 // space for the label + 1 for sorting arrow display.
-	fnoLen := 9
-	tidLen := 0
-	depLen := 5 // space for the label + 1 for sorting arrow display.
-	arrLen := 5 // space for the label + 1 for sorting arrow display.
-	altLen := 8
-	spdLen := 5 // space for the label + 1 for sorting arrow display.
-	hdgLen := 5
-	initialTableHeight := 5
-	format := newTableFormat(
-		columnFormat{fixed, float32(dstLen)},
-		columnFormat{fixed, float32(fnoLen)},
-		columnFormat{fill, float32(tidLen)},
-		columnFormat{fixed, float32(depLen)},
-		columnFormat{fixed, float32(arrLen)},
-		columnFormat{fixed, float32(altLen)},
-		columnFormat{fixed, float32(spdLen)},
-		columnFormat{fixed, float32(hdgLen)},
-	)
-
-	currentAircraftTbl := table.New(
-		// table header
-		table.WithColumns(
-			[]table.Column{
-				{Title: "DST", Width: dstLen},
-				{Title: "FNO", Width: fnoLen},
-				{Title: "TID", Width: tidLen},
-				{Title: "DEP", Width: tidLen},
-				{Title: "ARR", Width: tidLen},
-				{Title: "ALT", Width: altLen},
-				{Title: "SPD", Width: spdLen},
-				{Title: "HDG", Width: hdgLen},
-			},
-		),
-		table.WithRows([]table.Row{}),
-		table.WithFocused(true),
-		table.WithHeight(initialTableHeight),
-		table.WithStyles(tableStyle),
-	)
-	currentAircraftTbl.Blur()
-
-	return autoFormatTable{
-		table:  currentAircraftTbl,
-		format: format,
-	}
-}
-
-// newRarityTable builds a Count + value-column table (type / operator / country).
-func newRarityTable(tableStyle table.Styles, valueColumnTitle string) autoFormatTable {
-	const (
-		countLen   = 7
-		nameLen    = 12
-		initHeight = 5
-	)
-	format := newTableFormat(
-		columnFormat{fixed, float32(countLen)},
-		columnFormat{fill, float32(nameLen)},
-	)
 	tbl := table.New(
-		table.WithColumns([]table.Column{
-			{Title: "Count", Width: countLen},
-			{Title: valueColumnTitle, Width: nameLen},
-		}),
+		table.WithColumns(cols),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
-		table.WithHeight(initHeight),
-		table.WithStyles(tableStyle),
+		table.WithHeight(initialTableHeight),
+		table.WithStyles(style),
 	)
 	tbl.Blur()
-	return autoFormatTable{table: tbl, format: format}
+
+	sortableTbl := sortableTable{
+		table:    tbl,
+		specs:    specs,
+		sortCol:  defaultSortCol,
+		sortDesc: false,
+		width:    0,
+	}
+	sortableTbl.syncColumns()
+	return sortableTbl
 }
 
-func aircraftToRow(aircraft *internal.AircraftRecord, route *internal.FlightRouteRecord) table.Row {
-	return table.Row{
-		fmt.Sprintf("%3.0f", aircraft.CachedDist),
-		aircraft.GetFlightNoAsStr(),
-		aircraft.CachedType,
-		route.Origin.IataCode,
-		route.Destination.IataCode,
-		aircraft.GetAltitudeAsStr(),
-		fmt.Sprintf("%3.0f", aircraft.GroundSpeed),
-		fmt.Sprintf("%3.0f", aircraft.NavHeading),
+// resize updates the target inner width of the table and recalculates column widths.
+func (st *sortableTable) resize(totalWidth int) {
+	st.width = totalWidth
+	st.syncColumns()
+}
+
+// syncColumns recalculates column widths for the current table width and applies sort arrows.
+func (st *sortableTable) syncColumns() {
+	colCount := len(st.specs)
+	if colCount == 0 {
+		return
+	}
+
+	fixedTotal := 0
+	flexCount := 0
+	for _, spec := range st.specs {
+		if spec.flex {
+			flexCount++
+		} else {
+			fixedTotal += spec.width
+		}
+	}
+
+	availableForCols := st.width - colCount*cellHorizontalPadding
+	flexWidth := 0
+	if flexCount > 0 && availableForCols > fixedTotal {
+		flexWidth = (availableForCols - fixedTotal) / flexCount
+	}
+
+	cols := make([]table.Column, colCount)
+	for idx, spec := range st.specs {
+		width := spec.width
+		if spec.flex {
+			width = max(spec.width, flexWidth)
+		}
+		title := spec.title
+		if idx == st.sortCol {
+			title += arrowForSort(st.sortDesc)
+		}
+		cols[idx] = table.Column{Title: title, Width: width}
+	}
+
+	st.table.SetColumns(cols)
+	if st.width > 0 {
+		st.table.SetWidth(st.width)
 	}
 }
 
-func propertyCountToRow(propCount internal.PropertyCountTuple) table.Row {
+func (st *sortableTable) SetHeight(height int) {
+	st.table.SetHeight(height)
+}
+
+func (st *sortableTable) SetRows(rows []table.Row) {
+	st.table.SetRows(rows)
+}
+
+func (st *sortableTable) cycleSortCol(delta int) {
+	n := len(st.specs)
+	if n == 0 {
+		return
+	}
+	st.sortCol = (st.sortCol + delta + n) % n
+	st.syncColumns()
+}
+
+func (st *sortableTable) setSortCol(col int) bool {
+	if col < 0 || col >= len(st.specs) {
+		return false
+	}
+	st.sortCol = col
+	st.syncColumns()
+	return true
+}
+
+func (st *sortableTable) toggleSortDir() {
+	st.sortDesc = !st.sortDesc
+	st.syncColumns()
+}
+
+func arrowForSort(desc bool) string {
+	if desc {
+		return "▼"
+	}
+	return "▲"
+}
+
+func initTableStyle(theme Theme) table.Styles {
+	tableStyle := table.DefaultStyles()
+	tableStyle.Header = tableStyle.Header.Padding(0, 1)
+	tableStyle.Cell = tableStyle.Cell.Padding(0, 1)
+	tableStyle.Selected = lipgloss.NewStyle().Background(theme.Highlight)
+	return tableStyle
+}
+
+//nolint:mnd // Allow magic numbers here.
+func newCurrentAircraftTable(tableStyle table.Styles) sortableTable {
+	specs := []colSpec{
+		{title: "DST", width: 4, flex: false},
+		{title: "FNO", width: 8, flex: false},
+		{title: "TID", width: 8, flex: true},
+		{title: "DEP", width: 4, flex: false},
+		{title: "ARR", width: 4, flex: false},
+		{title: "ALT", width: 7, flex: false},
+		{title: "SPD", width: 4, flex: false},
+		{title: "HDG", width: 4, flex: false},
+	}
+	return newSortableTable(tableStyle, specs, fnoCol)
+}
+
+//nolint:mnd // Allow magic numbers here.
+func newRarityTable(tableStyle table.Styles, valueColumnTitle string) sortableTable {
+	specs := []colSpec{
+		{title: "Count", width: 6, flex: false},
+		{title: valueColumnTitle, width: 8, flex: true},
+	}
+	return newSortableTable(tableStyle, specs, 0)
+}
+
+// tuiTables groups the aircraft table and the three rarity tables.
+type tuiTables struct {
+	aircraft sortableTable
+	rarities [rarityTableCount]sortableTable
+}
+
+func newTuiTables(tableStyle table.Styles) tuiTables {
+	return tuiTables{
+		aircraft: newCurrentAircraftTable(tableStyle),
+		rarities: [rarityTableCount]sortableTable{
+			newRarityTable(tableStyle, "Type"),
+			newRarityTable(tableStyle, "Operator"),
+			newRarityTable(tableStyle, "Country"),
+		},
+	}
+}
+
+func (t *tuiTables) setAllHeights(height int) {
+	t.aircraft.SetHeight(height)
+	for i := range t.rarities {
+		t.rarities[i].SetHeight(height)
+	}
+}
+
+// resizeForTerminal applies widths for main view (aircraft full width) and global stats (thirds).
+//
+//nolint:mnd // Allow magic numbers here.
+func (t *tuiTables) resizeForTerminal(terminalWidth int) {
+	const borderWidth = 2 // left + right rounded border characters
+	t.aircraft.resize(max(0, terminalWidth-borderWidth))
+
+	panelWidth := terminalWidth / rarityTableCount
+	innerWidth := max(0, panelWidth-borderWidth)
+	for i := range rarityByCountry {
+		t.rarities[i].resize(innerWidth)
+	}
+	lastPanelWidth := terminalWidth - 2*panelWidth
+	t.rarities[rarityByCountry].resize(max(0, lastPanelWidth-borderWidth))
+}
+
+func aircraftToRow(sighting obs.AircraftSighting, route ref.FlightrouteRecord) table.Row {
+	return table.Row{
+		fmt.Sprintf("%3.0f", sighting.Distance),
+		sighting.LastRecord.GetCallsignAsStr(),
+		sighting.TypeDesc,
+		route.Origin.IataCode,
+		route.Destination.IataCode,
+		sighting.LastRecord.GetAltitudeAsStr(),
+		fmt.Sprintf("%3.0f", sighting.LastRecord.GroundSpeed),
+		fmt.Sprintf("%3.0f", sighting.LastRecord.NavHeading),
+	}
+}
+
+func propertyCountToRow(propCount ref.PropertyCountTuple) table.Row {
 	return table.Row{fmt.Sprintf("%5d", propCount.Count), propCount.Property}
 }

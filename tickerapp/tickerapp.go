@@ -13,61 +13,71 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/micutio/airspottr/internal"
+	srv "github.com/micutio/airspottr/internal/application/services"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
+
+type Dependencies struct {
+	AppName            string
+	Options            adsb.RequestOptions
+	Logger             *slog.Logger
+	AircraftRequest    *adsb.AircraftRequest
+	FlightrouteRequest *adsb.FlightrouteRequest
+	Dashboard          *srv.Dashboard
+	Notify             *noti.BeeepNotifier
+	SummaryNotify      *srv.Notify
+	Done               chan bool
+	Stdout             io.Writer
+	Stderr             io.Writer
+}
 
 // TickerApp holds the state and dependencies for the ticker application.
 type TickerApp struct {
-	appName   string
-	options   internal.RequestOptions
-	logger    *slog.Logger
-	request   *internal.Request
-	dashboard *internal.Dashboard
-	notify    *internal.Notify
-	done      chan bool
-	wg        sync.WaitGroup
+	appName            string
+	options            adsb.RequestOptions
+	logger             *slog.Logger
+	aircraftRequest    *adsb.AircraftRequest
+	flightrouteRequest *adsb.FlightrouteRequest
+	dashboard          *srv.Dashboard
+	notify             *noti.BeeepNotifier
+	summaryNotify      *srv.Notify
+	done               chan bool
+	wg                 sync.WaitGroup
 }
 
-// New creates and initializes a new TickerApp.
-func New(appName string, options internal.RequestOptions, stdout, stderr io.Writer) (*TickerApp, error) {
-	logger := slog.Default() // Or a custom logger
-	notify := internal.NewNotify(appName, &stdout)
-
-	dashboard, dashboardErr := internal.NewDashboard(options.Lat, options.Lon, &stderr)
-	if dashboardErr != nil {
-		return nil, fmt.Errorf("unable to create dashboard: %w", dashboardErr)
+func NewWithDependencies(deps Dependencies) *TickerApp {
+	if deps.Logger == nil {
+		errOut := deps.Stderr
+		if errOut == nil {
+			errOut = io.Discard
+		}
+		deps.Logger = slog.New(slog.NewTextHandler(errOut, nil))
 	}
-
-	request, requestErr := internal.NewRequest(options, &stderr)
-	if requestErr != nil {
-		return nil, fmt.Errorf("unable to create request: %w", requestErr)
+	if deps.Done == nil {
+		deps.Done = make(chan bool)
 	}
-
-	if loadErr := internal.LoadState(internal.StateFilePath(), dashboard, request); loadErr != nil {
-		return nil, fmt.Errorf("warning: unable to load persisted state: %w", loadErr)
+	if deps.Dashboard != nil && deps.FlightrouteRequest != nil {
+		deps.Dashboard.ConfigureRefresh(deps.Notify, deps.FlightrouteRequest.GetFlightroutes)
 	}
-
-	return &TickerApp{ //nolint:exhaustruct // no need to init waitgroup
-		appName:   appName,
-		options:   options,
-		logger:    logger,
-		request:   request,
-		dashboard: dashboard,
-		notify:    notify,
-		done:      make(chan bool),
-	}, nil
+	return &TickerApp{
+		appName:            deps.AppName,
+		options:            deps.Options,
+		logger:             deps.Logger,
+		aircraftRequest:    deps.AircraftRequest,
+		flightrouteRequest: deps.FlightrouteRequest,
+		dashboard:          deps.Dashboard,
+		notify:             deps.Notify,
+		summaryNotify:      deps.SummaryNotify,
+		done:               deps.Done,
+		wg:                 sync.WaitGroup{},
+	}
 }
 
-// Run is the main entry point for the ticker application.
-func Run(appName string, options internal.RequestOptions) {
-	app, err := New(appName, options, os.Stdout, os.Stderr)
-	if err != nil {
-		slog.Default().Error("failed to initialize ticker app", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", appName, options.Lat, options.Lon)
-
+func RunWithDependencies(deps Dependencies) {
+	app := NewWithDependencies(deps)
+	fmt.Printf("%s launching at Lat: %.3f, Lon: %.3f\n", app.appName, deps.Options.Lat, deps.Options.Lon)
 	app.start()
 	app.waitForShutdown()
 }
@@ -75,12 +85,12 @@ func Run(appName string, options internal.RequestOptions) {
 // start begins the application's main event loop in a goroutine.
 func (app *TickerApp) start() {
 	// Set a timeout for the warmup period.
-	time.AfterFunc(internal.DashboardWarmup, func() {
+	time.AfterFunc(adsb.DashboardWarmup, func() {
 		app.dashboard.FinishWarmupPeriod()
 	})
 
-	aircraftUpdateTicker := time.NewTicker(internal.AircraftUpdateInterval)
-	summaryTicker := time.NewTicker(internal.SummaryInterval)
+	aircraftUpdateTicker := time.NewTicker(adsb.AircraftUpdateInterval)
+	summaryTicker := time.NewTicker(adsb.SummaryInterval)
 
 	app.wg.Go(func() {
 		defer aircraftUpdateTicker.Stop()
@@ -89,29 +99,16 @@ func (app *TickerApp) start() {
 		for {
 			select {
 			case <-aircraftUpdateTicker.C:
-				aircraftRecords := app.request.RequestAircraft()
-				app.dashboard.ProcessAircraftRecords(aircraftRecords)
-				app.notify.EmitRarityNotifications(
-					app.dashboard.RareSightings,
-					internal.DefaultRarityNotifyToggles(),
-				)
-
-				// This method checks whether we have flight routes in the cache for all sightings.
-				callsignsWithoutRoute := app.dashboard.AssignRouteToCallsigns()
-				if len(callsignsWithoutRoute) > 0 {
-					// For flights without known route we query data from adsbdb.com.
-					routes := app.request.RequestFlightRoutesForCallsigns(callsignsWithoutRoute)
-					app.dashboard.AssignFlightRoutes(routes)
-				}
+				aircraftRecords := app.aircraftRequest.RequestAircraft()
+				app.dashboard.RefreshBatch(aircraftRecords, noti.DefaultRarityNotifyToggles())
 			case <-summaryTicker.C:
-				app.notify.PrintSummary(app.dashboard)
+				app.summaryNotify.PrintSummary(app.dashboard)
 			case <-app.done:
 				app.logger.Info("Stopping HTTP GET request routine.")
 				return
 			}
 		}
 	})
-	// WaitGroup.Wait() is called in waitForShutdown() below
 }
 
 // waitForShutdown blocks until an interrupt or terminate signal is received.
@@ -121,9 +118,9 @@ func (app *TickerApp) waitForShutdown() {
 	<-sigc
 	app.logger.Info("Shutdown signal received, stopping...")
 	close(app.done)
-	// Wait for the main goroutine to finish.
 	app.wg.Wait()
-	if saveErr := internal.SaveState(internal.StateFilePath(), app.dashboard, app.request); saveErr != nil {
+	state := app.dashboard.SaveState(app.flightrouteRequest.GetPendingCallsigns())
+	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {
 		app.logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }

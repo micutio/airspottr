@@ -16,19 +16,20 @@ and keeps track of rare aircraft types, airlines and countries of origin.
 
 ## TODO
 
+- [x] !High Priority! **separate history per location**
 - [ ] allow tracking individual aircraft
+- [ ] option to clear history
+- [ ] graphs for aircraft type count over time
+- [ ] collect additional information about unknown aircraft/types to try and identify later
+  - [ ] lat/lon position
 - [x] show total uptime in summaries
 - [x] show location in TUI and maybe ticker output
 - [x] TUI checkboxes to toggle notifications for type/operator/country individually
 - [x] colored console output
 - [x] graceful shutdown
 - [x] current aircraft closest to your location
-- [ ] graphs for aircraft type count over time
-- [ ] radar-like visual for nearby aircraft (look up APIs for geographic data)
 - [x] more flight information, e.g.: origin, destination, flight time remaining
 - [x] more unit testing
-- [ ] collect additional information about unknown aircraft/types to try and identify later
-  - [ ] lat/lon position
 
 ## Links for further investigation
 
