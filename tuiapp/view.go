@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+
+	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
 
 func (m *model) View() string {
@@ -73,26 +75,25 @@ func (m *model) viewHeader() string {
 	var rightPanel string
 	highest := m.dashboard.GetHighest()
 	fastest := m.dashboard.GetFastest()
-	highestMake, htExists := m.dashboard.AircraftMake(highest.LastRecord.IcaoType)
-	fastestMake, ftExists := m.dashboard.AircraftMake(fastest.LastRecord.IcaoType)
-	if htExists && ftExists {
+	if highest.TypeDesc != "" && highest.TypeDesc != obs.TypeUnknown &&
+		fastest.TypeDesc != "" && fastest.TypeDesc != obs.TypeUnknown {
 		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				listHeader("Highest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("ALT", highest.LastRecord.GetAltitudeAsStr()),
-					listItem("FNO", highest.LastRecord.GetCallsignAsStr()),
+					listItem("FNO", highest.LastFlightNo),
 					listItem("REG", highest.Registration),
-					listItem("TID", highestMake),
+					listItem("TID", highest.TypeDesc),
 				),
 				listHeader("Fastest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					listItem("SPD", fmt.Sprintf("%5.0f", fastest.LastRecord.GroundSpeed)),
-					listItem("FNO", fastest.LastRecord.GetCallsignAsStr()),
+					listItem("FNO", fastest.LastFlightNo),
 					listItem("REG", fastest.Registration),
-					listItem("TID", fastestMake),
+					listItem("TID", fastest.TypeDesc),
 				),
 			),
 		)

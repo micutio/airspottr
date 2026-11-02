@@ -100,22 +100,3 @@ func stripDigits(str string) string {
 		return r // Keep the character
 	}, str)
 }
-
-// AircraftToString generates a one-liner consisting of the most relevant information about the
-// given aircraft.
-func (ac *AircraftRecord) AircraftToString() string {
-	flight := ac.GetCallsignAsStr()
-	altitude := ac.GetAltitudeAsStr()
-	var aType string
-	if ac.Description != "" {
-		aType = ac.Description
-	}
-
-	return fmt.Sprintf("FNO %s km ALT %s SPD %3.0f HDG %3.0f TID %s (%s)",
-		flight,
-		altitude,
-		ac.GroundSpeed,
-		ac.NavHeading,
-		aType,
-		ac.Registration)
-}

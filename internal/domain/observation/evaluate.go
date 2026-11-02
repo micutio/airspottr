@@ -77,9 +77,6 @@ func EvaluateBatch(
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
 		sighting.Distance = ref.Distance(observer, acPos).Kilometers()
 
-		state.Highest = updateHighest(state.Highest, sighting)
-		state.Fastest = updateFastest(state.Fastest, sighting)
-
 		newRarities := NoRarity
 		newRarities |= classifyType(state, &sighting, &aircraft, identity.NewFlight, classifier)
 		newRarities |= classifyOperator(state, &sighting, &aircraft, identity.NewFlight, classifier)
@@ -87,6 +84,9 @@ func EvaluateBatch(
 		sighting.Rarities = newRarities
 
 		sighting.Info = sighting.SightingToString()
+		state.Highest = updateHighest(state.Highest, sighting)
+		state.Fastest = updateFastest(state.Fastest, sighting)
+
 		currentSightings[idx] = sighting
 		state.Sightings[aircraft.Hex] = sighting
 	}

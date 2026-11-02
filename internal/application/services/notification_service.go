@@ -29,10 +29,10 @@ func (notify *StdoutNotifier) PrintSummary(dash *Dashboard) {
 	notify.listByRarity("country", dash.SeenCountry)
 	_, _ = fmt.Fprintln(notify.out, "Fastest Aircraft:")
 	fastest := dash.GetFastest()
-	_, _ = fmt.Fprintln(notify.out, fastest.LastRecord.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, fastest.SightingToString())
 	_, _ = fmt.Fprintln(notify.out, "Highest Aircraft:")
 	highest := dash.GetHighest()
-	_, _ = fmt.Fprintln(notify.out, highest.LastRecord.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, highest.SightingToString())
 	_, _ = fmt.Fprintln(notify.out, "=== End Summary ===")
 }
 

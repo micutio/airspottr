@@ -125,14 +125,6 @@ func (db *Dashboard) GetHighest() obs.AircraftSighting {
 	return db.Highest
 }
 
-// AircraftMake looks up the manufacturer/model description for an ICAO type code.
-func (db *Dashboard) AircraftMake(icaoType string) (string, bool) {
-	if db.classifier == nil {
-		return "", false
-	}
-	return db.classifier.AircraftMake(icaoType)
-}
-
 // GetCallsignsRequiringRoutes attempts to assign route information to all
 // sightings.
 // It returns a list of callsigns without known routes, to allow querying
