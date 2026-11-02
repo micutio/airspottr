@@ -174,13 +174,12 @@ func (db *Dashboard) SaveState(
 ) *PersistentState {
 	db.State.EnsureInitialized()
 
-	dashboardState := DashboardState{ //nolint:exhaustruct_v5 // removed deprecated items
+	dashboardState := DashboardState{
 		IsWarmup:           db.IsWarmup,
 		Lat:                db.Observer.Latitude,
 		Lon:                db.Observer.Longitude,
 		Fastest:            db.Fastest,
 		Highest:            db.Highest,
-		CurrentAircraft:    nil,
 		AircraftSightings:  db.Sightings,
 		TotalTypeCount:     db.SightedTypes,
 		TotalOperatorCount: db.SightedOperators,
