@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
-	"github.com/micutio/airspottr/internal/domain/reference"
 )
 
 const (
@@ -100,34 +99,6 @@ func filteredSortedSightings(
 		return less
 	})
 	return rows
-}
-
-func compareRarityAscending(propertyA, propertyB reference.PropertyCountTuple, byProperty bool) bool {
-	if byProperty {
-		if propertyA.Property != propertyB.Property {
-			return propertyA.Property < propertyB.Property
-		}
-		return propertyA.Count < propertyB.Count
-	}
-	if propertyA.Count != propertyB.Count {
-		return propertyA.Count < propertyB.Count
-	}
-	return propertyA.Property < propertyB.Property
-}
-
-func sortedPropertyCounts(m map[string]int, byProperty, desc bool) []reference.PropertyCountTuple {
-	tuples := make([]reference.PropertyCountTuple, 0, len(m))
-	for k, v := range m {
-		tuples = append(tuples, reference.PropertyCountTuple{Property: k, Count: v})
-	}
-	sort.SliceStable(tuples, func(i, j int) bool {
-		less := compareRarityAscending(tuples[i], tuples[j], byProperty)
-		if desc {
-			return !less
-		}
-		return less
-	})
-	return tuples
 }
 
 func buildAircraftRows(records []obs.AircraftSighting) []table.Row {

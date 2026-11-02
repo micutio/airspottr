@@ -1,11 +1,13 @@
 package reference
 
 import (
-	"reflect"
+	"slices"
 	"testing"
 )
 
 func TestGetSortedCountsForProperty(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    map[string]int
@@ -31,9 +33,8 @@ func TestGetSortedCountsForProperty(t *testing.T) {
 			},
 		},
 		{
-			name:  "items with same count",
-			input: map[string]int{"a": 1, "c": 2, "b": 1},
-			// The order of items with the same count is not guaranteed, so we accept either
+			name:  "items with same count are deterministically ordered by property name",
+			input: map[string]int{"b": 1, "c": 2, "a": 1},
 			expected: []PropertyCountTuple{
 				{Property: "a", Count: 1},
 				{Property: "b", Count: 1},
@@ -44,26 +45,27 @@ func TestGetSortedCountsForProperty(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			got := GetSortedCountsForProperty(test.input)
-			// For the case with same counts, the order is not guaranteed.
-			// We can't do a deep equal directly.
-			if len(got) != len(test.expected) {
-				t.Errorf("GetSortedCountsForProperty() = %v, want %v", got, test.expected)
-			}
-
-			// A simple check for this specific test case. For more complex scenarios,
-			// a more robust comparison would be needed.
-			if test.name == "items with same count" {
-				if (!reflect.DeepEqual(got[0], test.expected[0]) || !reflect.DeepEqual(got[1], test.expected[1])) &&
-					(!reflect.DeepEqual(got[0], test.expected[1]) || !reflect.DeepEqual(got[1], test.expected[0])) {
-					t.Errorf("GetSortedCountsForProperty() got = %v, want %v", got, test.expected)
-				}
-				if !reflect.DeepEqual(got[2], test.expected[2]) {
-					t.Errorf("GetSortedCountsForProperty() got = %v, want %v", got, test.expected)
-				}
-			} else if len(test.expected) > 0 && !reflect.DeepEqual(got, test.expected) {
+			if !slices.Equal(got, test.expected) {
 				t.Errorf("GetSortedCountsForProperty() = %v, want %v", got, test.expected)
 			}
 		})
+	}
+}
+
+func TestSortedPropertyCountsByPropertyAndDirection(t *testing.T) {
+	t.Parallel()
+
+	input := map[string]int{"z": 1, "a": 2, "b": 2}
+
+	byCountAsc := SortedPropertyCounts(input, false, false)
+	if byCountAsc[0].Property != "z" || byCountAsc[1].Property != "a" || byCountAsc[2].Property != "b" {
+		t.Fatalf("unexpected byCountAsc order: %+v", byCountAsc)
+	}
+
+	byNameDesc := SortedPropertyCounts(input, true, true)
+	if byNameDesc[0].Property != "z" || byNameDesc[1].Property != "b" || byNameDesc[2].Property != "a" {
+		t.Fatalf("unexpected byNameDesc order: %+v", byNameDesc)
 	}
 }

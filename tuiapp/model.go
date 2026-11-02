@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	srv "github.com/micutio/airspottr/internal/application/services"
+	ref "github.com/micutio/airspottr/internal/domain/reference"
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
@@ -120,7 +121,7 @@ func (m *model) updateAllTables() {
 	for idx := range m.tables.rarities {
 		rTbl := &m.tables.rarities[idx]
 		byProperty := rTbl.sortCol == 1
-		tuples := sortedPropertyCounts(raritySources[idx], byProperty, rTbl.sortDesc)
+		tuples := ref.SortedPropertyCounts(raritySources[idx], byProperty, rTbl.sortDesc)
 		rarityRows := make([]table.Row, len(tuples))
 		for j := range tuples {
 			rarityRows[j] = propertyCountToRow(tuples[j])

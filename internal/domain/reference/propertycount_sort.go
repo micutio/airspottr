@@ -7,20 +7,39 @@ type PropertyCountTuple struct {
 	Count    int
 }
 
-type ByCount []PropertyCountTuple
+func comparePropertyCountAscending(a, b PropertyCountTuple, byProperty bool) bool {
+	if byProperty {
+		if a.Property != b.Property {
+			return a.Property < b.Property
+		}
+		return a.Count < b.Count
+	}
+	if a.Count != b.Count {
+		return a.Count < b.Count
+	}
+	return a.Property < b.Property
+}
 
-func (a ByCount) Len() int           { return len(a) }
-func (a ByCount) Less(i, j int) bool { return a[i].Count < a[j].Count }
-func (a ByCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-func GetSortedCountsForProperty(propertyCountMap map[string]int) []PropertyCountTuple {
-	propertyCounts := make([]PropertyCountTuple, len(propertyCountMap))
-	i := 0
+// SortedPropertyCounts converts a property-to-count map into a deterministically sorted slice.
+// When byProperty is false, it sorts by Count first (breaking ties by Property name).
+// When byProperty is true, it sorts by Property name first (breaking ties by Count).
+func SortedPropertyCounts(propertyCountMap map[string]int, byProperty, desc bool) []PropertyCountTuple {
+	tuples := make([]PropertyCountTuple, 0, len(propertyCountMap))
 	for key, value := range propertyCountMap {
-		propertyCounts[i] = PropertyCountTuple{Property: key, Count: value}
-		i++
+		tuples = append(tuples, PropertyCountTuple{Property: key, Count: value})
 	}
 
-	sort.Sort(ByCount(propertyCounts))
-	return propertyCounts
+	sort.SliceStable(tuples, func(i, j int) bool {
+		less := comparePropertyCountAscending(tuples[i], tuples[j], byProperty)
+		if desc {
+			return !less
+		}
+		return less
+	})
+	return tuples
+}
+
+// GetSortedCountsForProperty returns property counts sorted ascending by count, then property name.
+func GetSortedCountsForProperty(propertyCountMap map[string]int) []PropertyCountTuple {
+	return SortedPropertyCounts(propertyCountMap, false, false)
 }
