@@ -7,17 +7,17 @@ type PropertyCountTuple struct {
 	Count    int
 }
 
-func comparePropertyCountAscending(a, b PropertyCountTuple, byProperty bool) bool {
+func comparePropertyCountAscending(count1, count2 PropertyCountTuple, byProperty bool) bool {
 	if byProperty {
-		if a.Property != b.Property {
-			return a.Property < b.Property
+		if count1.Property != count2.Property {
+			return count1.Property < count2.Property
 		}
-		return a.Count < b.Count
+		return count1.Count < count2.Count
 	}
-	if a.Count != b.Count {
-		return a.Count < b.Count
+	if count1.Count != count2.Count {
+		return count1.Count < count2.Count
 	}
-	return a.Property < b.Property
+	return count1.Property < count2.Property
 }
 
 // SortedPropertyCounts converts a property-to-count map into a deterministically sorted slice.
