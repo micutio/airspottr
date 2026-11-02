@@ -2,6 +2,8 @@ package adsb
 
 import (
 	"encoding/json"
+	"io"
+	"slices"
 	"testing"
 )
 
@@ -106,5 +108,25 @@ func TestFlightRouteJSONMapsToDomainModel(t *testing.T) {
 	}
 	if route.Destination.Airport != "John F. Kennedy" {
 		t.Fatalf("destination airport mismatch: got %q", route.Destination.Airport)
+	}
+}
+
+func TestPendingCallsignsAreDeduplicated(t *testing.T) {
+	t.Parallel()
+
+	req, err := NewFlightrouteRequest(io.Discard)
+	if err != nil {
+		t.Fatalf("NewFlightrouteRequest() unexpected error: %v", err)
+	}
+
+	req.RestorePendingCallsigns([]string{"BAW123", "DLH456", "BAW123", ""})
+	req.pendingCallsignsMu.Lock()
+	req.enqueuePendingCallsigns([]string{"DLH456", "AFR789", "BAW123"})
+	req.pendingCallsignsMu.Unlock()
+
+	got := req.GetPendingCallsigns()
+	want := []string{"BAW123", "DLH456", "AFR789"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("GetPendingCallsigns() = %v, want %v", got, want)
 	}
 }

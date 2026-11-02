@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 
@@ -165,8 +166,7 @@ func (r *FlightrouteRequest) requestFlightroutesFromWeb(
 	callsigns []string,
 ) {
 	r.pendingCallsignsMu.Lock()
-	// Add new callsigns to the pending queue
-	r.pendingCallsigns = append(r.pendingCallsigns, callsigns...)
+	r.enqueuePendingCallsigns(callsigns)
 	r.errOut.Info(
 		"RequestFlightRoutesForCallsigns: callsigns queued",
 		slog.Int("requested", len(callsigns)),
@@ -320,5 +320,15 @@ func (r *FlightrouteRequest) GetPendingCallsigns() []string {
 func (r *FlightrouteRequest) RestorePendingCallsigns(pendingCallsigns []string) {
 	r.pendingCallsignsMu.Lock()
 	defer r.pendingCallsignsMu.Unlock()
-	r.pendingCallsigns = append([]string(nil), pendingCallsigns...)
+	r.pendingCallsigns = nil
+	r.enqueuePendingCallsigns(pendingCallsigns)
+}
+
+func (r *FlightrouteRequest) enqueuePendingCallsigns(callsigns []string) {
+	for _, callsign := range callsigns {
+		if callsign == "" || slices.Contains(r.pendingCallsigns, callsign) {
+			continue
+		}
+		r.pendingCallsigns = append(r.pendingCallsigns, callsign)
+	}
 }
