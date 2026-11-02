@@ -34,8 +34,6 @@ type Dashboard struct {
 	notifier          NotificationService
 	flightRouteLookup func([]string) map[string]ref.FlightrouteRecord // flightroute cache
 	IsWarmup          bool
-	Lat               float64
-	Lon               float64
 	ErrOut            *slog.Logger
 }
 
@@ -57,8 +55,6 @@ func NewDashboard(lat, lon float64,
 		notifier:          nil,
 		flightRouteLookup: nil,
 		IsWarmup:          true,
-		Lat:               lat,
-		Lon:               lon,
 		ErrOut:            logger,
 	}
 
@@ -180,8 +176,8 @@ func (db *Dashboard) SaveState(
 
 	dashboardState := DashboardState{ //nolint:exhaustruct_v5 // removed deprecated items
 		IsWarmup:           db.IsWarmup,
-		Lat:                db.Lat,
-		Lon:                db.Lon,
+		Lat:                db.Observer.Latitude,
+		Lon:                db.Observer.Longitude,
 		Fastest:            db.Fastest,
 		Highest:            db.Highest,
 		CurrentAircraft:    nil,
@@ -193,7 +189,7 @@ func (db *Dashboard) SaveState(
 		SeenOperatorCount:  db.SeenOperator,
 		SeenCountryCount:   db.SeenCountry,
 	}
-	locationKey := ref.LocationKey(db.Lat, db.Lon)
+	locationKey := ref.LocationKey(db.Observer.Latitude, db.Observer.Longitude)
 
 	return &PersistentState{
 		FlightrouteRepoState: FlightrouteRepoState{
@@ -207,12 +203,12 @@ func (db *Dashboard) RestoreState(state *DashboardState) error {
 	if state == nil {
 		return nil
 	}
-	if ref.LocationKey(state.Lat, state.Lon) != ref.LocationKey(db.Lat, db.Lon) {
+	if ref.LocationKey(state.Lat, state.Lon) != ref.LocationKey(db.Observer.Latitude, db.Observer.Longitude) {
 		return errCoordMismatch
 	}
 
 	db.State = obs.State{
-		Observer:         ref.NewCoordinates(db.Lat, db.Lon),
+		Observer:         db.Observer,
 		Sightings:        state.AircraftSightings,
 		SeenType:         state.SeenTypeCount,
 		SeenOperator:     state.SeenOperatorCount,

@@ -30,9 +30,9 @@ func TestBuildAppsWithDifferentLocations(t *testing.T) {
 				t.Fatalf("failed to build ticker app for %s: %v", loc.name, err)
 			}
 
-			if deps.Dashboard.Lat != loc.lat || deps.Dashboard.Lon != loc.lon {
+			if deps.Dashboard.Observer.Latitude != loc.lat || deps.Dashboard.Observer.Longitude != loc.lon {
 				t.Fatalf("expected dashboard coords (%f,%f), got (%f,%f)",
-					loc.lat, loc.lon, deps.Dashboard.Lat, deps.Dashboard.Lon)
+					loc.lat, loc.lon, deps.Dashboard.Observer.Latitude, deps.Dashboard.Observer.Longitude)
 			}
 		})
 
@@ -50,9 +50,9 @@ func TestBuildAppsWithDifferentLocations(t *testing.T) {
 				_ = closer.Close()
 			}
 
-			if deps.Dashboard.Lat != loc.lat || deps.Dashboard.Lon != loc.lon {
+			if deps.Dashboard.Observer.Latitude != loc.lat || deps.Dashboard.Observer.Longitude != loc.lon {
 				t.Fatalf("expected dashboard coords (%f,%f), got (%f,%f)",
-					loc.lat, loc.lon, deps.Dashboard.Lat, deps.Dashboard.Lon)
+					loc.lat, loc.lon, deps.Dashboard.Observer.Latitude, deps.Dashboard.Observer.Longitude)
 			}
 		})
 	}

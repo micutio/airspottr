@@ -65,7 +65,7 @@ func (m *model) viewHeader() string {
 
 	leftPanel := list.Border(lipgloss.RoundedBorder()).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Lat, m.dashboard.Lon),
+			fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Observer.Latitude, m.dashboard.Observer.Longitude),
 			fmt.Sprintf("     UpTime %.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
 			fmt.Sprintf("Last Update %02.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
 	)
