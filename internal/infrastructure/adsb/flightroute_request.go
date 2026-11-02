@@ -100,7 +100,6 @@ func (dto flightRouteDTO) toDomain() ref.FlightrouteRecord {
 // FlightrouteRequest handles http request commands.
 type FlightrouteRequest struct {
 	apiClient            *http.Client
-	waitGroup            sync.WaitGroup
 	errOut               *slog.Logger
 	pendingCallsigns     []string
 	pendingCallsignsMu   sync.Mutex
@@ -124,7 +123,6 @@ func NewFlightrouteRequest(stderr io.Writer) (*FlightrouteRequest, error) {
 
 	request := &FlightrouteRequest{
 		apiClient:            client,
-		waitGroup:            sync.WaitGroup{},
 		errOut:               slog.New(slog.NewTextHandler(stderr, nil)),
 		pendingCallsigns:     []string{},
 		pendingCallsignsMu:   sync.Mutex{},

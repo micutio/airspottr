@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync"
 	"time"
 
 	obs "github.com/micutio/airspottr/internal/domain/observation"
@@ -150,7 +149,6 @@ func mapAircraftRecords(aircraft []aircraftDTO) []obs.AircraftRecord {
 type AircraftRequest struct {
 	aircraftReqURL string
 	apiClient      *http.Client
-	waitGroup      sync.WaitGroup
 	errOut         *slog.Logger
 }
 
@@ -177,7 +175,6 @@ func NewAircraftRequest(opts RequestOptions, stderr io.Writer) (*AircraftRequest
 	request := &AircraftRequest{
 		aircraftReqURL: aircraftReqURL,
 		apiClient:      client,
-		waitGroup:      sync.WaitGroup{},
 		errOut:         slog.New(slog.NewTextHandler(stderr, nil)),
 	}
 
