@@ -1,4 +1,3 @@
-// Package services provides the Dashboard type and all associated program logic.
 package services
 
 import (
@@ -11,14 +10,13 @@ import (
 	ref "github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// TODO: Remove and privatise as many fields as possible.
-// TODO: Create specialized type for highest and fastest.
-
 // Errors used by the Dashboard.
 var (
 	errCoordMismatch = errors.New("state coordinate mismatch")
 )
 
+// noopClassifier is the fallback when no Dashboard is initialised without
+// a classifier. This makes dashboard more ergonomic for testing.
 type noopClassifier struct{}
 
 func (noopClassifier) AircraftMake(string) (string, bool)           { return "", false }
@@ -31,10 +29,10 @@ func (noopClassifier) CountryByRegistration(string) (string, bool)  { return "",
 type Dashboard struct {
 	obs.State
 
-	currentSightings  []obs.AircraftSighting // volatile cache of recently sighted aircraft
+	currentSightings  []obs.AircraftSighting // volatile cache of recent sightings
 	classifier        obs.Classifier
 	notifier          NotificationService
-	flightRouteLookup func([]string) map[string]ref.FlightrouteRecord
+	flightRouteLookup func([]string) map[string]ref.FlightrouteRecord // flightroute cache
 	IsWarmup          bool
 	Lat               float64
 	Lon               float64
@@ -62,8 +60,8 @@ func NewDashboard(lat, lon float64,
 			SightedTypes:     0,
 			SightedOperators: 0,
 			SightedCountries: 0,
-			Fastest:          obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
-			Highest:          obs.AircraftRecord{}, //nolint:exhaustruct_v5 // using default values
+			Fastest:          obs.AircraftSighting{}, //nolint:exhaustruct_v5 // using default values
+			Highest:          obs.AircraftSighting{}, //nolint:exhaustruct_v5 // using default values
 		},
 		currentSightings:  []obs.AircraftSighting{},
 		classifier:        classifier,
@@ -129,12 +127,12 @@ func (db *Dashboard) GetCurrentSightings() []obs.AircraftSighting {
 }
 
 // GetFastest implements the interfaces.SpottingService method.
-func (db *Dashboard) GetFastest() obs.AircraftRecord {
+func (db *Dashboard) GetFastest() obs.AircraftSighting {
 	return db.Fastest
 }
 
 // GetHighest implements the interfaces.SpottingService method.
-func (db *Dashboard) GetHighest() obs.AircraftRecord {
+func (db *Dashboard) GetHighest() obs.AircraftSighting {
 	return db.Highest
 }
 
@@ -146,7 +144,7 @@ func (db *Dashboard) AircraftMake(icaoType string) (string, bool) {
 	return db.classifier.AircraftMake(icaoType)
 }
 
-// GetCallsignsRequiringRoutes attempts to assign cached route information to all
+// GetCallsignsRequiringRoutes attempts to assign route information to all
 // sightings.
 // It returns a list of callsigns without known routes, to allow querying
 // online for these cases.

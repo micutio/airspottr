@@ -47,8 +47,8 @@ type DashboardState struct {
 	IsWarmup        bool                 `json:"is_warmup"`
 	Lat             float64              `json:"lat"`
 	Lon             float64              `json:"lon"`
-	Fastest         obs.AircraftRecord   `json:"fastest"`
-	Highest         obs.AircraftRecord   `json:"highest"`
+	Fastest         obs.AircraftSighting `json:"fastest"`
+	Highest         obs.AircraftSighting `json:"highest"`
 	CurrentAircraft []obs.AircraftRecord `json:"current_aircraft"`
 	// Deprecated: no longer in use
 	RareSightings []PersistedRareSighting `json:"rare_sightings"`

@@ -6,12 +6,14 @@ import (
 	"github.com/micutio/airspottr/internal/infrastructure/adsb"
 )
 
+type locationData struct {
+	name string
+	lat  float64
+	lon  float64
+}
+
 func TestBuildAppsWithDifferentLocations(t *testing.T) {
-	locations := []struct {
-		name string
-		lat  float64
-		lon  float64
-	}{
+	locations := []locationData{
 		{name: "hamburg", lat: 53.5511, lon: 9.9937},
 		{name: "singapore", lat: 1.3521, lon: 103.8198},
 		{name: "new-york", lat: 40.7128, lon: -74.0060},
@@ -27,6 +29,7 @@ func TestBuildAppsWithDifferentLocations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to build ticker app for %s: %v", loc.name, err)
 			}
+
 			if deps.Dashboard.Lat != loc.lat || deps.Dashboard.Lon != loc.lon {
 				t.Fatalf("expected dashboard coords (%f,%f), got (%f,%f)",
 					loc.lat, loc.lon, deps.Dashboard.Lat, deps.Dashboard.Lon)
@@ -42,9 +45,11 @@ func TestBuildAppsWithDifferentLocations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to build TUI app for %s: %v", loc.name, err)
 			}
+
 			if closer, ok := deps.ErrorLog.(interface{ Close() error }); ok {
 				_ = closer.Close()
 			}
+
 			if deps.Dashboard.Lat != loc.lat || deps.Dashboard.Lon != loc.lon {
 				t.Fatalf("expected dashboard coords (%f,%f), got (%f,%f)",
 					loc.lat, loc.lon, deps.Dashboard.Lat, deps.Dashboard.Lon)

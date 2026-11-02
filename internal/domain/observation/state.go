@@ -14,6 +14,6 @@ type State struct {
 	SightedTypes     int
 	SightedOperators int
 	SightedCountries int
-	Fastest          AircraftRecord
-	Highest          AircraftRecord
+	Fastest          AircraftSighting
+	Highest          AircraftSighting
 }

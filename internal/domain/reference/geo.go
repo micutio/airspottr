@@ -43,19 +43,6 @@ func ParseCoordinates(latitude, longitude float64) (Coordinates, error) {
 	return coords, nil
 }
 
-// TODO: Is MustCoordinates used anywhere? Remove, if not.
-// Panicing instead of graceful handling should be minimised
-// as much as possible.
-
-// MustCoordinates validates a coordinate pair and panics on invalid input.
-func MustCoordinates(latitude, longitude float64) Coordinates {
-	coords := NewCoordinates(latitude, longitude)
-	if err := coords.Validate(); err != nil {
-		panic(err)
-	}
-	return coords
-}
-
 // Validate ensures the coordinate falls within the valid lat/lon ranges.
 func (c Coordinates) Validate() error {
 	if c.Latitude < -90 || c.Latitude > 90 {
@@ -73,8 +60,6 @@ func (c Coordinates) toRadians() Coordinates {
 		Longitude: degreesToRadian(c.Longitude),
 	}
 }
-
-// Conversion function
 
 func degreesToRadian(d float64) float64 {
 	return d * piHalf

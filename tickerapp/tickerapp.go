@@ -27,7 +27,7 @@ type Dependencies struct {
 	FlightrouteRequest *adsb.FlightrouteRequest
 	Dashboard          *srv.Dashboard
 	Notify             *noti.BeeepNotifier
-	SummaryNotify      *srv.Notify
+	SummaryNotify      *srv.StdoutNotifier
 	Done               chan bool
 	Stdout             io.Writer
 	Stderr             io.Writer
@@ -42,7 +42,7 @@ type TickerApp struct {
 	flightrouteRequest *adsb.FlightrouteRequest
 	dashboard          *srv.Dashboard
 	notify             *noti.BeeepNotifier
-	summaryNotify      *srv.Notify
+	summaryNotify      *srv.StdoutNotifier
 	done               chan bool
 	wg                 sync.WaitGroup
 }

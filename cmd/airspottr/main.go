@@ -1,4 +1,3 @@
-// Package main provides the flight tracking application
 package main
 
 import (
@@ -113,7 +112,7 @@ func buildTickerApp(appName string, options adsb.RequestOptions) (tickerapp.Depe
 		FlightrouteRequest: flightrouteReq,
 		Dashboard:          dashboard,
 		Notify:             desktopNotify,
-		SummaryNotify:      srv.NewNotify(appName, stdout),
+		SummaryNotify:      srv.NewStdoutNotifier(stdout),
 		Done:               make(chan bool),
 		Stdout:             stdout,
 		Stderr:             stderr,

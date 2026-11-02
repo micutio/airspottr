@@ -7,37 +7,36 @@ import (
 	"github.com/micutio/airspottr/internal/domain/reference"
 )
 
-// Notify prints console summaries of sighting statistics.
-type Notify struct {
+// StdoutNotifier prints console summaries of sighting statistics.
+type StdoutNotifier struct {
 	out io.Writer
 }
 
-func NewNotify(appName string, consoleOut io.Writer) *Notify {
-	_ = appName
+func NewStdoutNotifier(consoleOut io.Writer) *StdoutNotifier {
 	if consoleOut == nil {
 		consoleOut = io.Discard
 	}
-	return &Notify{
+	return &StdoutNotifier{
 		out: consoleOut,
 	}
 }
 
 // PrintSummary prints the highest, fastest and the most and the least common types.
-func (notify *Notify) PrintSummary(dash *Dashboard) {
+func (notify *StdoutNotifier) PrintSummary(dash *Dashboard) {
 	_, _ = fmt.Fprintln(notify.out, "=== Summary ===")
 	notify.listByRarity("aircraft", dash.SeenType)
 	notify.listByRarity("operator", dash.SeenOperator)
 	notify.listByRarity("country", dash.SeenCountry)
 	_, _ = fmt.Fprintln(notify.out, "Fastest Aircraft:")
 	fastest := dash.GetFastest()
-	_, _ = fmt.Fprintln(notify.out, fastest.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, fastest.LastRecord.AircraftToString())
 	_, _ = fmt.Fprintln(notify.out, "Highest Aircraft:")
 	highest := dash.GetHighest()
-	_, _ = fmt.Fprintln(notify.out, highest.AircraftToString())
+	_, _ = fmt.Fprintln(notify.out, highest.LastRecord.AircraftToString())
 	_, _ = fmt.Fprintln(notify.out, "=== End Summary ===")
 }
 
-func (notify *Notify) listByRarity(propertyName string, propertyCountMap map[string]int) {
+func (notify *StdoutNotifier) listByRarity(propertyName string, propertyCountMap map[string]int) {
 	propertyCounts := reference.GetSortedCountsForProperty(propertyCountMap)
 
 	_, _ = fmt.Fprintf(notify.out, "Rarity from least to most common %s\n", propertyName)

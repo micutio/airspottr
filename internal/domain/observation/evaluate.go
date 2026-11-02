@@ -16,15 +16,19 @@ type FlightIdentity struct {
 }
 
 // IdentifyFlight compares previous and current flight numbers.
-// A first-time hex is always a new flight. Identifying an unknown callsign
-// is not a new statistical flight; changing from one known callsign to another is.
+// An ICAO hex code seen for the first-time is always a new flight.
+// Identifying an unknown callsign is not a new flight,
+// but changing from one known callsign to another is.
+// isNewSighting is `true` if no sighting of thisFlight has ocurred before.
 func IdentifyFlight(previousFlight, thisFlight string, isNewSighting bool) FlightIdentity {
-	identified := previousFlight == FlightUnknown && thisFlight != FlightUnknown
-	updated := previousFlight != FlightUnknown &&
-		thisFlight != FlightUnknown &&
+	isPreviousFlightKnown := previousFlight != FlightUnknown
+	isThisFlightKnown := thisFlight != FlightUnknown
+
+	updated := isPreviousFlightKnown &&
+		isThisFlightKnown &&
 		previousFlight != thisFlight
 	return FlightIdentity{
-		Identified: identified,
+		Identified: !isPreviousFlightKnown && isThisFlightKnown,
 		Updated:    updated,
 		NewFlight:  isNewSighting || updated,
 	}
@@ -73,8 +77,8 @@ func EvaluateBatch(
 		acPos := ref.NewCoordinates(aircraft.Lat, aircraft.Lon)
 		sighting.Distance = ref.Distance(observer, acPos).Kilometers()
 
-		state.Highest = updateHighest(state.Highest, aircraft)
-		state.Fastest = updateFastest(state.Fastest, aircraft)
+		state.Highest = updateHighest(state.Highest, sighting)
+		state.Fastest = updateFastest(state.Fastest, sighting)
 
 		newRarities := NoRarity
 		newRarities |= classifyType(state, &sighting, &aircraft, identity.NewFlight, classifier)
@@ -230,23 +234,23 @@ func classifyCountry(
 	return RareCountry
 }
 
-func updateHighest(current, aircraft AircraftRecord) AircraftRecord {
-	thisAltitude, thisAltOk := aircraft.AltBaro.(float64)
+func updateHighest(current, sighting AircraftSighting) AircraftSighting {
+	thisAltitude, thisAltOk := sighting.LastRecord.AltBaro.(float64)
 	if !thisAltOk {
 		return current
 	}
 
-	highestAltitude, highestAltOk := current.AltBaro.(float64)
+	highestAltitude, highestAltOk := current.LastRecord.AltBaro.(float64)
 	if highestAltOk && highestAltitude > thisAltitude {
 		return current
 	}
 
-	return aircraft
+	return sighting
 }
 
-func updateFastest(current, aircraft AircraftRecord) AircraftRecord {
-	if current.GroundSpeed > aircraft.GroundSpeed {
+func updateFastest(current, sighting AircraftSighting) AircraftSighting {
+	if current.LastRecord.GroundSpeed > sighting.LastRecord.GroundSpeed {
 		return current
 	}
-	return aircraft
+	return sighting
 }

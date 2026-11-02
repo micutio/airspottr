@@ -73,24 +73,24 @@ func (m *model) viewHeader() string {
 	var rightPanel string
 	highest := m.dashboard.GetHighest()
 	fastest := m.dashboard.GetFastest()
-	highestMake, htExists := m.dashboard.AircraftMake(highest.IcaoType)
-	fastestMake, ftExists := m.dashboard.AircraftMake(fastest.IcaoType)
+	highestMake, htExists := m.dashboard.AircraftMake(highest.LastRecord.IcaoType)
+	fastestMake, ftExists := m.dashboard.AircraftMake(fastest.LastRecord.IcaoType)
 	if htExists && ftExists {
 		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				listHeader("Highest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
-					listItem("ALT", highest.GetAltitudeAsStr()),
-					listItem("FNO", highest.GetCallsignAsStr()),
+					listItem("ALT", highest.LastRecord.GetAltitudeAsStr()),
+					listItem("FNO", highest.LastRecord.GetCallsignAsStr()),
 					listItem("REG", highest.Registration),
 					listItem("TID", highestMake),
 				),
 				listHeader("Fastest"),
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
-					listItem("SPD", fmt.Sprintf("%5.0f", fastest.GroundSpeed)),
-					listItem("FNO", fastest.GetCallsignAsStr()),
+					listItem("SPD", fmt.Sprintf("%5.0f", fastest.LastRecord.GroundSpeed)),
+					listItem("FNO", fastest.LastRecord.GetCallsignAsStr()),
 					listItem("REG", fastest.Registration),
 					listItem("TID", fastestMake),
 				),

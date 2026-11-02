@@ -6,10 +6,9 @@ import (
 
 	"github.com/gen2brain/beeep"
 
+	"github.com/micutio/airspottr/assets"
 	obs "github.com/micutio/airspottr/internal/domain/observation"
 )
-
-const appIconPath = "./assets/icon.png"
 
 // BeeepNotifier emits desktop notifications for rare sighting events.
 type BeeepNotifier struct {
@@ -57,7 +56,7 @@ func (n *BeeepNotifier) emitRarityWithToggles(
 
 	title, body, logLine := formatRareSighting(sighting, rarityFlag)
 	_, _ = fmt.Fprintln(n.out, logLine)
-	if err := beeep.Notify(title, body, appIconPath); err != nil {
+	if err := beeep.Notify(title, body, assets.IconPNG); err != nil {
 		_, _ = fmt.Fprintf(n.out, "warning: desktop notification failed: %v\n", err)
 	}
 }
