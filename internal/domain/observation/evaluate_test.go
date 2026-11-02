@@ -42,13 +42,7 @@ func (s mockClassifier) CountryByRegistration(reg string) (string, bool) {
 }
 
 func emptyState() State {
-	return State{
-		Observer:     ref.NewCoordinates(53.55, 9.99),
-		Sightings:    map[string]AircraftSighting{},
-		SeenType:     map[string]int{},
-		SeenOperator: map[string]int{},
-		SeenCountry:  map[string]int{},
-	}
+	return NewState(ref.NewCoordinates(53.55, 9.99))
 }
 
 func baseRecord() AircraftRecord {

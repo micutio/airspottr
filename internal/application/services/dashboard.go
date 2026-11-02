@@ -51,18 +51,7 @@ func NewDashboard(lat, lon float64,
 	}
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 	dashboard := Dashboard{
-		State: obs.State{
-			Observer:         ref.NewCoordinates(lat, lon),
-			Sightings:        make(map[string]obs.AircraftSighting),
-			SeenType:         make(map[string]int),
-			SeenOperator:     make(map[string]int),
-			SeenCountry:      make(map[string]int),
-			SightedTypes:     0,
-			SightedOperators: 0,
-			SightedCountries: 0,
-			Fastest:          obs.AircraftSighting{}, //nolint:exhaustruct_v5 // using default values
-			Highest:          obs.AircraftSighting{}, //nolint:exhaustruct_v5 // using default values
-		},
+		State:             obs.NewState(ref.NewCoordinates(lat, lon)),
 		currentSightings:  []obs.AircraftSighting{},
 		classifier:        classifier,
 		notifier:          nil,
@@ -195,9 +184,7 @@ func (db *Dashboard) AssignFlightRoutes(flightRouteRecords map[string]ref.Flight
 func (db *Dashboard) SaveState(
 	pendingCallsigns []string,
 ) *PersistentState {
-	if db.Sightings == nil {
-		db.Sightings = make(map[string]obs.AircraftSighting)
-	}
+	db.State.EnsureInitialized()
 
 	dashboardState := DashboardState{ //nolint:exhaustruct_v5 // removed deprecated items
 		IsWarmup:           db.IsWarmup,
@@ -244,18 +231,7 @@ func (db *Dashboard) RestoreState(state *DashboardState) error {
 		Fastest:          state.Fastest,
 		Highest:          state.Highest,
 	}
-	if db.Sightings == nil {
-		db.Sightings = make(map[string]obs.AircraftSighting)
-	}
-	if db.SeenType == nil {
-		db.SeenType = make(map[string]int)
-	}
-	if db.SeenOperator == nil {
-		db.SeenOperator = make(map[string]int)
-	}
-	if db.SeenCountry == nil {
-		db.SeenCountry = make(map[string]int)
-	}
+	db.State.EnsureInitialized()
 	db.IsWarmup = state.IsWarmup
 
 	return nil

@@ -48,7 +48,7 @@ func EvaluateBatch(
 	classifier Classifier,
 	now time.Time,
 ) []AircraftSighting {
-	ensureMaps(state)
+	state.EnsureInitialized()
 	currentSightings := make([]AircraftSighting, len(records))
 	observer := state.Observer
 
@@ -94,21 +94,6 @@ func EvaluateBatch(
 	return currentSightings
 }
 
-func ensureMaps(state *State) {
-	if state.Sightings == nil {
-		state.Sightings = map[string]AircraftSighting{}
-	}
-	if state.SeenType == nil {
-		state.SeenType = map[string]int{}
-	}
-	if state.SeenOperator == nil {
-		state.SeenOperator = map[string]int{}
-	}
-	if state.SeenCountry == nil {
-		state.SeenCountry = map[string]int{}
-	}
-}
-
 func classifyType(
 	state *State,
 	sighting *AircraftSighting,
@@ -131,9 +116,7 @@ func classifyType(
 	}
 
 	sighting.TypeDesc = aType
-	thisTypeCountNew := state.SeenType[aType] + 1
-	state.SeenType[aType] = thisTypeCountNew
-	state.SightedTypes++
+	thisTypeCountNew := state.RecordType(aType)
 	if !isRare(thisTypeCountNew, state.SightedTypes) {
 		return NoRarity
 	}
@@ -177,9 +160,7 @@ func classifyOperator(
 		return NoRarity
 	}
 
-	thisOperatorCountNew := state.SeenOperator[sighting.Operator] + 1
-	state.SeenOperator[sighting.Operator] = thisOperatorCountNew
-	state.SightedOperators++
+	thisOperatorCountNew := state.RecordOperator(sighting.Operator)
 	if !isRare(thisOperatorCountNew, state.SightedOperators) {
 		return NoRarity
 	}
@@ -225,9 +206,7 @@ func classifyCountry(
 		return NoRarity
 	}
 
-	thisCountryCountNew := state.SeenCountry[sighting.Country] + 1
-	state.SeenCountry[sighting.Country] = thisCountryCountNew
-	state.SightedCountries++
+	thisCountryCountNew := state.RecordCountry(sighting.Country)
 	if !isRare(thisCountryCountNew, state.SightedCountries) {
 		return NoRarity
 	}
