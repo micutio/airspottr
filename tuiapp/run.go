@@ -2,63 +2,69 @@ package tuiapp
 
 import (
 	"io"
-	"log" //nolint:depguard // TODO: Change later.
+	"log/slog"
 	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/micutio/airspottr/internal"
+
+	srv "github.com/micutio/airspottr/internal/application/services"
+	"github.com/micutio/airspottr/internal/infrastructure/adsb"
+	noti "github.com/micutio/airspottr/internal/infrastructure/notify"
+	pers "github.com/micutio/airspottr/internal/infrastructure/persistence"
 )
 
-// Run starts the TUI. It exits the process if dashboard or request setup fails.
-func Run(appName string, requestOptions internal.RequestOptions) {
-	// Map ANSI palette colors to this terminal (theme-aware selection/highlight).
-	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(os.Stdout))
+type Dependencies struct {
+	AppName             string
+	AircraftSource      srv.AircraftDataSource
+	FlightRouteSource   srv.FlightRouteDataSource
+	Dashboard           *srv.Dashboard
+	NotificationService srv.NotificationService
+	RequestOptions      adsb.RequestOptions
+	ErrorLog            io.Writer
+}
 
-	errLogFile, err := setupLogger()
-	if err != nil {
-		log.Fatalf("failed to set up logging: %v", err)
+func RunWithDependencies(deps Dependencies) {
+	if deps.ErrorLog == nil {
+		deps.ErrorLog = io.Discard
 	}
-	defer func() {
-		if closeErr := errLogFile.Close(); closeErr != nil {
-			log.Printf("error closing log file: %v", closeErr)
-		}
-	}()
-
-	notify := internal.NewNotify(appName, new(io.Discard))
-
-	request, dashboard, err := setupRequestAndDashboard(requestOptions, errLogFile)
-	if err != nil {
-		log.Printf("failed to set up dashboard and request: %v", err)
+	logger := slog.New(slog.NewTextHandler(deps.ErrorLog, nil))
+	if deps.Dashboard == nil {
+		logger.Error("dashboard is required for TUI startup")
 		return
 	}
-
-	dashboard.FinishWarmupPeriod()
+	if deps.AircraftSource == nil || deps.FlightRouteSource == nil {
+		logger.Error("aircraft and route sources are required for TUI startup")
+		return
+	}
+	if deps.NotificationService == nil {
+		deps.NotificationService = noti.NewBeeepNotifier(deps.AppName, io.Discard)
+	}
 
 	theme := getDefaultTheme()
-	tables := initTables(theme)
-
+	tableStyle := initTableStyle(theme)
+	deps.Dashboard.ConfigureRefresh(
+		deps.NotificationService,
+		nil, // Flight routes are fetched asynchronously via tea.Cmd in Update.
+	)
+	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(os.Stdout))
 	appModel := &model{
 		width:             0,
 		height:            0,
 		baseStyle:         lipgloss.NewStyle(),
 		viewStyle:         lipgloss.NewStyle(),
-		tableStyle:        tables.style,
+		tableStyle:        tableStyle,
 		theme:             theme,
-		tables:            tables.tables,
-		selectedRarityIdx: 0,
-		aircraftSortCol:   1, // FNO (matches previous default flight sort)
-		aircraftSortDesc:  false,
-		raritySortCol:     [3]int{0, 0, 0},
-		raritySortDesc:    [3]bool{false, false, false},
+		tables:            newTuiTables(tableStyle),
+		selectedRarityIdx: rarityByType,
 		uiState:           mainPage,
 		startTime:         time.Now(),
 		lastUpdate:        time.Unix(0, 0),
-		request:           request,
-		dashboard:         dashboard,
-		notify:            notify,
-		options:           requestOptions,
+		aircraftRepo:      deps.AircraftSource,
+		flightrouteRepo:   deps.FlightRouteSource,
+		dashboard:         deps.Dashboard,
+		options:           deps.RequestOptions,
 		inputFocus:        focusTable,
 		notifyStripIdx:    notifyType,
 		notifyOnType:      true,
@@ -68,9 +74,10 @@ func Run(appName string, requestOptions internal.RequestOptions) {
 
 	p := tea.NewProgram(appModel, tea.WithAltScreen())
 	if _, progErr := p.Run(); progErr != nil {
-		log.Printf("error running program: %v", progErr)
+		logger.Error("error running program", slog.Any("error", progErr))
 	}
-	if saveErr := internal.SaveState(internal.StateFilePath(), dashboard, request); saveErr != nil {
-		log.Printf("failed to save persistent state: %v", saveErr)
+	state := deps.Dashboard.SaveState(deps.FlightRouteSource.GetPendingCallsigns())
+	if saveErr := pers.SaveState(pers.StateFilePath(), state); saveErr != nil {
+		logger.Error("failed to save persistent state", slog.Any("error", saveErr))
 	}
 }
