@@ -3,9 +3,9 @@
 #
 
 # Executable in linux
-airspottr
+/airspottr
 # executable in windows
-airspottr.exe
+/airspottr.exe
 # log file
 airspottr.log
 

@@ -43,7 +43,7 @@ formatters:
       # with the given prefixes are grouped after 3rd-party packages.
       # Default: []
       local-prefixes:
-        - github.com/my/project
+        - github.com/micutio/airspottr
 
     golines:
       # Target maximum line length.
@@ -129,7 +129,7 @@ linters:
     ## you may want to enable
     #- arangolint # opinionated best practices for arangodb client
     - decorder # checks declaration order and count of types, constants, variables and functions
-    - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
+    - exhaustruct_v5 # [highly recommend to enable] checks if all structure fields are initialized
     #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
     #- godox # detects usage of FIXME, TODO and other keywords inside comments
     - goheader # checks is file header matches to pattern
@@ -240,36 +240,42 @@ linters:
       # Default: [ switch ]
       check:
         - switch
-        - map
+        - mapliteral
 
-    exhaustruct:
+    exhaustruct_v5:
       # List of regular expressions to exclude struct packages and their names from checks.
       # Regular expressions must match complete canonical struct package/name/structname.
-      # Default: []
-      exclude:
-        # std libs
-        - ^net/http.Client$
-        - ^net/http.Cookie$
-        - ^net/http.Request$
-        - ^net/http.Response$
-        - ^net/http.Server$
-        - ^net/http.Transport$
-        - ^net/url.URL$
-        - ^os/exec.Cmd$
-        - ^reflect.StructField$
-        # public libs
-        - ^github.com/Shopify/sarama.Config$
-        - ^github.com/Shopify/sarama.ProducerMessage$
-        - ^github.com/mitchellh/mapstructure.DecoderConfig$
-        - ^github.com/prometheus/client_golang/.+Opts$
-        - ^github.com/spf13/cobra.Command$
-        - ^github.com/spf13/cobra.CompletionOptions$
-        - ^github.com/stretchr/testify/mock.Mock$
-        - ^github.com/testcontainers/testcontainers-go.+Request$
-        - ^github.com/testcontainers/testcontainers-go.FromDockerfile$
-        - ^golang.org/x/tools/go/analysis.Analyzer$
-        - ^google.golang.org/protobuf/.+Options$
-        - ^gopkg.in/yaml.v3.Node$
+      # Ignore all structs that do not belong to github.com/micutio/airspottr.
+      ignore-patterns:
+        - ^[^g].*$
+        - ^g[^i].*$
+        - ^gi[^t].*$
+        - ^git[^h].*$
+        - ^gith[^u].*$
+        - ^githu[^b].*$
+        - ^github[^.].*$
+        - ^github\.[^c].*$
+        - ^github\.c[^o].*$
+        - ^github\.co[^m].*$
+        - ^github\.com[^/].*$
+        - ^github\.com/[^m].*$
+        - ^github\.com/m[^i].*$
+        - ^github\.com/mi[^c].*$
+        - ^github\.com/mic[^u].*$
+        - ^github\.com/micu[^t].*$
+        - ^github\.com/micut[^i].*$
+        - ^github\.com/micuti[^o].*$
+        - ^github\.com/micutio[^/].*$
+        - ^github\.com/micutio/[^a].*$
+        - ^github\.com/micutio/a[^i].*$
+        - ^github\.com/micutio/ai[^r].*$
+        - ^github\.com/micutio/air[^s].*$
+        - ^github\.com/micutio/airs[^p].*$
+        - ^github\.com/micutio/airsp[^o].*$
+        - ^github\.com/micutio/airspo[^t].*$
+        - ^github\.com/micutio/airspot[^t].*$
+        - ^github\.com/micutio/airspott[^r].*$
+        - ^github\.com/micutio/airspottr[^/].*$
 
     funcorder:
       # Checks if the exported methods of a structure are placed before the non-exported ones.
@@ -359,7 +365,7 @@ linters:
     nolintlint:
       # Exclude following linters from requiring an explanation.
       # Default: []
-      allow-no-explanation: [ funlen, gocognit, golines ]
+      allow-no-explanation: [funlen, gocognit, golines, exhaustruct_v5]
       # Enable to require an explanation of nonzero length after each nolint directive.
       # Default: false
       require-explanation: true
@@ -435,18 +441,18 @@ linters:
       - common-false-positives
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
-      - source: 'TODO'
-        linters: [ godot ]
-      - text: 'should have a package comment'
-        linters: [ revive ]
+      - source: "TODO"
+        linters: [godot]
+      - text: "should have a package comment"
+        linters: [revive]
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
-        linters: [ revive ]
+        linters: [revive]
       - text: 'package comment should be of the form ".+"'
-        source: '// ?(nolint|TODO)'
-        linters: [ revive ]
+        source: "// ?(nolint|TODO)"
+        linters: [revive]
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
-        source: '// ?(nolint|TODO)'
-        linters: [ revive, staticcheck ]
+        source: "// ?(nolint|TODO)"
+        linters: [revive, staticcheck]
       - path: '_test\.go'
         linters:
           - bodyclose
