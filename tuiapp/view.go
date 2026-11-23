@@ -3,6 +3,7 @@ package tuiapp
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,17 +46,17 @@ func (m *model) viewHeader() string {
 		Height(1).
 		Padding(0, 0)
 
+	leftPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewLeftPanel())
+	notifyPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewNotifyListContent())
+	rightPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewRightPanel())
+
+	return m.viewStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, notifyPanel, rightPanel),
+	)
+}
+
+func (m *model) viewLeftPanel() string {
 	keyStyle := m.baseStyle.Foreground(m.theme.Muted)
-	listHeader := m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render
-
-	listItem := func(key, value string) string {
-		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(value)
-		listItemKey := func(k string) string {
-			return keyStyle.Render(k + ":")
-		}
-		return fmt.Sprintf("%s %s ", listItemKey(key), listItemValue)
-	}
-
 	const minutesInHour = 60.0
 	const secsInMinute = 60.0
 	tSince := time.Since(m.startTime)
@@ -63,51 +64,27 @@ func (m *model) viewHeader() string {
 	mins := math.Mod(math.Floor(tSince.Minutes()), minutesInHour)
 	secs := math.Mod(math.Floor(tSince.Seconds()), secsInMinute)
 
-	leftPanel := list.Border(lipgloss.RoundedBorder()).Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			fmt.Sprintf("   Location %.3f, %.3f", m.dashboard.Observer.Latitude, m.dashboard.Observer.Longitude),
-			fmt.Sprintf("     UpTime %.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
-			fmt.Sprintf("Last Update %02.0f seconds ago", time.Since(m.lastUpdate).Seconds())),
-	)
+	labelCol := keyStyle.
+		Align(lipgloss.Right).
+		Faint(true).Render(strings.Join([]string{
+		"Location",
+		"Uptime",
+		"Last Update",
+		"Sighted Flights",
+	}, "\n"))
 
-	notifyPanel := list.Border(lipgloss.RoundedBorder()).Render(m.viewNotifyListContent())
+	valueCol := m.baseStyle.
+		Align(lipgloss.Left).
+		Render(strings.Join([]string{
+			fmt.Sprintf("%.3f, %.3f", m.dashboard.Observer.Latitude, m.dashboard.Observer.Longitude),
+			fmt.Sprintf("%.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
+			fmt.Sprintf("%02.0f seconds ago", time.Since(m.lastUpdate).Seconds()),
+			strconv.Itoa(len(m.dashboard.Sightings)),
+		}, "\n"))
 
-	var rightPanel string
-	highest := m.dashboard.GetHighest()
-	fastest := m.dashboard.GetFastest()
-	if highest.TypeDesc != "" && highest.TypeDesc != obs.TypeUnknown &&
-		fastest.TypeDesc != "" && fastest.TypeDesc != obs.TypeUnknown {
-		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
-			lipgloss.JoinVertical(lipgloss.Left,
-				listHeader("Highest"),
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					listItem("ALT", highest.LastRecord.GetAltitudeAsStr()),
-					listItem("FNO", highest.LastFlightNo),
-					listItem("REG", highest.Registration),
-					listItem("TID", highest.TypeDesc),
-				),
-				listHeader("Fastest"),
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					listItem("SPD", fmt.Sprintf("%5.0f", fastest.LastRecord.GroundSpeed)),
-					listItem("FNO", fastest.LastFlightNo),
-					listItem("REG", fastest.Registration),
-					listItem("TID", fastest.TypeDesc),
-				),
-			),
-		)
-	} else {
-		rightPanel = list.Border(lipgloss.RoundedBorder()).Render(
-			m.baseStyle.Foreground(m.theme.Secondary).Render(
-				"  Awaiting\n  aircraft\n  data…",
-			),
-		)
-	}
+	leftPanel := lipgloss.JoinHorizontal(lipgloss.Top, labelCol, " ", valueCol)
 
-	return m.viewStyle.Render(
-		lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, notifyPanel, rightPanel),
-	)
+	return leftPanel
 }
 
 // viewNotifyListContent is the third header column: Notify list (Type / Op / Country).
@@ -119,7 +96,7 @@ func (m *model) viewNotifyListContent() string {
 		return "[ ]"
 	}
 	rows := []string{
-		m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render("Notify"),
+		m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render("Notifications"),
 	}
 	items := []struct {
 		label string
@@ -127,7 +104,7 @@ func (m *model) viewNotifyListContent() string {
 		idx   int
 	}{
 		{"Type", m.notifyOnType, 0},
-		{"Op", m.notifyOnOp, 1},
+		{"Operator", m.notifyOnOp, 1},
 		{"Country", m.notifyOnCountry, 2},
 	}
 	for _, it := range items {
@@ -144,6 +121,47 @@ func (m *model) viewNotifyListContent() string {
 		rows = append(rows, " "+m.baseStyle.Foreground(m.theme.Primary).Render(text))
 	}
 	return strings.Join(rows, "\n")
+}
+
+func (m *model) viewRightPanel() string {
+	keyStyle := m.baseStyle.Foreground(m.theme.Muted)
+	listHeader := m.baseStyle.Foreground(m.theme.Primary).Bold(true).Render
+	listItem := func(key, value string) string {
+		listItemValue := m.baseStyle.Align(lipgloss.Right).Render(value)
+		listItemKey := func(k string) string {
+			return keyStyle.Render(k + ":")
+		}
+		return fmt.Sprintf("%s %s ", listItemKey(key), listItemValue)
+	}
+
+	var rightPanel string
+	highest := m.dashboard.GetHighest()
+	fastest := m.dashboard.GetFastest()
+	if highest.TypeDesc != "" && highest.TypeDesc != obs.TypeUnknown &&
+		fastest.TypeDesc != "" && fastest.TypeDesc != obs.TypeUnknown {
+		rightPanel = lipgloss.JoinVertical(lipgloss.Left,
+			listHeader("Highest"),
+			lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				listItem("ALT", highest.LastRecord.GetAltitudeAsStr()),
+				listItem("FNO", highest.LastFlightNo),
+				listItem("REG", highest.Registration),
+				listItem("TID", highest.TypeDesc),
+			),
+			listHeader("Fastest"),
+			lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				listItem("SPD", fmt.Sprintf("%5.0f", fastest.LastRecord.GroundSpeed)),
+				listItem("FNO", fastest.LastFlightNo),
+				listItem("REG", fastest.Registration),
+				listItem("TID", fastest.TypeDesc),
+			),
+		)
+	} else {
+		rightPanel = "  Awaiting\n  aircraft\n  data…"
+	}
+
+	return rightPanel
 }
 
 func (m *model) viewSortHotkeyHint() string {
