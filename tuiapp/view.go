@@ -25,10 +25,20 @@ func (m *model) View() string {
 		}
 		tableContent = lipgloss.JoinHorizontal(lipgloss.Top, parts[0], parts[1], parts[2])
 	}
-	body := []string{column(m.viewHeader()), column(tableContent)}
-	if m.uiState == mainPage || m.uiState == globalStats {
-		body = append(body, m.viewSortHotkeyHint())
+
+	var bottomLine string
+	if m.uiState == mainPage {
+		bottomLine = m.viewMainPageHotkeys()
 	}
+	if m.uiState == globalStats {
+		bottomLine = m.viewRarityPageHotkeys()
+	}
+	body := []string{
+		column(m.viewHeader()),
+		column(tableContent),
+		bottomLine,
+	}
+
 	return m.baseStyle.
 		Width(m.width).
 		Height(m.height).
@@ -65,10 +75,9 @@ func (m *model) viewLeftPanel() string {
 	secs := math.Mod(math.Floor(tSince.Seconds()), secsInMinute)
 
 	labelCol := keyStyle.
-		Align(lipgloss.Right).
-		Faint(true).Render(strings.Join([]string{
-		"Location",
+		Align(lipgloss.Right).Render(strings.Join([]string{
 		"Uptime",
+		"Location",
 		"Last Update",
 		"Sighted Flights",
 	}, "\n"))
@@ -76,8 +85,8 @@ func (m *model) viewLeftPanel() string {
 	valueCol := m.baseStyle.
 		Align(lipgloss.Left).
 		Render(strings.Join([]string{
-			fmt.Sprintf("%.3f, %.3f", m.dashboard.Observer.Latitude, m.dashboard.Observer.Longitude),
 			fmt.Sprintf("%.0f Hr %02.0f Min %02.0f Sec", hours, mins, secs),
+			fmt.Sprintf("%.3f, %.3f", m.dashboard.Observer.Latitude, m.dashboard.Observer.Longitude),
 			fmt.Sprintf("%02.0f seconds ago", time.Since(m.lastUpdate).Seconds()),
 			strconv.Itoa(len(m.dashboard.Sightings)),
 		}, "\n"))
@@ -164,10 +173,28 @@ func (m *model) viewRightPanel() string {
 	return rightPanel
 }
 
-func (m *model) viewSortHotkeyHint() string {
-	msg := "Tab notify · t/o/c toggles · Sort (table): [ ] r 1–8 · rarity 1=count 2=name"
+func (m *model) viewMainPageHotkeys() string {
+	key := m.baseStyle.Bold(true).Foreground(m.theme.Muted).Render
+	hints := strings.Join([]string{
+		key("Space ") + "switch to rarity view",
+		key("Tab ") + "notify",
+		key("t") + "/" + key("o") + "/" + key("c") + " notify toggles",
+		key("[ ]") + "/" + key("r") + "/" + key("1") + "-" + key("8 ") + " sort table",
+	}, " · ")
 	return m.baseStyle.
 		Width(m.width).
-		Foreground(m.theme.Secondary).
-		Render(msg)
+		Render("Keys: " + hints)
+}
+
+func (m *model) viewRarityPageHotkeys() string {
+	key := m.baseStyle.Bold(true).Foreground(m.theme.Muted).Render
+	hints := strings.Join([]string{
+		key("Space ") + "switch to observation",
+		key("Tab ") + "notify",
+		key("t") + "/" + key("o") + "/" + key("c") + " notify toggles",
+		key("[ ]") + "/" + key("r") + "/" + key("1") + "-" + key("2 ") + " sort table",
+	}, " · ")
+	return m.baseStyle.
+		Width(m.width).
+		Render("Keys: " + hints)
 }

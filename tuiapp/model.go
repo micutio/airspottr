@@ -92,7 +92,7 @@ func (m *model) UnfocusSelectedTable() {
 }
 
 func (m *model) FocusSelectedTable() {
-	m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Highlight)
+	m.tableStyle.Selected = m.tableStyle.Selected.Background(m.theme.Muted)
 	at := m.activeTable()
 	at.table.SetStyles(m.tableStyle)
 	at.table.Focus()
